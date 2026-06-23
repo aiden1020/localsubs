@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "defaultChannel": "stable",
+  "models": [
+    {
+      "channel": "stable",
+      "id": "subtitle-en2tw-0.6b",
+      "version": "2026.06-dev",
+      "runtime": "llama.cpp",
+      "path": "SubtitleEN2TW-0.6B-Q5_K_M.gguf",
+      "sizeBytes": 444410336,
+      "description": "English to Traditional Chinese subtitle translation model.",
+      "profile": {
+        "nPredict": 24,
+        "ctxSize": 1,
+        "cachePrompt": true,
+        "cacheReuse": -1
+      },
+      "url": "https://huggingface.co/Aiden1020/SubtitleEN2TW-0.6B/resolve/main/SubtitleEN2TW-0.6B-Q5_K_M.gguf",
+      "sha256": "0ea66df7facc76a0dec67b44c7d9471383e2c98e09d59b9904bb8e451aabc9b9"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+version: 2
+
+builds:
+  - id: localsubs
+    main: ./cmd/localsubs
+    binary: localsubs
+    goos: [darwin]
+    goarch: [amd64, arm64]
+    env: [CGO_ENABLED=0]
+    ldflags:
+      - -s -w
+      - -X localsubs/internal/runtime.HelperVersion={{.Version}}
+
+archives:
+  - id: localsubs
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  github:
+    owner: aiden1020
+    name: localsubs
+  name_template: "v{{.Version}}"

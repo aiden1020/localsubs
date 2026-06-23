@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LocalSubs</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">LocalSubs</p>
+          <h1>Setup</h1>
+          <p class="intro">Real-time, fully local, free and open source subtitle translation for streaming video.</p>
+        </div>
+        <div id="service-status" class="service-status is-checking" aria-live="polite">
+          <span id="service-status-dot" class="status-dot"></span>
+          <div>
+            <strong id="service-status-title">Checking local model</strong>
+            <p id="service-status-detail">Looking for the native helper</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="setup-grid" aria-label="Setup steps">
+        <article class="setup-card">
+          <div class="step-marker">1</div>
+          <div class="step-body">
+            <h2>Install the local runtime</h2>
+            <p>Create the local environment used by the translation service. No subtitle text is sent to the cloud.</p>
+            <pre><code id="install-command">brew tap yourname/open-stream-subtitles
+brew install open-stream-subtitles-helper
+open-stream-subtitles-helper install-native-host</code></pre>
+            <button class="secondary-button" type="button" data-copy-target="install-command">Copy install command</button>
+          </div>
+        </article>
+
+        <article class="setup-card">
+          <div class="step-marker">2</div>
+          <div class="step-body">
+            <h2>Prepare the model</h2>
+            <p>Install or update the selected model channel. The current developer build detects the bundled local model.</p>
+            <pre><code id="model-command">python3 scripts/runtime/model_manager.py install --channel stable</code></pre>
+            <button class="secondary-button" type="button" data-copy-target="model-command">Copy model command</button>
+            <dl class="model-facts">
+              <div>
+                <dt>Model</dt>
+                <dd>LMT0.6b.Q5_K_M.gguf</dd>
+              </div>
+              <div>
+                <dt>Size</dt>
+                <dd>About 424 MB</dd>
+              </div>
+              <div>
+                <dt>Runtime</dt>
+                <dd>llama.cpp</dd>
+              </div>
+            </dl>
+          </div>
+        </article>
+
+        <article class="setup-card">
+          <div class="step-marker">3</div>
+          <div class="step-body">
+            <h2>Start the model service</h2>
+            <p>Install the native host once. Chrome starts the helper when subtitles need translation.</p>
+            <pre><code id="start-command">open-stream-subtitles-helper install-native-host</code></pre>
+            <div class="button-row">
+              <button class="secondary-button" type="button" data-copy-target="start-command">Copy start command</button>
+              <button id="check-service" class="primary-button" type="button">Check service</button>
+              <button id="warmup-service" class="secondary-button" type="button">Warm up model</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="setup-card">
+          <div class="step-marker">4</div>
+          <div class="step-body">
+            <h2>Use on streaming video</h2>
+            <p>Open a supported streaming page with English subtitles enabled. The translated line appears near the original subtitle and can be dragged.</p>
+            <div class="button-row">
+              <button id="open-supported-site" class="primary-button" type="button">Open supported site</button>
+              <button id="mark-ready" class="secondary-button" type="button">Mark setup complete</button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <p class="eyebrow">Preferences</p>
+          <h2>Subtitle behavior</h2>
+        </div>
+
+        <form id="settings-form" class="settings-form">
+          <label class="toggle">
+            <span>Enable translation</span>
+            <input id="translation-enabled" name="translationEnabled" type="checkbox">
+          </label>
+
+          <label class="toggle">
+            <span>Use local translation service</span>
+            <input id="local-translator-enabled" name="localTranslatorEnabled" type="checkbox">
+          </label>
+
+          <label class="toggle">
+            <span>Show bilingual plugin subtitles</span>
+            <input id="hide-native-subtitles" name="hideNativeSubtitles" type="checkbox">
+          </label>
+
+          <label class="toggle">
+            <span>Show original while translating</span>
+            <input id="show-pending-original-text" name="showPendingOriginalText" type="checkbox">
+          </label>
+
+          <label class="toggle">
+            <span>Show original text</span>
+            <input id="show-original-text" name="showOriginalText" type="checkbox">
+          </label>
+
+          <label class="field">
+            <span>Target language</span>
+            <select id="target-language" name="targetLanguage">
+              <option value="zh-Hant">Traditional Chinese</option>
+              <option value="zh">Simplified Chinese</option>
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Font size</span>
+            <div class="range-row">
+              <input id="font-size" name="fontSize" type="range" min="16" max="42" step="1">
+              <output id="font-size-value" for="font-size"></output>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>Overlay background opacity</span>
+            <div class="range-row">
+              <input id="overlay-background-opacity" name="overlayBackgroundOpacity" type="range" min="0" max="0.95" step="0.05">
+              <output id="overlay-background-opacity-value" for="overlay-background-opacity"></output>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>Translation context window</span>
+            <div class="range-row">
+              <input id="translation-context-window" name="translationContextWindow" type="range" min="1" max="5" step="1">
+              <output id="translation-context-window-value" for="translation-context-window"></output>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>Local context size</span>
+            <div class="range-row">
+              <input id="local-translator-ctx-size" name="localTranslatorCtxSize" type="range" min="0" max="5" step="1">
+              <output id="local-translator-ctx-size-value" for="local-translator-ctx-size"></output>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>Translation cache size</span>
+            <div class="range-row">
+              <input id="translation-cache-limit" name="translationCacheLimit" type="range" min="20" max="500" step="10">
+              <output id="translation-cache-limit-value" for="translation-cache-limit"></output>
+            </div>
+          </label>
+        </form>
+
+        <p id="save-status" class="save-status" aria-live="polite"></p>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

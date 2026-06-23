@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# Go
+bin/
+*.test
+coverage.out
+
+# Python
+.venv/
+venv/
+.gocache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Model weights and large binaries (never commit these)
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.pth
+LMT0.6b_finetuned_v1/
+LMT0.6b_mlx_8bit/
+
+# Download temp files
+*.part
+
+# Chrome extension build output
+dist/
+
+# Root model_manifest.json is a synced copy of internal/manifest/model_manifest.json
+# The canonical source is internal/manifest/model_manifest.json (embedded into binary)
+/model_manifest.json
+
+# Claude Code local memory (personal, not for contributors)
+.claude/
