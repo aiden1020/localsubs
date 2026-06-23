@@ -27,3 +27,21 @@ release:
     owner: aiden1020
     name: localsubs
   name_template: "v{{.Version}}"
+
+brews:
+  - name: localsubs
+    repository:
+      owner: aiden1020
+      name: homebrew-localsubs
+    homepage: https://github.com/aiden1020/localsubs
+    description: "Local AI subtitle translation helper for streaming video"
+    dependencies:
+      - name: llama.cpp
+    install: |
+      bin.install "localsubs"
+    caveats: |
+      Get started:
+        localsubs model download   # download translation model (~424 MB)
+        localsubs install           # connect to Chrome
+    test: |
+      assert_match "localsubs", shell_output("#{bin}/localsubs version")

@@ -7,18 +7,21 @@ Translates English subtitles to Traditional Chinese on-device using a fine-tuned
 ## Requirements
 
 - macOS (Apple Silicon or Intel)
-- [llama.cpp](https://github.com/ggml-org/llama.cpp): `brew install llama.cpp`
 - Chrome / Chromium
 
 ## Installation
 
 ```bash
 brew tap aiden1020/localsubs
+brew trust aiden1020/localsubs
 brew install localsubs
 
 localsubs model download   # ~424 MB, one-time
 localsubs install           # connect to Chrome
 ```
+
+> `brew trust` is required because LocalSubs is distributed via a third-party tap.
+> It authorizes Homebrew to install formulas from this tap on your machine.
 
 Then install the [LocalSubs Chrome extension](#) and start watching.
 
