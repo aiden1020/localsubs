@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,15 +10,24 @@
     <main class="page">
       <section class="hero">
         <div>
-          <p class="eyebrow">LocalSubs</p>
-          <h1>Setup</h1>
-          <p class="intro">Real-time, fully local, free and open source subtitle translation for streaming video.</p>
+          <div class="top-row">
+            <div class="brand-lockup">
+              <img class="brand-logo" src="icons/icon-48.png" alt="" aria-hidden="true">
+              <p class="eyebrow">LocalSubs</p>
+            </div>
+            <div class="language-switch" aria-label="Language">
+              <button id="language-zh" class="language-button is-active" type="button" data-language="zh-Hant">繁中</button>
+              <button id="language-en" class="language-button" type="button" data-language="en">EN</button>
+            </div>
+          </div>
+          <h1 data-i18n="setupTitle">設定</h1>
+          <p class="intro" data-i18n="intro">即時、完全本機、免費且開源的串流字幕翻譯。</p>
         </div>
         <div id="service-status" class="service-status is-checking" aria-live="polite">
           <span id="service-status-dot" class="status-dot"></span>
           <div>
-            <strong id="service-status-title">Checking local model</strong>
-            <p id="service-status-detail">Looking for the native helper</p>
+            <strong id="service-status-title">正在檢查本機模型</strong>
+            <p id="service-status-detail">正在尋找 native helper</p>
           </div>
         </div>
       </section>
@@ -27,61 +36,45 @@
         <article class="setup-card">
           <div class="step-marker">1</div>
           <div class="step-body">
-            <h2>Install the local runtime</h2>
-            <p>Create the local environment used by the translation service. No subtitle text is sent to the cloud.</p>
-            <pre><code id="install-command">brew tap yourname/open-stream-subtitles
-brew install open-stream-subtitles-helper
-open-stream-subtitles-helper install-native-host</code></pre>
-            <button class="secondary-button" type="button" data-copy-target="install-command">Copy install command</button>
+            <h2 data-i18n="installRuntimeTitle">安裝本機 runtime</h2>
+            <p data-i18n="installRuntimeText">安裝 LocalSubs CLI。字幕文字不會送到雲端。</p>
+            <div class="code-block">
+              <div class="code-toolbar">
+                <span>Shell</span>
+                <button class="copy-button" type="button" data-copy-target="install-command" data-i18n="copy">Copy</button>
+              </div>
+              <pre><code id="install-command">brew tap aiden1020/localsubs
+brew trust aiden1020/localsubs
+brew install localsubs</code></pre>
+            </div>
           </div>
         </article>
 
         <article class="setup-card">
           <div class="step-marker">2</div>
           <div class="step-body">
-            <h2>Prepare the model</h2>
-            <p>Install or update the selected model channel. The current developer build detects the bundled local model.</p>
-            <pre><code id="model-command">python3 scripts/runtime/model_manager.py install --channel stable</code></pre>
-            <button class="secondary-button" type="button" data-copy-target="model-command">Copy model command</button>
-            <dl class="model-facts">
-              <div>
-                <dt>Model</dt>
-                <dd>LMT0.6b.Q5_K_M.gguf</dd>
+            <h2 data-i18n="oneTimeSetupTitle">完成一次性設定</h2>
+            <p data-i18n="oneTimeSetupText">下載翻譯模型並連接 Chrome。這兩個指令只需要執行一次。</p>
+            <div class="code-block">
+              <div class="code-toolbar">
+                <span>Shell</span>
+                <button class="copy-button" type="button" data-copy-target="setup-command" data-i18n="copy">Copy</button>
               </div>
-              <div>
-                <dt>Size</dt>
-                <dd>About 424 MB</dd>
-              </div>
-              <div>
-                <dt>Runtime</dt>
-                <dd>llama.cpp</dd>
-              </div>
-            </dl>
-          </div>
-        </article>
-
-        <article class="setup-card">
-          <div class="step-marker">3</div>
-          <div class="step-body">
-            <h2>Start the model service</h2>
-            <p>Install the native host once. Chrome starts the helper when subtitles need translation.</p>
-            <pre><code id="start-command">open-stream-subtitles-helper install-native-host</code></pre>
-            <div class="button-row">
-              <button class="secondary-button" type="button" data-copy-target="start-command">Copy start command</button>
-              <button id="check-service" class="primary-button" type="button">Check service</button>
-              <button id="warmup-service" class="secondary-button" type="button">Warm up model</button>
+              <pre><code id="setup-command">localsubs model download   # ~424 MB, one-time
+localsubs install           # connect to Chrome</code></pre>
             </div>
           </div>
         </article>
 
-        <article class="setup-card">
-          <div class="step-marker">4</div>
+        <article class="setup-card setup-card-wide">
+          <div class="step-marker">3</div>
           <div class="step-body">
-            <h2>Use on streaming video</h2>
-            <p>Open a supported streaming page with English subtitles enabled. The translated line appears near the original subtitle and can be dragged.</p>
+            <h2 data-i18n="checkAndWatchTitle">檢查並開始使用</h2>
+            <p data-i18n="checkAndWatchText">確認本機模型可用，然後開啟支援的串流頁面並啟用英文字幕。</p>
             <div class="button-row">
-              <button id="open-supported-site" class="primary-button" type="button">Open supported site</button>
-              <button id="mark-ready" class="secondary-button" type="button">Mark setup complete</button>
+              <button id="check-service" class="primary-button" type="button" data-i18n="checkService">檢查服務</button>
+              <button id="warmup-service" class="secondary-button" type="button" data-i18n="warmupService">預熱模型</button>
+              <button id="open-supported-site" class="primary-button" type="button" data-i18n="openSupportedSite">開啟支援網站</button>
             </div>
           </div>
         </article>
@@ -89,51 +82,23 @@ open-stream-subtitles-helper install-native-host</code></pre>
 
       <section class="panel">
         <div class="panel-header">
-          <p class="eyebrow">Preferences</p>
-          <h2>Subtitle behavior</h2>
+          <p class="eyebrow" data-i18n="preferencesEyebrow">偏好設定</p>
+          <h2 data-i18n="preferencesTitle">字幕行為</h2>
         </div>
 
         <form id="settings-form" class="settings-form">
           <label class="toggle">
-            <span>Enable translation</span>
+            <span data-i18n="enableTranslation">啟用翻譯</span>
             <input id="translation-enabled" name="translationEnabled" type="checkbox">
           </label>
 
           <label class="toggle">
-            <span>Use local translation service</span>
-            <input id="local-translator-enabled" name="localTranslatorEnabled" type="checkbox">
-          </label>
-
-          <label class="toggle">
-            <span>Show bilingual plugin subtitles</span>
+            <span data-i18n="replaceNativeSubtitles">以雙語字幕取代原生字幕</span>
             <input id="hide-native-subtitles" name="hideNativeSubtitles" type="checkbox">
           </label>
 
-          <label class="toggle">
-            <span>Show original while translating</span>
-            <input id="show-pending-original-text" name="showPendingOriginalText" type="checkbox">
-          </label>
-
-          <label class="toggle">
-            <span>Show original text</span>
-            <input id="show-original-text" name="showOriginalText" type="checkbox">
-          </label>
-
           <label class="field">
-            <span>Target language</span>
-            <select id="target-language" name="targetLanguage">
-              <option value="zh-Hant">Traditional Chinese</option>
-              <option value="zh">Simplified Chinese</option>
-              <option value="ja">Japanese</option>
-              <option value="ko">Korean</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Font size</span>
+            <span data-i18n="fontSize">字幕大小</span>
             <div class="range-row">
               <input id="font-size" name="fontSize" type="range" min="16" max="42" step="1">
               <output id="font-size-value" for="font-size"></output>
@@ -141,36 +106,56 @@ open-stream-subtitles-helper install-native-host</code></pre>
           </label>
 
           <label class="field">
-            <span>Overlay background opacity</span>
+            <span data-i18n="overlayOpacity">字幕背景透明度</span>
             <div class="range-row">
               <input id="overlay-background-opacity" name="overlayBackgroundOpacity" type="range" min="0" max="0.95" step="0.05">
               <output id="overlay-background-opacity-value" for="overlay-background-opacity"></output>
             </div>
           </label>
 
-          <label class="field">
-            <span>Translation context window</span>
-            <div class="range-row">
-              <input id="translation-context-window" name="translationContextWindow" type="range" min="1" max="5" step="1">
-              <output id="translation-context-window-value" for="translation-context-window"></output>
-            </div>
+          <label class="toggle">
+            <span data-i18n="showOriginalText">顯示原文</span>
+            <input id="show-original-text" name="showOriginalText" type="checkbox">
           </label>
 
-          <label class="field">
-            <span>Local context size</span>
-            <div class="range-row">
-              <input id="local-translator-ctx-size" name="localTranslatorCtxSize" type="range" min="0" max="5" step="1">
-              <output id="local-translator-ctx-size-value" for="local-translator-ctx-size"></output>
-            </div>
-          </label>
+          <details class="advanced-settings">
+            <summary data-i18n="advanced">進階設定</summary>
+            <div class="advanced-grid">
+              <label class="toggle">
+                <span data-i18n="useLocalTranslator">使用本機翻譯服務</span>
+                <input id="local-translator-enabled" name="localTranslatorEnabled" type="checkbox">
+              </label>
 
-          <label class="field">
-            <span>Translation cache size</span>
-            <div class="range-row">
-              <input id="translation-cache-limit" name="translationCacheLimit" type="range" min="20" max="500" step="10">
-              <output id="translation-cache-limit-value" for="translation-cache-limit"></output>
+              <label class="toggle">
+                <span data-i18n="showPendingOriginal">翻譯時先顯示原文</span>
+                <input id="show-pending-original-text" name="showPendingOriginalText" type="checkbox">
+              </label>
+
+              <label class="field">
+                <span data-i18n="translationContextWindow">字幕上下文視窗</span>
+                <div class="range-row">
+                  <input id="translation-context-window" name="translationContextWindow" type="range" min="1" max="5" step="1">
+                  <output id="translation-context-window-value" for="translation-context-window"></output>
+                </div>
+              </label>
+
+              <label class="field">
+                <span data-i18n="localContextSize">本機上下文大小</span>
+                <div class="range-row">
+                  <input id="local-translator-ctx-size" name="localTranslatorCtxSize" type="range" min="0" max="5" step="1">
+                  <output id="local-translator-ctx-size-value" for="local-translator-ctx-size"></output>
+                </div>
+              </label>
+
+              <label class="field">
+                <span data-i18n="translationCacheSize">翻譯快取大小</span>
+                <div class="range-row">
+                  <input id="translation-cache-limit" name="translationCacheLimit" type="range" min="20" max="500" step="10">
+                  <output id="translation-cache-limit-value" for="translation-cache-limit"></output>
+                </div>
+              </label>
             </div>
-          </label>
+          </details>
         </form>
 
         <p id="save-status" class="save-status" aria-live="polite"></p>

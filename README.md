@@ -1,8 +1,21 @@
-# LocalSubs
+<br />
+<div align="center">
+  <a href="https://github.com/aiden1020/localsubs">
+    <img src="icons/logo.png" alt="Logo" width="80" height="80">
+  </a>
 
+  <h3 align="center">LocalSubs</h3>
+
+  <p align="center">
 Real-time, fully local AI subtitle translation for streaming video.
-
 Translates English subtitles to Traditional Chinese on-device using a fine-tuned 0.6B model — no data leaves your machine.
+
+<br />
+    
+  </p>
+</div>
+
+https://github.com/user-attachments/assets/5bf883fb-ed50-43f2-a052-47e8f2c9c415
 
 ## Requirements
 

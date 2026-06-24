@@ -6,8 +6,20 @@
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA63Nv3eoHagFTTc3j4/Kq4DAEX3y7z5khPoOGWMJUgz5T5+XOumPs5zuYwV1/JBxi9o2dX1NoNOm/P9qOA4ik8qBbpB1BJ+uLbO6ATLxPHwOqGrAoRr8VgI8XonOTNfmQU3Jyz9fpYw5n7QnWPqo4gloiCX6xR9PCG/Zxx1RXd0O/DgSs5jy1WdRdeQCB+cgAqjX8ETAV2RyycgkizVNl3XBLlXpxtrJFCmh8ZPDHv0JeH0Fg+hBNhrSaps0IPiIqQqtCUqZKCkN+yQven9VbWgmiKNCSJmWtKlm2iUCoOlQvosIFqyMp0wHJhLegMu/HZv9IDq4PXkHJrq/OeI+K6QIDAQAB",
   "permissions": ["storage", "nativeMessaging"],
   "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_title": "LocalSubs Settings"
+    "default_title": "LocalSubs Settings",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "background": {
     "service_worker": "background.js"

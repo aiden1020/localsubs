@@ -4,10 +4,6 @@ const NATIVE_REQUEST_TIMEOUT_MS = 10000;
 let nativePort = null;
 let nativePending = new Map();
 
-function getStartCommand() {
-  return "localsubs install";
-}
-
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     chrome.tabs.create({
@@ -146,11 +142,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       url: chrome.runtime.getURL("options.html")
     });
     sendResponse({ ok: true });
-    return false;
-  }
-
-  if (message?.type === "GET_LOCAL_HELPER_COMMAND") {
-    sendResponse({ ok: true, command: getStartCommand() });
     return false;
   }
 

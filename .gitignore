@@ -35,3 +35,10 @@ dist/
 
 # Claude Code local memory (personal, not for contributors)
 .claude/
+.agents/
+agent/
+skills-lock.json
+# brag
+brag-output/
+
+asset/
