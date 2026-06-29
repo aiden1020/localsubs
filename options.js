@@ -12,10 +12,6 @@ const DEFAULT_SETTINGS = {
   translationCacheLimit: 120,
   optionsLanguage: "zh-Hant"
 };
-const LEGACY_SETTINGS_KEYS = {
-  localTranslatorEnabled: "localMlxEnabled",
-  localTranslatorCtxSize: "localMlxCtxSize"
-};
 const I18N = {
   "zh-Hant": {
     setupTitle: "設定",
@@ -193,24 +189,7 @@ function applySettingsToForm(settings) {
 }
 
 function migrateStoredSettings(stored) {
-  const migrated = { ...DEFAULT_SETTINGS, ...stored };
-
-  if (
-    LEGACY_SETTINGS_KEYS.localTranslatorEnabled in stored &&
-    !("localTranslatorEnabled" in stored)
-  ) {
-    migrated.localTranslatorEnabled = stored[LEGACY_SETTINGS_KEYS.localTranslatorEnabled];
-  }
-
-  if (
-    LEGACY_SETTINGS_KEYS.localTranslatorCtxSize in stored &&
-    !("localTranslatorCtxSize" in stored)
-  ) {
-    migrated.localTranslatorCtxSize = stored[LEGACY_SETTINGS_KEYS.localTranslatorCtxSize];
-  }
-
-  migrated.targetLanguage = DEFAULT_SETTINGS.targetLanguage;
-  return migrated;
+  return { ...DEFAULT_SETTINGS, ...stored, targetLanguage: DEFAULT_SETTINGS.targetLanguage };
 }
 
 function setServiceStatus(state, title, detail) {
@@ -229,11 +208,7 @@ function flashSavedStatus(message = t("saved")) {
 }
 
 async function loadSettings() {
-  const stored = await chrome.storage.sync.get([
-    ...Object.keys(DEFAULT_SETTINGS),
-    LEGACY_SETTINGS_KEYS.localTranslatorEnabled,
-    LEGACY_SETTINGS_KEYS.localTranslatorCtxSize
-  ]);
+  const stored = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
   currentSettings = migrateStoredSettings(stored);
   applyLanguage(currentSettings.optionsLanguage);
   applySettingsToForm(currentSettings);

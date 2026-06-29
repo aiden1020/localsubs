@@ -1,7 +1,7 @@
 (() => {
   const BUILD = "0.2.0";
-  const OVERLAY_ID = "open-stream-subtitles-overlay";
-  const STATUS_OVERLAY_ID = "open-stream-subtitles-status";
+  const OVERLAY_ID = "localsubs-overlay";
+  const STATUS_OVERLAY_ID = "localsubs-status";
   const HIDE_AFTER_MS = 500;
   const STATUS_HIDE_AFTER_MS = 6500;
   const TRANSLATION_SOURCE_LANGUAGE = "en";
@@ -18,11 +18,7 @@
     localTranslatorCtxSize: 1,
     translationCacheLimit: 120
   };
-  const LEGACY_SETTINGS_KEYS = {
-    localTranslatorEnabled: "localMlxEnabled",
-    localTranslatorCtxSize: "localMlxCtxSize"
-  };
-  const PRIMARY_SUBTITLE_SELECTORS = [
+const PRIMARY_SUBTITLE_SELECTORS = [
     "#overlay-root [data-testid='cueBoxRowTextCue']",
     "[data-testid='cueBoxRowTextCue']",
     "#overlay-root .RowContainer-Fuse-Web-Play__sc-1wvp621-1 .CaptionWindow-Fuse-Web-Play__sc-1wvp621-5",
@@ -90,12 +86,8 @@
   }
 
   function sanitizeSettings(rawSettings = {}) {
-    const localTranslatorEnabled = "localTranslatorEnabled" in rawSettings
-      ? rawSettings.localTranslatorEnabled
-      : rawSettings[LEGACY_SETTINGS_KEYS.localTranslatorEnabled];
-    const localTranslatorCtxSize = "localTranslatorCtxSize" in rawSettings
-      ? rawSettings.localTranslatorCtxSize
-      : rawSettings[LEGACY_SETTINGS_KEYS.localTranslatorCtxSize];
+    const localTranslatorEnabled = rawSettings.localTranslatorEnabled;
+    const localTranslatorCtxSize = rawSettings.localTranslatorCtxSize;
 
     return {
       translationEnabled: rawSettings.translationEnabled !== false,
@@ -269,11 +261,7 @@
       return;
     }
 
-    const storedSettings = await chrome.storage.sync.get([
-      ...Object.keys(DEFAULT_SETTINGS),
-      LEGACY_SETTINGS_KEYS.localTranslatorEnabled,
-      LEGACY_SETTINGS_KEYS.localTranslatorCtxSize
-    ]);
+    const storedSettings = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
     applySettings(storedSettings);
   }
 
@@ -286,21 +274,11 @@
     let hasRelevantChange = false;
 
     for (const [key, change] of Object.entries(changes)) {
-      if (
-        !(key in DEFAULT_SETTINGS) &&
-        key !== LEGACY_SETTINGS_KEYS.localTranslatorEnabled &&
-        key !== LEGACY_SETTINGS_KEYS.localTranslatorCtxSize
-      ) {
+      if (!(key in DEFAULT_SETTINGS)) {
         continue;
       }
 
-      if (key === LEGACY_SETTINGS_KEYS.localTranslatorEnabled) {
-        nextSettings.localTranslatorEnabled = change.newValue;
-      } else if (key === LEGACY_SETTINGS_KEYS.localTranslatorCtxSize) {
-        nextSettings.localTranslatorCtxSize = change.newValue;
-      } else {
-        nextSettings[key] = change.newValue;
-      }
+      nextSettings[key] = change.newValue;
       hasRelevantChange = true;
     }
 
@@ -626,7 +604,7 @@
   function restoreHiddenNativeSubtitle() {
     if (hiddenSubtitleNode instanceof HTMLElement) {
       hiddenSubtitleNode.style.visibility = hiddenSubtitleOriginalVisibility;
-      hiddenSubtitleNode.removeAttribute("data-open-stream-subtitles-hidden");
+      hiddenSubtitleNode.removeAttribute("data-localsubs-hidden");
     }
     hiddenSubtitleNode = null;
     hiddenSubtitleOriginalVisibility = "";
@@ -654,7 +632,7 @@
       hiddenSubtitleOriginalVisibility = node.style.visibility || "";
     }
 
-    node.dataset.openStreamSubtitlesHidden = "true";
+    node.dataset.localsubsHidden = "true";
     node.style.visibility = "hidden";
 
     const rectAfter = node.getBoundingClientRect();

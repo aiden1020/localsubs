@@ -13,7 +13,7 @@ import (
 func TestInstallManifestWritesChromeManifest(t *testing.T) {
 	home := t.TempDir()
 	projectRoot := filepath.Join(home, "project")
-	binary := filepath.Join(projectRoot, "bin", "open-stream-subtitles-helper")
+	binary := filepath.Join(projectRoot, "bin", "localsubs")
 	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
 		t.Fatal(err)
 	}
