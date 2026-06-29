@@ -12,6 +12,14 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
+// Preheat: start native host only when local translation is enabled.
+chrome.storage.sync.get({ localTranslatorEnabled: true }, (s) => {
+  if (s.localTranslatorEnabled) {
+    sendNativeMessage("health", {}).catch(() => {});
+  }
+});
+
+
 chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({
     url: chrome.runtime.getURL("options.html")
@@ -22,9 +30,13 @@ async function checkLocalTranslator(warmup = false) {
   const startedAt = performance.now();
   try {
     const health = await sendNativeMessage("health", {});
-    let translation = "";
 
-    if (warmup) {
+    if (health.loading) {
+      return { ok: false, loading: true, transport: "native" };
+    }
+
+    let translation = "";
+    if (warmup && health.ok) {
       const warmupResult = await translateSubtitle({
         text: "Warm up.\nReady.",
         sourceLanguage: "en",
@@ -36,6 +48,7 @@ async function checkLocalTranslator(warmup = false) {
 
     return {
       ok: Boolean(health.ok),
+      error: health.ok ? undefined : (health.lastError || undefined),
       latencyMs: Math.round(performance.now() - startedAt),
       translation,
       transport: "native"

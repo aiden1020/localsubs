@@ -76,10 +76,8 @@ func (b *ManagedBackend) Stop() error {
 	if b == nil || b.cmd == nil || b.cmd.Process == nil {
 		return nil
 	}
-	if err := b.cmd.Process.Kill(); err != nil {
-		return err
-	}
-	_ = b.cmd.Wait()
+	_ = b.cmd.Process.Kill() // ignore error: process may already be dead
+	_ = b.cmd.Wait()         // always reap to prevent orphaned children
 	return nil
 }
 

@@ -57,6 +57,8 @@
   let lastTranslation = "";
   let needsReposition = false;
   let captionHistory = [];
+  let captionDetectedAt = 0;
+  let lastTranslationLatencyMs = 0;
   let isOverlayPinned = false;
   let isOverlayDragging = false;
   let statusOverlay = null;
@@ -206,14 +208,23 @@
     return statusOverlay;
   }
 
-  function showStatusMessage(message) {
+  function showStatusMessage(message, persistent = false) {
     const node = ensureStatusOverlay();
     node.textContent = message;
     node.style.display = "block";
     window.clearTimeout(statusOverlayTimer);
-    statusOverlayTimer = window.setTimeout(() => {
-      node.style.display = "none";
-    }, STATUS_HIDE_AFTER_MS);
+    if (!persistent) {
+      statusOverlayTimer = window.setTimeout(() => {
+        node.style.display = "none";
+      }, STATUS_HIDE_AFTER_MS);
+    }
+  }
+
+  function clearStatusMessage() {
+    window.clearTimeout(statusOverlayTimer);
+    if (statusOverlay) {
+      statusOverlay.style.display = "none";
+    }
   }
 
   function applySettings(nextSettings) {
@@ -335,9 +346,12 @@
       }
 
       if (!payload?.ok) {
-        if (Date.now() - lastLocalServerWarningAt > 30000) {
+        const isLoading = payload?.error?.includes("model_loading");
+        if (Date.now() - lastLocalServerWarningAt > (isLoading ? 8000 : 30000)) {
           lastLocalServerWarningAt = Date.now();
-          showStatusMessage(payload?.error || "Local translator returned an error.");
+          showStatusMessage(isLoading
+            ? "LocalSubs: loading model, please wait..."
+            : (payload?.error || "Local translator returned an error."));
         }
         return null;
       }
@@ -892,6 +906,9 @@
       return;
     }
 
+    if (translatedText && captionDetectedAt > 0) {
+      lastTranslationLatencyMs = Date.now() - captionDetectedAt;
+    }
     lastTranslation = translatedText;
     enterTranslatedCaptionState(caption, translatedText);
   }
@@ -1184,10 +1201,12 @@
         return;
       }
       activeCaptionRequestId += 1;
-      if (Date.now() - lastSubtitleNodeChangeAt > HIDE_AFTER_MS) {
+      const compensationMs = Math.min(lastTranslationLatencyMs, 3000);
+      if (Date.now() - lastSubtitleNodeChangeAt > HIDE_AFTER_MS + compensationMs) {
         resetCaptionHistory();
         enterFallbackCaptionState();
         lastCaption = "";
+        lastTranslationLatencyMs = 0;
       }
       return;
     }
@@ -1205,6 +1224,8 @@
 
     lastCaption = caption;
     lastTranslation = "";
+    captionDetectedAt = Date.now();
+    lastTranslationLatencyMs = 0;
     needsReposition = true;
     activeCaptionRequestId += 1;
     updateCaptionHistory(caption);
@@ -1281,7 +1302,35 @@
     chrome.storage.onChanged.addListener(handleStorageChange);
   }
 
+  let modelReadyShown = false;
+
+  async function pollUntilModelReady() {
+    try {
+      const result = await chrome.runtime.sendMessage({
+        type: "CHECK_LOCAL_TRANSLATOR",
+        warmup: false
+      });
+      if (result?.ok) {
+        if (!modelReadyShown) {
+          modelReadyShown = true;
+          showStatusMessage("LocalSubs: Model ready");
+        }
+      } else if (result?.loading) {
+        showStatusMessage("LocalSubs: Loading model...", true);
+        window.setTimeout(pollUntilModelReady, 4000);
+      } else {
+        clearStatusMessage();
+      }
+    } catch {
+      clearStatusMessage();
+    }
+  }
+
   void loadSettings().finally(() => {
+    if (settings.localTranslatorEnabled && settings.translationEnabled) {
+      showStatusMessage("LocalSubs: Starting model...", true);
+      void pollUntilModelReady();
+    }
     startDetection();
   });
 })();

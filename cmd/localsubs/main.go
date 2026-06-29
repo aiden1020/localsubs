@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -171,23 +172,46 @@ func nativeHost(args []string) error {
 		return err
 	}
 
-	ctx := context.Background()
-	translator, profile, cleanup, err := buildTranslator(ctx, backendOptions{
-		fakeBackend: *fakeBackend,
-		backendURL:  *backendURL,
-		modelPath:   *modelPath,
-	})
-	if err != nil {
-		return err
-	}
-	defer cleanup()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	service := session.NewService(translator, profile)
+	// Pre-compute profile so the service and loading translator agree on it.
+	profile := runtime.DefaultProfile()
+	profile.ModelPath = resolveModelPath(*modelPath)
+	loading := runtime.NewLoadingTranslator(profile)
+
+	// Start llama-server in the background so the host can serve messages
+	// immediately. The first health check returns loading:true until ready.
+	// wg ensures the cleanup goroutine kills llama-server before this process
+	// exits — without it, Go's runtime terminates goroutines mid-cleanup and
+	// leaves orphaned llama-server processes.
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		translator, _, cleanup, err := buildTranslator(ctx, backendOptions{
+			fakeBackend: *fakeBackend,
+			backendURL:  *backendURL,
+			modelPath:   *modelPath,
+		})
+		if err != nil {
+			loading.SetError(err)
+			return
+		}
+		loading.SetReady(translator)
+		<-ctx.Done()
+		cleanup()
+	}()
+
+	service := session.NewService(loading, profile)
 	host := nativehost.New(nativehost.Config{
 		DefaultContextLines: profile.SubtitleContextLines,
 		IdleTimeout:         30 * time.Minute,
 	}, service)
-	return host.Serve(ctx, os.Stdin, os.Stdout)
+	serveErr := host.Serve(ctx, os.Stdin, os.Stdout)
+	cancel()   // signal goroutine to proceed with cleanup
+	wg.Wait()  // block until llama-server is killed
+	return serveErr
 }
 
 func install(args []string) error {

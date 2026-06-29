@@ -49,6 +49,7 @@ const I18N = {
     lookingForHelper: "正在尋找 native helper",
     warmingUpModel: "正在預熱模型",
     waitingForHelper: "等待 native helper 回應",
+    loadingModel: "正在載入翻譯模型，請稍候（首次啟動約需 20–60 秒）",
     checking: "檢查中...",
     warmingUp: "預熱中...",
     readyTitle: "本機模型已就緒",
@@ -91,6 +92,7 @@ const I18N = {
     lookingForHelper: "Looking for the native helper",
     warmingUpModel: "Warming up model",
     waitingForHelper: "Waiting for the native helper",
+    loadingModel: "Loading translation model, please wait (first launch may take 20–60 s)",
     checking: "Checking...",
     warmingUp: "Warming up...",
     readyTitle: "Local model is ready",
@@ -246,7 +248,13 @@ async function saveSettings() {
   flashSavedStatus();
 }
 
+let activeCheckAbort = null;
+
 async function checkService({ warmup = false } = {}) {
+  if (activeCheckAbort) activeCheckAbort.abort();
+  const abort = new AbortController();
+  activeCheckAbort = abort;
+
   const button = warmup ? warmupServiceButton : checkServiceButton;
   const originalLabel = button.textContent;
   button.disabled = true;
@@ -257,40 +265,45 @@ async function checkService({ warmup = false } = {}) {
     t("waitingForHelper")
   );
 
-  try {
-    const result = await chrome.runtime.sendMessage({
-      type: "CHECK_LOCAL_TRANSLATOR",
-      warmup
-    });
+  const finish = () => {
+    if (activeCheckAbort === abort) activeCheckAbort = null;
+    button.disabled = false;
+    button.textContent = originalLabel;
+  };
+
+  const poll = async () => {
+    if (abort.signal.aborted) { finish(); return; }
+
+    let result;
+    try {
+      result = await chrome.runtime.sendMessage({ type: "CHECK_LOCAL_TRANSLATOR", warmup });
+    } catch (err) {
+      if (!abort.signal.aborted) {
+        setServiceStatus("error", t("notRunningTitle"), err instanceof Error ? err.message : t("startThenCheck"));
+      }
+      finish();
+      return;
+    }
+
+    if (abort.signal.aborted) { finish(); return; }
+
+    if (result?.loading) {
+      setServiceStatus("checking", t("checkingLocalModel"), t("loadingModel"));
+      setTimeout(poll, 2000);
+      return;
+    }
 
     if (result?.ok) {
       const warmupText = result.translation ? ` ${t("warmupResult")}: ${result.translation}` : "";
       const transportText = result.transport === "http" ? t("httpTransport") : t("nativeTransport");
-      setServiceStatus(
-        "ready",
-        t("readyTitle"),
-        `${t("respondedIn")} ${result.latencyMs || 0} ms ${transportText}.${warmupText}`
-      );
-      return true;
+      setServiceStatus("ready", t("readyTitle"), `${t("respondedIn")} ${result.latencyMs || 0} ms ${transportText}.${warmupText}`);
+    } else {
+      setServiceStatus("error", t("notRunningTitle"), result?.error || t("startThenCheck"));
     }
+    finish();
+  };
 
-    setServiceStatus(
-      "error",
-      t("notRunningTitle"),
-      result?.error || t("startThenCheck")
-    );
-    return false;
-  } catch (err) {
-    setServiceStatus(
-      "error",
-      t("notRunningTitle"),
-      err instanceof Error ? err.message : t("startThenCheck")
-    );
-    return false;
-  } finally {
-    button.disabled = false;
-    button.textContent = originalLabel;
-  }
+  poll();
 }
 
 async function copyCommand(targetId, button) {

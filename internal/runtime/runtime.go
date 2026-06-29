@@ -15,7 +15,7 @@ import (
 
 const (
 	APIVersion             = "1"
-	HelperVersion          = "0.1.0"
+	HelperVersion          = "0.2.0"
 	DefaultProfileName     = "default"
 	PromptTemplateVersion  = "subtitle-v1"
 	DefaultModelID         = "subtitle-en2tw-0.6b"
@@ -89,6 +89,7 @@ type ModelState struct {
 
 type Health struct {
 	OK            bool         `json:"ok"`
+	Loading       bool         `json:"loading,omitempty"`
 	APIVersion    string       `json:"apiVersion"`
 	HelperVersion string       `json:"helperVersion"`
 	Backend       BackendState `json:"backend"`
@@ -415,4 +416,74 @@ func (t *StaticTranslator) Health(ctx context.Context) Health {
 		Profile:       t.Profile.Name,
 		LastError:     "",
 	}
+}
+
+// LoadingTranslator wraps async translator initialization. Health() returns
+// loading:true until the underlying translator is ready or has failed.
+type LoadingTranslator struct {
+	done    chan struct{}
+	inner   Translator
+	errInit error
+	profile Profile
+}
+
+func NewLoadingTranslator(profile Profile) *LoadingTranslator {
+	return &LoadingTranslator{done: make(chan struct{}), profile: profile}
+}
+
+func (t *LoadingTranslator) SetReady(inner Translator) {
+	t.inner = inner
+	close(t.done)
+}
+
+func (t *LoadingTranslator) SetError(err error) {
+	t.errInit = err
+	close(t.done)
+}
+
+func (t *LoadingTranslator) isReady() bool {
+	select {
+	case <-t.done:
+		return true
+	default:
+		return false
+	}
+}
+
+func (t *LoadingTranslator) Health(ctx context.Context) Health {
+	if !t.isReady() {
+		return Health{
+			OK:            false,
+			Loading:       true,
+			APIVersion:    APIVersion,
+			HelperVersion: HelperVersion,
+			Backend:       BackendState{Kind: "llama.cpp", Ready: false, Owned: true},
+			Model:         ModelState{ID: t.profile.ModelID, Version: t.profile.ModelVersion, Status: "loading"},
+			Profile:       t.profile.Name,
+		}
+	}
+	if t.errInit != nil {
+		return Health{
+			OK:            false,
+			APIVersion:    APIVersion,
+			HelperVersion: HelperVersion,
+			Backend:       BackendState{Kind: "llama.cpp", Ready: false, Owned: true},
+			Model:         ModelState{ID: t.profile.ModelID, Version: t.profile.ModelVersion, Status: "error"},
+			Profile:       t.profile.Name,
+			LastError:     t.errInit.Error(),
+		}
+	}
+	return t.inner.Health(ctx)
+}
+
+func (t *LoadingTranslator) Translate(ctx context.Context, req TranslateRequest) (TranslateResult, error) {
+	// Return immediately so the JS-side 10 s timeout does not fire and kill
+	// the native port. Callers should retry once the model is ready.
+	if !t.isReady() {
+		return TranslateResult{}, CodedError{Code: "model_loading", Message: "Model is loading, please wait.", HTTPStatus: http.StatusServiceUnavailable}
+	}
+	if t.errInit != nil {
+		return TranslateResult{}, CodedError{Code: "init_failed", Message: t.errInit.Error(), HTTPStatus: http.StatusServiceUnavailable}
+	}
+	return t.inner.Translate(ctx, req)
 }
