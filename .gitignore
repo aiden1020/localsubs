@@ -29,6 +29,9 @@ LMT0.6b_mlx_8bit/
 # Go build output at repo root
 /localsubs
 
+# Local test scripts
+repair_test.py
+
 # Chrome extension build output
 dist/
 

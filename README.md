@@ -36,7 +36,7 @@ localsubs install           # connect to Chrome
 > `brew trust` is required because LocalSubs is distributed via a third-party tap.
 > It authorizes Homebrew to install formulas from this tap on your machine.
 
-Then install the [LocalSubs Chrome extension](#) and start watching.
+Then install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb) and start watching.
 
 ## Commands
 
