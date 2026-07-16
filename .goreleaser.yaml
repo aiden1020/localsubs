@@ -33,6 +33,7 @@ brews:
     repository:
       owner: aiden1020
       name: homebrew-localsubs
+    directory: Formula
     homepage: https://github.com/aiden1020/localsubs
     description: "Local AI subtitle translation helper for streaming video"
     dependencies:
