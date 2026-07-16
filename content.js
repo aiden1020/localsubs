@@ -1,8 +1,7 @@
 (() => {
-  const BUILD = "0.2.0";
+  const BUILD = "0.3.0";
   const OVERLAY_ID = "localsubs-overlay";
   const STATUS_OVERLAY_ID = "localsubs-status";
-  const HIDE_AFTER_MS = 500;
   const STATUS_HIDE_AFTER_MS = 6500;
   const TRANSLATION_SOURCE_LANGUAGE = "en";
   const DEFAULT_SETTINGS = {
@@ -47,7 +46,6 @@ const PRIMARY_SUBTITLE_SELECTORS = [
   let hiddenSubtitleOriginalVisibility = "";
   let detectScheduled = false;
   let overlayHost = null;
-  let lastSubtitleNodeChangeAt = 0;
   let activeCaptionRequestId = 0;
   let activeTranslationAbortController = null;
   let lastTranslation = "";
@@ -59,6 +57,8 @@ const PRIMARY_SUBTITLE_SELECTORS = [
   let isOverlayDragging = false;
   let statusOverlay = null;
   let statusOverlayTimer = null;
+  let captionHideTimer = null;
+  let captionMissingSince = 0;
   let lastLocalServerWarningAt = 0;
   let dragPointerId = null;
   let dragOffsetX = 0;
@@ -201,6 +201,15 @@ const PRIMARY_SUBTITLE_SELECTORS = [
   }
 
   function showStatusMessage(message, persistent = false) {
+    if (window !== window.top) {
+      return;
+    }
+
+    if (document.fullscreenElement) {
+      clearStatusMessage();
+      return;
+    }
+
     const node = ensureStatusOverlay();
     node.textContent = message;
     node.style.display = "block";
@@ -415,19 +424,8 @@ const PRIMARY_SUBTITLE_SELECTORS = [
 
     const captionLines = caption.split("\n");
     if (captionLines.length > 1) {
-      const translatedLines = [];
-      for (const line of captionLines) {
-        if (signal?.aborted) {
-          return "";
-        }
-        const normalizedLine = normalizeText(line);
-        if (!normalizedLine) {
-          continue;
-        }
-        const translatedLineText = await translateCaption(normalizedLine, signal, []);
-        translatedLines.push(translatedLineText);
-      }
-      return translatedLines.filter(Boolean).join("\n");
+      const combinedCaption = normalizeText(captionLines.join(" "));
+      return translateCaption(combinedCaption, signal);
     }
 
     const { fullText, prefixText } = buildTranslationWindow(caption);
@@ -513,8 +511,6 @@ const PRIMARY_SUBTITLE_SELECTORS = [
       overlayCard.style.padding = "0.2rem 0.45rem";
       overlayCard.style.borderRadius = "14px";
       overlayCard.style.background = "rgba(0, 0, 0, 0.22)";
-      overlayCard.style.backdropFilter = "blur(3px)";
-      overlayCard.style.webkitBackdropFilter = "blur(3px)";
       overlayCard.style.pointerEvents = "auto";
       overlayCard.style.cursor = "grab";
       overlayCard.style.userSelect = "none";
@@ -550,11 +546,6 @@ const PRIMARY_SUBTITLE_SELECTORS = [
   }
 
   function getOverlayHost() {
-    const fullscreenElement = document.fullscreenElement;
-    if (fullscreenElement instanceof HTMLElement) {
-      return fullscreenElement;
-    }
-
     const overlayRoot = document.getElementById("overlay-root");
     if (overlayRoot instanceof HTMLElement) {
       return overlayRoot;
@@ -580,6 +571,17 @@ const PRIMARY_SUBTITLE_SELECTORS = [
     }
   }
 
+  function restoreOverlayHostPosition(host) {
+    if (!(host instanceof HTMLElement)) {
+      return;
+    }
+
+    if (host.dataset.openStreamSubtitlesOverlayHost === "true") {
+      host.style.position = "";
+      delete host.dataset.openStreamSubtitlesOverlayHost;
+    }
+  }
+
   function updateOverlayHost() {
     if (!overlay) {
       return;
@@ -593,8 +595,12 @@ const PRIMARY_SUBTITLE_SELECTORS = [
     ensureOverlayHostPosition(nextHost);
 
     if (overlayHost !== nextHost || !overlay.isConnected) {
+      const previousHost = overlayHost;
       overlayHost = nextHost;
       overlayHost.appendChild(overlay);
+      if (previousHost !== overlayHost) {
+        restoreOverlayHostPosition(previousHost);
+      }
       if (isOverlayPinned) {
         clampOverlayPosition();
       }
@@ -1098,9 +1104,8 @@ const PRIMARY_SUBTITLE_SELECTORS = [
       applyNativeSubtitleSuppression();
     }
     sourceObserver = new MutationObserver(() => {
-      lastSubtitleNodeChangeAt = Date.now();
       needsReposition = true;
-      scheduleDetect();
+      detectCaption();
     });
     sourceObserver.observe(container, {
       childList: true,
@@ -1167,6 +1172,23 @@ const PRIMARY_SUBTITLE_SELECTORS = [
       .join("\n");
   }
 
+  function cancelPendingCaptionHide() {
+    window.clearTimeout(captionHideTimer);
+    captionHideTimer = null;
+    captionMissingSince = 0;
+  }
+
+  function scheduleCaptionHide(delayMs) {
+    if (captionHideTimer !== null) {
+      return;
+    }
+
+    captionHideTimer = window.setTimeout(() => {
+      captionHideTimer = null;
+      detectCaption();
+    }, delayMs);
+  }
+
   function detectCaption() {
     const caption = normalizeCaption(getDomCaptions());
 
@@ -1176,18 +1198,33 @@ const PRIMARY_SUBTITLE_SELECTORS = [
         activeSubtitleNode.isConnected &&
         activeSubtitleNode.textContent?.trim();
       if (nodeStillHasContent) {
+        cancelPendingCaptionHide();
         return;
       }
-      activeCaptionRequestId += 1;
+
       const compensationMs = Math.min(lastTranslationLatencyMs, 3000);
-      if (Date.now() - lastSubtitleNodeChangeAt > HIDE_AFTER_MS + compensationMs) {
-        resetCaptionHistory();
-        enterFallbackCaptionState();
-        lastCaption = "";
-        lastTranslationLatencyMs = 0;
+      const hideDelayMs = compensationMs;
+      const now = Date.now();
+      if (captionMissingSince === 0) {
+        captionMissingSince = now;
       }
+
+      const remainingMs = hideDelayMs - (now - captionMissingSince);
+      if (remainingMs > 0) {
+        scheduleCaptionHide(remainingMs);
+        return;
+      }
+
+      cancelPendingCaptionHide();
+      activeCaptionRequestId += 1;
+      resetCaptionHistory();
+      enterFallbackCaptionState();
+      lastCaption = "";
+      lastTranslationLatencyMs = 0;
       return;
     }
+
+    cancelPendingCaptionHide();
     if (caption === lastCaption) {
       if (overlay?.style.display !== "none") {
         if (needsReposition) {
@@ -1271,6 +1308,7 @@ const PRIMARY_SUBTITLE_SELECTORS = [
   });
 
   document.addEventListener("fullscreenchange", () => {
+    clearStatusMessage();
     updateOverlayHost();
     needsReposition = true;
     scheduleDetect();
@@ -1305,7 +1343,11 @@ const PRIMARY_SUBTITLE_SELECTORS = [
   }
 
   void loadSettings().finally(() => {
-    if (settings.localTranslatorEnabled && settings.translationEnabled) {
+    if (
+      window === window.top &&
+      settings.localTranslatorEnabled &&
+      settings.translationEnabled
+    ) {
       showStatusMessage("LocalSubs: Starting model...", true);
       void pollUntilModelReady();
     }

@@ -47,4 +47,7 @@ skills-lock.json
 # brag
 brag-output/
 
+# Local technical report
+docs/
+
 asset/

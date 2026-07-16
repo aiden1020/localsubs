@@ -15,12 +15,12 @@ import (
 
 const (
 	APIVersion             = "1"
-	HelperVersion          = "0.2.0"
+	HelperVersion          = "0.3.0"
 	DefaultProfileName     = "default"
 	PromptTemplateVersion  = "subtitle-v1"
-	DefaultModelID         = "subtitle-en2tw-0.6b"
-	DefaultModelVersion    = "2026.06-dev"
-	DefaultModelFilename   = "SubtitleEN2TW-0.6B-Q5_K_M.gguf"
+	DefaultModelID         = "localsubs-en-zh-tw-0.6b"
+	DefaultModelVersion    = "2026.07"
+	DefaultModelFilename   = "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf"
 	DefaultManifestFilename = "model_manifest.json"
 )
 

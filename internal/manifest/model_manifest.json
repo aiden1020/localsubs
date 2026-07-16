@@ -4,20 +4,20 @@
   "models": [
     {
       "channel": "stable",
-      "id": "subtitle-en2tw-0.6b",
-      "version": "2026.06-dev",
+      "id": "localsubs-en-zh-tw-0.6b",
+      "version": "2026.07",
       "runtime": "llama.cpp",
-      "path": "SubtitleEN2TW-0.6B-Q5_K_M.gguf",
-      "sizeBytes": 444410336,
-      "description": "English to Traditional Chinese subtitle translation model.",
+      "path": "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
+      "sizeBytes": 367318176,
+      "description": "LocalSubs English to Traditional Chinese subtitle translation model.",
       "profile": {
         "nPredict": 24,
         "ctxSize": 1,
         "cachePrompt": true,
         "cacheReuse": -1
       },
-      "url": "https://huggingface.co/Aiden1020/SubtitleEN2TW-0.6B/resolve/main/SubtitleEN2TW-0.6B-Q5_K_M.gguf",
-      "sha256": "0ea66df7facc76a0dec67b44c7d9471383e2c98e09d59b9904bb8e451aabc9b9"
+      "url": "https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B/resolve/main/LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
+      "sha256": "525351104440c210f235721d9290b459dac00392331c93008cac401c055c9a76"
     }
   ]
 }

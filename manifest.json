@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "LocalSubs",
-  "version": "0.2.1",
+  "name": "LocalSubs：HBO Max 即時、完全本地化的 AI 字幕翻譯雙語字幕",
+  "version": "0.3.0",
   "description": "Real-time, fully local AI subtitle translation for streaming video.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA63Nv3eoHagFTTc3j4/Kq4DAEX3y7z5khPoOGWMJUgz5T5+XOumPs5zuYwV1/JBxi9o2dX1NoNOm/P9qOA4ik8qBbpB1BJ+uLbO6ATLxPHwOqGrAoRr8VgI8XonOTNfmQU3Jyz9fpYw5n7QnWPqo4gloiCX6xR9PCG/Zxx1RXd0O/DgSs5jy1WdRdeQCB+cgAqjX8ETAV2RyycgkizVNl3XBLlXpxtrJFCmh8ZPDHv0JeH0Fg+hBNhrSaps0IPiIqQqtCUqZKCkN+yQven9VbWgmiKNCSJmWtKlm2iUCoOlQvosIFqyMp0wHJhLegMu/HZv9IDq4PXkHJrq/OeI+K6QIDAQAB",
   "permissions": ["storage", "nativeMessaging"],

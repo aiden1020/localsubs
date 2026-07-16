@@ -41,7 +41,7 @@ brews:
       bin.install "localsubs"
     caveats: |
       Get started:
-        localsubs model download   # download translation model (~424 MB)
+        localsubs model download   # download translation model (~350 MB)
         localsubs install           # connect to Chrome
     test: |
       assert_match "localsubs", shell_output("#{bin}/localsubs version")

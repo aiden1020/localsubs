@@ -92,7 +92,7 @@ func printUsage() {
 	fmt.Printf("%s  %s\n\n", ui.Bold("localsubs"), ui.Dim("v"+runtime.HelperVersion))
 	fmt.Println(ui.Bold("Setup:"))
 	setup := [][2]string{
-		{"model download", "download the translation model (~424 MB)"},
+		{"model download", "download the translation model (~350 MB)"},
 		{"install", "connect to Chrome"},
 	}
 	for _, c := range setup {
