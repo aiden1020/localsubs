@@ -56,10 +56,14 @@ Then install the [LocalSubs Chrome extension](https://chromewebstore.google.com/
 |---------|-------------|
 | `localsubs model download` | Download the translation model |
 | `localsubs install` | Connect to Chrome |
-| `localsubs status` | Check if the helper is running |
+| `localsubs status` | Check Native Messaging installation readiness |
 | `localsubs doctor` | Run a full diagnostic |
 | `localsubs logs` | Print log file paths |
 | `localsubs version` | Print version |
+
+The native helper starts on demand when Chrome connects to it; it is not a
+persistent background service. Use `localsubs status` to validate the installed
+helper, runtime, and model, or `localsubs doctor` for detailed diagnostics.
 
 ## Model
 

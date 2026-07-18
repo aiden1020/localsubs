@@ -1,0 +1,24 @@
+{
+  "name": "localsubs-extension",
+  "version": "0.3.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:extension": "node scripts/build-extension.mjs",
+    "check": "node scripts/check-versions.mjs && node --check extension/src/background/main.js && node --check extension/src/content/main.js && node --check extension/src/options.js",
+    "check:extension-reproducibility": "node scripts/check-extension-reproducibility.mjs",
+    "package:extension": "npm run check && npm run build:extension && node scripts/package-extension.mjs",
+    "smoke:extension": "node scripts/smoke-extension-package.mjs",
+    "smoke:goreleaser": "node scripts/smoke-goreleaser.mjs",
+    "test": "vitest run",
+    "test:integration": "node scripts/test-native-host.mjs",
+    "test:version-injection": "node scripts/test-version-injection.mjs"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1",
+    "esbuild": "^0.25.0",
+    "fflate": "^0.8.2",
+    "jsdom": "^26.0.0",
+    "vitest": "^3.0.0"
+  }
+}

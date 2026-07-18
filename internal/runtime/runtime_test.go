@@ -8,6 +8,30 @@ import (
 	"testing"
 )
 
+func TestErrorCodeMapsContextErrors(t *testing.T) {
+	if got := ErrorCode(context.DeadlineExceeded); got != "request_timeout" {
+		t.Fatalf("deadline error code = %q", got)
+	}
+	if got := ErrorCode(context.Canceled); got != "request_canceled" {
+		t.Fatalf("canceled error code = %q", got)
+	}
+}
+
+func TestDecodeTranslateAcceptsCueSequence(t *testing.T) {
+	req, empty, err := DecodeTranslate(map[string]any{
+		"sessionId":   "page-1",
+		"cueId":       "2",
+		"cueSequence": float64(2),
+		"currentText": "Wait.",
+	}, DecodeOptions{})
+	if err != nil || empty {
+		t.Fatalf("unexpected decode result: empty=%v err=%v", empty, err)
+	}
+	if req.CueSequence != 2 {
+		t.Fatalf("cue sequence = %d, want 2", req.CueSequence)
+	}
+}
+
 func TestBuildPromptUsesContextAndCurrentCue(t *testing.T) {
 	prompt := BuildPrompt("I'll be right back.", []string{"Wait here."})
 	want := "<|im_start|>user\nCTX:\nWait here.\n\nCUR:\nI'll be right back.<|im_end|>\n<|im_start|>assistant\n"

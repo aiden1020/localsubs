@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install extension dependencies
+        run: npm ci
+
+      - name: Check product versions and JavaScript syntax
+        run: npm run check
+        env:
+          LOCALSUBS_RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+
+      - name: Run extension tests
+        run: npm test
+
+      - name: Run Go tests
+        run: go test ./...
+
+      - name: Run Go race tests
+        run: go test -race ./...
+
+      - name: Run Go vet
+        run: go vet ./...
+
+      - name: Test Native Messaging integration
+        run: npm run test:integration
+
+      - name: Test release version injection
+        run: npm run test:version-injection
+
+      # v2.16 fully deprecated binary-only Homebrew formulas in favor of casks.
+      # LocalSubs pins v2.15 while preserving the existing Formula upgrade path.
+      - name: Check GoReleaser configuration
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: v2.15.2
+          args: check
+
+      - name: Build GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: v2.15.2
+          args: release --snapshot --clean
+
+      - name: Smoke-test GoReleaser snapshot
+        run: npm run smoke:goreleaser
+
+      # GoReleaser --clean removes dist/, so build the uploadable extension
+      # artifact only after the release snapshot has been verified.
+      - name: Build extension package
+        run: npm run package:extension
+
+      - name: Smoke-test extension package
+        run: npm run smoke:extension
+
+      - name: Check reproducible extension packaging
+        run: npm run check:extension-reproducibility
+
+      - name: Check formatting
+        run: git diff --check
+
+      - name: Upload extension package
+        uses: actions/upload-artifact@v4
+        with:
+          name: localsubs-chrome-extension
+          path: dist/localsubs-chrome-extension-v*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Publish with GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: v2.15.2
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}

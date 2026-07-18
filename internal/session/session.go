@@ -17,7 +17,7 @@ type Service struct {
 	mu       sync.Mutex
 	cache    map[string]runtime.TranslateResult
 	inflight map[string]*inflightCall
-	latest   map[string]string
+	latest   map[string]latestCue
 }
 
 type inflightCall struct {
@@ -26,13 +26,18 @@ type inflightCall struct {
 	err    error
 }
 
+type latestCue struct {
+	id       string
+	sequence int
+}
+
 func NewService(backend runtime.Translator, profile runtime.Profile) *Service {
 	return &Service{
 		backend:  backend,
 		profile:  profile,
 		cache:    make(map[string]runtime.TranslateResult),
 		inflight: make(map[string]*inflightCall),
-		latest:   make(map[string]string),
+		latest:   make(map[string]latestCue),
 	}
 }
 
@@ -41,12 +46,15 @@ func (s *Service) Translate(ctx context.Context, req runtime.TranslateRequest) (
 
 	s.mu.Lock()
 	if req.SessionID != "" && req.CueID != "" {
-		s.latest[req.SessionID] = req.CueID
+		latest := s.latest[req.SessionID]
+		if req.CueSequence == 0 || latest.sequence == 0 || req.CueSequence >= latest.sequence {
+			s.latest[req.SessionID] = latestCue{id: req.CueID, sequence: req.CueSequence}
+		}
 	}
 	if cached, ok := s.cache[key]; ok {
 		cached.Cache = "hit"
 		s.mu.Unlock()
-		return cached, nil
+		return s.applySuperseded(req, cached), nil
 	}
 	if call, ok := s.inflight[key]; ok {
 		s.mu.Unlock()
@@ -66,7 +74,7 @@ func (s *Service) Translate(ctx context.Context, req runtime.TranslateRequest) (
 	result, err := s.backend.Translate(ctx, req)
 	if err == nil {
 		result.Cache = "miss"
-		result = s.applySuperseded(req, result)
+		result.Superseded = false
 	}
 
 	s.mu.Lock()
@@ -79,7 +87,7 @@ func (s *Service) Translate(ctx context.Context, req runtime.TranslateRequest) (
 	delete(s.inflight, key)
 	s.mu.Unlock()
 
-	return result, err
+	return s.applySuperseded(req, result), err
 }
 
 func (s *Service) Health(ctx context.Context) runtime.Health {
@@ -117,6 +125,6 @@ func (s *Service) applySuperseded(req runtime.TranslateRequest, result runtime.T
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	result.Superseded = s.latest[req.SessionID] != req.CueID
+	result.Superseded = s.latest[req.SessionID].id != req.CueID
 	return result
 }

@@ -8,22 +8,25 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"localsubs/internal/runtime"
 )
 
 const (
-	DefaultMaxFrameBytes = 32 * 1024
-	DefaultMaxTextBytes  = 4 * 1024
+	DefaultMaxFrameBytes         = 32 * 1024
+	DefaultMaxTextBytes          = 4 * 1024
+	DefaultMaxConcurrentRequests = 4
 )
 
 type Config struct {
-	MaxFrameBytes       uint32
-	MaxTextBytes        int
-	DefaultContextLines int
-	RequestTimeout      time.Duration
-	IdleTimeout         time.Duration // exit after this long with no messages; 0 = no timeout
+	MaxFrameBytes         uint32
+	MaxTextBytes          int
+	DefaultContextLines   int
+	MaxConcurrentRequests int
+	RequestTimeout        time.Duration
+	IdleTimeout           time.Duration // exit after this long with no messages; 0 = no timeout
 }
 
 type Host struct {
@@ -60,6 +63,9 @@ func New(config Config, translator runtime.Translator) *Host {
 	if config.DefaultContextLines < 0 {
 		config.DefaultContextLines = 1
 	}
+	if config.MaxConcurrentRequests <= 0 {
+		config.MaxConcurrentRequests = DefaultMaxConcurrentRequests
+	}
 	if config.RequestTimeout <= 0 {
 		config.RequestTimeout = 10 * time.Second
 	}
@@ -71,6 +77,48 @@ func (h *Host) Serve(ctx context.Context, input io.Reader, output io.Writer) err
 		msg Message
 		err error
 	}
+	serveCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	reads := make(chan readResult, 1)
+	go func() {
+		for {
+			msg, err := ReadMessage(input, h.config.MaxFrameBytes)
+			reads <- readResult{msg: msg, err: err}
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	var handlers sync.WaitGroup
+	var outputMu sync.Mutex
+	slots := make(chan struct{}, h.config.MaxConcurrentRequests)
+	writeErrors := make(chan error, 1)
+	handle := func(message Message) {
+		defer handlers.Done()
+		defer func() { <-slots }()
+		response := h.Handle(serveCtx, message)
+		outputMu.Lock()
+		err := WriteMessage(output, response)
+		outputMu.Unlock()
+		if err != nil {
+			select {
+			case writeErrors <- err:
+			default:
+			}
+			cancel()
+		}
+	}
+	waitHandlers := func() error {
+		handlers.Wait()
+		select {
+		case err := <-writeErrors:
+			return err
+		default:
+			return nil
+		}
+	}
 
 	var idleTimer *time.Timer
 	var idleC <-chan time.Time
@@ -81,29 +129,51 @@ func (h *Host) Serve(ctx context.Context, input io.Reader, output io.Writer) err
 	}
 
 	for {
-		ch := make(chan readResult, 1)
-		go func() {
-			msg, err := ReadMessage(input, h.config.MaxFrameBytes)
-			ch <- readResult{msg, err}
-		}()
-
 		select {
 		case <-ctx.Done():
+			cancel()
+			_ = waitHandlers()
 			return ctx.Err()
 		case <-idleC:
-			return nil // idle timeout — defer cleanup will kill llama-server
-		case r := <-ch:
+			cancel()
+			return waitHandlers()
+		case err := <-writeErrors:
+			cancel()
+			_ = waitHandlers()
+			return err
+		case r := <-reads:
 			if r.err != nil {
 				if errors.Is(r.err, io.EOF) || errors.Is(r.err, io.ErrUnexpectedEOF) {
-					return nil
+					cancel()
+					return waitHandlers()
 				}
+				cancel()
+				_ = waitHandlers()
 				return r.err
 			}
 			if idleTimer != nil {
+				if !idleTimer.Stop() {
+					select {
+					case <-idleTimer.C:
+					default:
+					}
+				}
 				idleTimer.Reset(h.config.IdleTimeout)
 			}
-			response := h.Handle(ctx, r.msg)
-			if err := WriteMessage(output, response); err != nil {
+			select {
+			case slots <- struct{}{}:
+				handlers.Add(1)
+				go handle(r.msg)
+			case <-ctx.Done():
+				cancel()
+				_ = waitHandlers()
+				return ctx.Err()
+			case <-idleC:
+				cancel()
+				return waitHandlers()
+			case err := <-writeErrors:
+				cancel()
+				_ = waitHandlers()
 				return err
 			}
 		}
@@ -210,6 +280,12 @@ func errorResponse(id string, messageType string, code string, message string) R
 }
 
 func codedErrorResponse(id string, messageType string, err error) Response {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return errorResponse(id, messageType, "request_timeout", "Translation request timed out.")
+	}
+	if errors.Is(err, context.Canceled) {
+		return errorResponse(id, messageType, "request_canceled", "Translation request was canceled.")
+	}
 	var coded runtime.CodedError
 	if errors.As(err, &coded) {
 		code := coded.Code

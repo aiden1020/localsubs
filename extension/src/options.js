@@ -1,17 +1,5 @@
-const DEFAULT_SETTINGS = {
-  translationEnabled: true,
-  localTranslatorEnabled: true,
-  hideNativeSubtitles: true,
-  showPendingOriginalText: true,
-  showOriginalText: false,
-  targetLanguage: "zh-Hant",
-  fontSize: 30,
-  overlayBackgroundOpacity: 0.22,
-  translationContextWindow: 3,
-  localTranslatorCtxSize: 1,
-  translationCacheLimit: 120,
-  optionsLanguage: "zh-Hant"
-};
+import { DEFAULT_SETTINGS, migrateStoredSettings } from "./core/settings.js";
+
 const I18N = {
   "zh-Hant": {
     setupTitle: "設定",
@@ -35,7 +23,6 @@ const I18N = {
     overlayOpacity: "字幕背景透明度",
     showOriginalText: "顯示原文",
     advanced: "進階設定",
-    useLocalTranslator: "使用本機翻譯服務",
     showPendingOriginal: "翻譯時先顯示原文",
     translationContextWindow: "字幕上下文視窗",
     localContextSize: "本機上下文大小",
@@ -50,7 +37,6 @@ const I18N = {
     warmingUp: "預熱中...",
     readyTitle: "本機模型已就緒",
     nativeTransport: "透過 native helper",
-    httpTransport: "透過 localhost fallback",
     respondedIn: "回應時間",
     warmupResult: "預熱",
     notRunningTitle: "本機模型尚未執行",
@@ -78,7 +64,6 @@ const I18N = {
     overlayOpacity: "Overlay background opacity",
     showOriginalText: "Show original text",
     advanced: "Advanced",
-    useLocalTranslator: "Use local translation service",
     showPendingOriginal: "Show original while translating",
     translationContextWindow: "Translation context window",
     localContextSize: "Local context size",
@@ -93,7 +78,6 @@ const I18N = {
     warmingUp: "Warming up...",
     readyTitle: "Local model is ready",
     nativeTransport: "via native helper",
-    httpTransport: "via localhost fallback",
     respondedIn: "Responded in",
     warmupResult: "Warmup",
     notRunningTitle: "Local model is not running",
@@ -112,7 +96,6 @@ const openSupportedSiteButton = document.getElementById("open-supported-site");
 
 const fields = {
   translationEnabled: document.getElementById("translation-enabled"),
-  localTranslatorEnabled: document.getElementById("local-translator-enabled"),
   hideNativeSubtitles: document.getElementById("hide-native-subtitles"),
   showPendingOriginalText: document.getElementById("show-pending-original-text"),
   showOriginalText: document.getElementById("show-original-text"),
@@ -161,7 +144,6 @@ function updateOutputs(settings) {
 function readFormSettings() {
   return {
     translationEnabled: fields.translationEnabled.checked,
-    localTranslatorEnabled: fields.localTranslatorEnabled.checked,
     hideNativeSubtitles: fields.hideNativeSubtitles.checked,
     showPendingOriginalText: fields.showPendingOriginalText.checked,
     showOriginalText: fields.showOriginalText.checked,
@@ -176,7 +158,6 @@ function readFormSettings() {
 
 function applySettingsToForm(settings) {
   fields.translationEnabled.checked = settings.translationEnabled;
-  fields.localTranslatorEnabled.checked = settings.localTranslatorEnabled;
   fields.hideNativeSubtitles.checked = settings.hideNativeSubtitles;
   fields.showPendingOriginalText.checked = settings.showPendingOriginalText;
   fields.showOriginalText.checked = settings.showOriginalText;
@@ -186,10 +167,6 @@ function applySettingsToForm(settings) {
   fields.localTranslatorCtxSize.value = `${settings.localTranslatorCtxSize}`;
   fields.translationCacheLimit.value = `${settings.translationCacheLimit}`;
   updateOutputs(settings);
-}
-
-function migrateStoredSettings(stored) {
-  return { ...DEFAULT_SETTINGS, ...stored, targetLanguage: DEFAULT_SETTINGS.targetLanguage };
 }
 
 function setServiceStatus(state, title, detail) {
@@ -270,10 +247,11 @@ async function checkService({ warmup = false } = {}) {
 
     if (result?.ok) {
       const warmupText = result.translation ? ` ${t("warmupResult")}: ${result.translation}` : "";
-      const transportText = result.transport === "http" ? t("httpTransport") : t("nativeTransport");
+      const transportText = t("nativeTransport");
       setServiceStatus("ready", t("readyTitle"), `${t("respondedIn")} ${result.latencyMs || 0} ms ${transportText}.${warmupText}`);
     } else {
-      setServiceStatus("error", t("notRunningTitle"), result?.error || t("startThenCheck"));
+      const errorMessage = typeof result?.error === "object" ? result.error.message : result?.error;
+      setServiceStatus("error", t("notRunningTitle"), errorMessage || t("startThenCheck"));
     }
     finish();
   };

@@ -57,7 +57,7 @@ func TestInstallManifestWritesChromeManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedLogPath := filepath.Join(home, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts", "localsubs_helper.log")
+	expectedLogPath := filepath.Join(home, "Library", "Application Support", "LocalSubs", "logs", "native-host.log")
 	expectedLauncherBody := "#!/bin/sh\n" +
 		"export PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH\"\n" +
 		"cd '" + projectRoot + "' || exit 1\n" +
@@ -114,5 +114,132 @@ func TestBuildManifestRejectsUnsupportedBrowser(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected unsupported browser error")
+	}
+}
+
+func TestInspectInstalledValidatesGeneratedManifest(t *testing.T) {
+	home := t.TempDir()
+	binary := filepath.Join(home, "bin", "localsubs")
+	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("helper"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := InstallManifest(InstallOptions{HomeDir: home, BinaryPath: binary}); err != nil {
+		t.Fatal(err)
+	}
+	status := InspectInstalled(home, "chrome")
+	if !status.Installed || !status.Valid {
+		t.Fatalf("expected valid installation: %#v", status)
+	}
+}
+
+func TestInspectInstalledRejectsMissingHostPath(t *testing.T) {
+	home := t.TempDir()
+	root, err := nativeMessagingRoot(home, "chrome")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := Manifest{
+		Name:           config.NativeHostName,
+		Description:    "LocalSubs local helper",
+		Path:           filepath.Join(home, "missing-launcher"),
+		Type:           "stdio",
+		AllowedOrigins: []string{"chrome-extension://" + config.DefaultExtensionID + "/"},
+	}
+	body, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, config.NativeHostName+".json")
+	if err := os.WriteFile(manifestPath, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	status := InspectInstalled(home, "chrome")
+	if !status.Installed || status.Valid {
+		t.Fatalf("expected invalid installation: %#v", status)
+	}
+	if status.Reason != "native messaging host path does not exist" {
+		t.Fatalf("unexpected reason: %s", status.Reason)
+	}
+}
+
+func TestInspectInstalledRejectsNonExecutableHost(t *testing.T) {
+	home := t.TempDir()
+	binary := filepath.Join(home, "bin", "localsubs")
+	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("helper"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result, err := InstallManifest(InstallOptions{HomeDir: home, BinaryPath: binary})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(result.LauncherPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	status := InspectInstalled(home, "chrome")
+	if status.Valid || status.Reason != "native messaging host path is not executable" {
+		t.Fatalf("expected non-executable host rejection: %#v", status)
+	}
+}
+
+func TestInspectInstalledRejectsInvalidOrigin(t *testing.T) {
+	home := t.TempDir()
+	root, err := nativeMessagingRoot(home, "chrome")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hostPath := filepath.Join(root, "host")
+	if err := os.WriteFile(hostPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(Manifest{
+		Name: config.NativeHostName, Type: "stdio", Path: hostPath,
+		AllowedOrigins: []string{"garbage"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, config.NativeHostName+".json"), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	status := InspectInstalled(home, "chrome")
+	if status.Valid || status.Reason != "native messaging manifest has invalid allowed extension origins" {
+		t.Fatalf("expected invalid origin rejection: %#v", status)
+	}
+}
+
+func TestInspectInstalledRequiresExpectedExtension(t *testing.T) {
+	home := t.TempDir()
+	binary := filepath.Join(home, "bin", "localsubs")
+	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("helper"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const otherExtension = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	if _, err := InstallManifest(InstallOptions{
+		HomeDir: home, BinaryPath: binary, ExtensionID: otherExtension,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	status := InspectInstalled(home, "chrome")
+	if status.Valid || status.Reason != "native messaging manifest does not allow the expected extension" {
+		t.Fatalf("expected official extension rejection: %#v", status)
+	}
+	customStatus := InspectInstalledForExtension(home, "chrome", otherExtension)
+	if !customStatus.Valid {
+		t.Fatalf("expected custom extension readiness: %#v", customStatus)
 	}
 }

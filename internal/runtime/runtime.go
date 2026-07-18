@@ -10,19 +10,23 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
-	APIVersion             = "1"
-	HelperVersion          = "0.3.0"
-	DefaultProfileName     = "default"
-	PromptTemplateVersion  = "subtitle-v1"
-	DefaultModelID         = "localsubs-en-zh-tw-0.6b"
-	DefaultModelVersion    = "2026.07"
-	DefaultModelFilename   = "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf"
+	APIVersion              = "1"
+	DefaultProfileName      = "default"
+	PromptTemplateVersion   = "subtitle-v1"
+	DefaultModelID          = "localsubs-en-zh-tw-0.6b"
+	DefaultModelVersion     = "2026.07"
+	DefaultModelFilename    = "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf"
 	DefaultManifestFilename = "model_manifest.json"
 )
+
+// HelperVersion is a variable so GoReleaser can inject the release tag with
+// -X localsubs/internal/runtime.HelperVersion=<version>.
+var HelperVersion = "0.3.1"
 
 type Profile struct {
 	Name                 string
@@ -57,6 +61,7 @@ func DefaultProfile() Profile {
 type TranslateRequest struct {
 	SessionID      string
 	CueID          string
+	CueSequence    int
 	CurrentText    string
 	ContextLines   []string
 	SourceLanguage string
@@ -117,6 +122,12 @@ func (e CodedError) Error() string {
 }
 
 func ErrorCode(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "request_timeout"
+	}
+	if errors.Is(err, context.Canceled) {
+		return "request_canceled"
+	}
 	var coded CodedError
 	if errors.As(err, &coded) {
 		return coded.Code
@@ -132,9 +143,14 @@ func DecodeTranslate(raw map[string]any, options DecodeOptions) (TranslateReques
 	targetLanguage := stringField(raw, "targetLanguage", "zh-Hant")
 	sourceLanguage := stringField(raw, "sourceLanguage", "en")
 	if currentText, ok := raw["currentText"].(string); ok {
+		cueSequence, err := intField(raw, "cueSequence", 0)
+		if err != nil || cueSequence < 0 {
+			return TranslateRequest{}, false, CodedError{Code: "invalid_field", Message: "cueSequence must be a non-negative integer.", HTTPStatus: http.StatusBadRequest}
+		}
 		req := TranslateRequest{
 			SessionID:      stringField(raw, "sessionId", ""),
 			CueID:          stringField(raw, "cueId", ""),
+			CueSequence:    cueSequence,
 			CurrentText:    strings.TrimSpace(currentText),
 			ContextLines:   stringSliceField(raw, "contextLines"),
 			SourceLanguage: sourceLanguage,
@@ -279,12 +295,25 @@ func CleanTranslation(text string) string {
 }
 
 type LlamaClient struct {
+	mu         sync.RWMutex
 	BaseURL    string
 	HTTPClient *http.Client
 	Profile    Profile
 	ModelReady bool
 	Owned      bool
 	LastError  string
+}
+
+func (c *LlamaClient) setLastError(message string) {
+	c.mu.Lock()
+	c.LastError = message
+	c.mu.Unlock()
+}
+
+func (c *LlamaClient) lastError() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.LastError
 }
 
 func NewLlamaClient(baseURL string, profile Profile, owned bool) *LlamaClient {
@@ -322,12 +351,12 @@ func (c *LlamaClient) Translate(ctx context.Context, req TranslateRequest) (Tran
 	request.Header.Set("Content-Type", "application/json")
 	resp, err := c.HTTPClient.Do(request)
 	if err != nil {
-		c.LastError = err.Error()
+		c.setLastError(err.Error())
 		return TranslateResult{}, CodedError{Code: "backend_timeout", Message: "Backend request failed.", HTTPStatus: http.StatusGatewayTimeout}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		c.LastError = fmt.Sprintf("backend status %d", resp.StatusCode)
+		c.setLastError(fmt.Sprintf("backend status %d", resp.StatusCode))
 		return TranslateResult{}, CodedError{Code: "backend_error", Message: "Backend returned an error.", HTTPStatus: http.StatusServiceUnavailable}
 	}
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -338,7 +367,7 @@ func (c *LlamaClient) Translate(ctx context.Context, req TranslateRequest) (Tran
 		Content string `json:"content"`
 	}
 	if err := json.Unmarshal(respBody, &decoded); err != nil {
-		c.LastError = "backend returned malformed JSON"
+		c.setLastError("backend returned malformed JSON")
 		return TranslateResult{}, CodedError{Code: "backend_malformed_json", Message: "Backend returned malformed JSON.", HTTPStatus: http.StatusServiceUnavailable}
 	}
 	return TranslateResult{
@@ -352,7 +381,7 @@ func (c *LlamaClient) Translate(ctx context.Context, req TranslateRequest) (Tran
 
 func (c *LlamaClient) Health(ctx context.Context) Health {
 	ready := c.ModelReady
-	lastError := c.LastError
+	lastError := c.lastError()
 	if c.BaseURL != "" {
 		request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/health", nil)
 		if err == nil {
@@ -386,6 +415,7 @@ func (c *LlamaClient) Health(ctx context.Context) Health {
 }
 
 type StaticTranslator struct {
+	mu          sync.Mutex
 	Profile     Profile
 	Translation string
 	Ready       bool
@@ -393,7 +423,9 @@ type StaticTranslator struct {
 }
 
 func (t *StaticTranslator) Translate(ctx context.Context, req TranslateRequest) (TranslateResult, error) {
+	t.mu.Lock()
 	t.Calls++
+	t.mu.Unlock()
 	if !t.Ready {
 		return TranslateResult{}, CodedError{Code: "model_not_ready", Message: "Model is not loaded yet.", HTTPStatus: http.StatusServiceUnavailable}
 	}

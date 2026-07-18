@@ -32,8 +32,8 @@ import (
 // already printed its own diagnostic output.
 type silentError struct{ cause error }
 
-func (e silentError) Error() string  { return e.cause.Error() }
-func (e silentError) Unwrap() error  { return e.cause }
+func (e silentError) Error() string { return e.cause.Error() }
+func (e silentError) Unwrap() error { return e.cause }
 
 func main() {
 	err := run(os.Args[1:])
@@ -62,7 +62,7 @@ func run(args []string) error {
 	case "status":
 		return status(args[1:])
 	case "doctor":
-		return doctor()
+		return doctor(args[1:])
 	case "logs":
 		return logs()
 	case "version":
@@ -101,7 +101,7 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println(ui.Bold("Commands:"))
 	cmds := [][2]string{
-		{"status", "check if the helper is running          [--json]"},
+		{"status", "check installation readiness             [--json]"},
 		{"doctor", "run a full diagnostic"},
 		{"logs", "print log file paths"},
 		{"version", "print version"},
@@ -209,8 +209,8 @@ func nativeHost(args []string) error {
 		IdleTimeout:         30 * time.Minute,
 	}, service)
 	serveErr := host.Serve(ctx, os.Stdin, os.Stdout)
-	cancel()   // signal goroutine to proceed with cleanup
-	wg.Wait()  // block until llama-server is killed
+	cancel()  // signal goroutine to proceed with cleanup
+	wg.Wait() // block until llama-server is killed
 	return serveErr
 }
 
@@ -282,34 +282,31 @@ func buildTranslator(ctx context.Context, options backendOptions) (runtime.Trans
 
 func status(args []string) error {
 	flags := flag.NewFlagSet("status", flag.ContinueOnError)
-	baseURL := flags.String("url", "http://127.0.0.1:8765", "helper URL")
+	baseURL := flags.String("url", "", "advanced: inspect an explicitly started HTTP helper URL")
 	jsonMode := flags.Bool("json", false, "output raw JSON")
+	browser := flags.String("browser", "chrome", "browser installation to inspect")
+	extensionID := flags.String("extension-id", config.DefaultExtensionID, "extension ID expected to connect")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-
-	client := http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get(strings.TrimRight(*baseURL, "/") + "/health")
-	if err != nil {
-		if *jsonMode {
-			return fmt.Errorf("helper not reachable: %w", err)
-		}
-		ui.PrintRow("Helper", ui.Fail("not running"))
-		ui.PrintHint(err.Error())
-		return silentError{fmt.Errorf("helper not reachable: %w", err)}
+	if strings.TrimSpace(*baseURL) != "" {
+		return statusHTTP(*baseURL, *jsonMode)
 	}
-	defer resp.Body.Close()
-
-	var h runtime.Health
-	if err := json.NewDecoder(resp.Body).Decode(&h); err != nil {
-		return err
-	}
-
+	homeDir, _ := os.UserHomeDir()
+	local := collectLocalStatus(homeDir, *browser, *extensionID)
 	if *jsonMode {
-		return json.NewEncoder(os.Stdout).Encode(h)
+		if err := json.NewEncoder(os.Stdout).Encode(local); err != nil {
+			return err
+		}
+		if !local.Ready {
+			return silentError{fmt.Errorf("LocalSubs is not ready")}
+		}
+		return nil
 	}
-
-	printStatusHuman(h, *baseURL)
+	printLocalStatusHuman(local)
+	if !local.Ready {
+		return silentError{fmt.Errorf("LocalSubs is not ready")}
+	}
 	return nil
 }
 
@@ -340,7 +337,13 @@ func printStatusHuman(h runtime.Health, baseURL string) {
 	ui.PrintRow("Profile", h.Profile)
 }
 
-func doctor() error {
+func doctor(args []string) error {
+	flags := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	browser := flags.String("browser", "chrome", "browser installation to inspect")
+	extensionID := flags.String("extension-id", config.DefaultExtensionID, "extension ID expected to connect")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 	homeDir, _ := os.UserHomeDir()
 
 	fmt.Printf("%s  %s\n", ui.Bold("LocalSubs"), ui.Dim("v"+runtime.HelperVersion))
@@ -380,13 +383,14 @@ func doctor() error {
 	ui.PrintBlank()
 
 	// Native Host
-	ui.PrintHeader("Native Host (Chrome)")
-	manifestPath, installed, _ := nativehost.CheckInstalled(homeDir, "chrome")
-	if installed {
-		ui.PrintCheck(true, "manifest installed", manifestPath)
+	ui.PrintHeader("Native Host (" + *browser + ")")
+	nativeStatus := nativehost.InspectInstalledForExtension(homeDir, *browser, *extensionID)
+	if nativeStatus.Valid {
+		ui.PrintCheck(true, "manifest valid", nativeStatus.ManifestPath)
+		ui.PrintHint(nativeStatus.HostPath)
 	} else {
-		ui.PrintCheck(false, "manifest not found", "")
-		ui.PrintHint("run: localsubs install --browser chrome")
+		ui.PrintCheck(false, "manifest invalid", nativeStatus.Reason)
+		ui.PrintHint("run: localsubs install --browser " + *browser)
 	}
 	ui.PrintBlank()
 
@@ -398,9 +402,7 @@ func doctor() error {
 }
 
 func logs() error {
-	root := config.AppDataDir()
-	fmt.Println(filepath.Join(root, "logs", "helper.log"))
-	fmt.Println(filepath.Join(root, "logs", "backend.log"))
+	fmt.Println(config.NativeHostLogPath())
 	return nil
 }
 
@@ -564,11 +566,11 @@ func splitCSV(value string) []string {
 }
 
 func writeNativeHostError(err error) {
-	logDir := filepath.Join(config.AppDataDir(), "logs")
+	logDir := config.LogDir()
 	if mkdirErr := os.MkdirAll(logDir, 0o755); mkdirErr != nil {
 		return
 	}
-	logPath := filepath.Join(logDir, "native-host.log")
+	logPath := config.NativeHostLogPath()
 	line := fmt.Sprintf("%s %s\n", time.Now().Format(time.RFC3339), err.Error())
 	file, openErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if openErr != nil {

@@ -112,3 +112,48 @@ func TestDifferentSessionsDoNotShareLatestCueState(t *testing.T) {
 		t.Fatal("different session should not supersede old request")
 	}
 }
+
+func TestSupersededStateIsNotStoredInSharedCache(t *testing.T) {
+	wait := make(chan struct{})
+	backend := &countingTranslator{wait: wait}
+	service := NewService(backend, runtime.DefaultProfile())
+	oldReq := runtime.TranslateRequest{
+		SessionID: "tab-1", CueID: "old", CurrentText: "Same.", TargetLanguage: "zh-Hant",
+	}
+	newReq := runtime.TranslateRequest{
+		SessionID: "tab-1", CueID: "new", CurrentText: "New.", TargetLanguage: "zh-Hant",
+	}
+
+	oldResult := make(chan runtime.TranslateResult, 1)
+	go func() {
+		result, _ := service.Translate(context.Background(), oldReq)
+		oldResult <- result
+	}()
+	waitUntil(t, func() bool { return backend.callCount() == 1 })
+	newResult := make(chan runtime.TranslateResult, 1)
+	go func() {
+		result, _ := service.Translate(context.Background(), newReq)
+		newResult <- result
+	}()
+	waitUntil(t, func() bool { return backend.callCount() == 2 })
+	close(wait)
+
+	if result := <-oldResult; !result.Superseded {
+		t.Fatal("old request should be marked superseded")
+	}
+	if result := <-newResult; result.Superseded {
+		t.Fatal("new request should not be marked superseded")
+	}
+	currentReq := oldReq
+	currentReq.CueID = "current"
+	result, err := service.Translate(context.Background(), currentReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Superseded {
+		t.Fatal("request-specific superseded state must not be stored in cache")
+	}
+	if result.Cache != "hit" {
+		t.Fatalf("cache state = %q, want hit", result.Cache)
+	}
+}

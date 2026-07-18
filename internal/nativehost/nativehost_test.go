@@ -4,11 +4,95 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"localsubs/internal/runtime"
+	"localsubs/internal/session"
 )
+
+type failingTranslator struct {
+	err error
+}
+
+type concurrentTranslator struct {
+	mu      sync.Mutex
+	calls   int
+	started chan struct{}
+	release chan struct{}
+}
+
+type boundedTranslator struct {
+	mu      sync.Mutex
+	active  int
+	peak    int
+	started chan struct{}
+	release chan struct{}
+}
+
+type cancelAwareTranslator struct {
+	canceled chan struct{}
+}
+
+func (t *cancelAwareTranslator) Translate(ctx context.Context, _ runtime.TranslateRequest) (runtime.TranslateResult, error) {
+	<-ctx.Done()
+	close(t.canceled)
+	return runtime.TranslateResult{}, ctx.Err()
+}
+
+func (t *cancelAwareTranslator) Health(context.Context) runtime.Health {
+	return runtime.Health{OK: true}
+}
+
+func (t *boundedTranslator) Translate(context.Context, runtime.TranslateRequest) (runtime.TranslateResult, error) {
+	t.mu.Lock()
+	t.active++
+	if t.active > t.peak {
+		t.peak = t.active
+	}
+	t.mu.Unlock()
+	t.started <- struct{}{}
+	<-t.release
+	t.mu.Lock()
+	t.active--
+	t.mu.Unlock()
+	return runtime.TranslateResult{Status: "ok", Translation: "譯文"}, nil
+}
+
+func (t *boundedTranslator) Health(context.Context) runtime.Health {
+	return runtime.Health{OK: true}
+}
+
+func (t *boundedTranslator) peakCalls() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.peak
+}
+
+func (t *concurrentTranslator) Translate(context.Context, runtime.TranslateRequest) (runtime.TranslateResult, error) {
+	t.mu.Lock()
+	t.calls++
+	if t.calls == 2 {
+		close(t.started)
+	}
+	t.mu.Unlock()
+	<-t.release
+	return runtime.TranslateResult{Status: "ok", Translation: "譯文", Model: runtime.DefaultModelID}, nil
+}
+
+func (t *concurrentTranslator) Health(context.Context) runtime.Health {
+	return runtime.Health{OK: true}
+}
+
+func (t failingTranslator) Translate(context.Context, runtime.TranslateRequest) (runtime.TranslateResult, error) {
+	return runtime.TranslateResult{}, t.err
+}
+
+func (t failingTranslator) Health(context.Context) runtime.Health {
+	return runtime.Health{}
+}
 
 func TestReadWriteMessageRoundTrip(t *testing.T) {
 	var buffer bytes.Buffer
@@ -108,6 +192,21 @@ func TestHandleInvalidTranslatePayload(t *testing.T) {
 	}
 }
 
+func TestHandleMapsDeadlineExceededToRequestTimeout(t *testing.T) {
+	host := New(Config{}, failingTranslator{err: context.DeadlineExceeded})
+	response := host.Handle(context.Background(), Message{
+		ID:      "timeout",
+		Type:    "translate",
+		Payload: mustRawMessage(t, map[string]any{"currentText": "Wait."}),
+	})
+	if response.OK || response.Error == nil {
+		t.Fatalf("expected timeout response: %#v", response)
+	}
+	if response.Error.Code != "request_timeout" {
+		t.Fatalf("unexpected error: %#v", response.Error)
+	}
+}
+
 func TestServeReadsMultipleFrames(t *testing.T) {
 	var input bytes.Buffer
 	var output bytes.Buffer
@@ -133,16 +232,145 @@ func TestServeReadsMultipleFrames(t *testing.T) {
 	if err := host.Serve(context.Background(), &input, &output); err != nil {
 		t.Fatal(err)
 	}
-	first, err := ReadMessage(&output, DefaultMaxFrameBytes)
-	if err != nil {
+	responseTypes := make(map[string]bool)
+	for range 2 {
+		response, err := ReadMessage(&output, DefaultMaxFrameBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		responseTypes[response.Type] = true
+	}
+	if !responseTypes["health.result"] || !responseTypes["translate.result"] {
+		t.Fatalf("unexpected response types: %#v", responseTypes)
+	}
+}
+
+func TestServeProcessesCuesConcurrentlyAndMarksOldCueSuperseded(t *testing.T) {
+	var input bytes.Buffer
+	var output bytes.Buffer
+	backend := &concurrentTranslator{started: make(chan struct{}), release: make(chan struct{})}
+	service := session.NewService(backend, runtime.DefaultProfile())
+	host := New(Config{RequestTimeout: time.Second}, service)
+	for sequence, text := range []string{"Old.", "New."} {
+		if err := WriteMessage(&input, Message{
+			ID:   text,
+			Type: "translate",
+			Payload: mustRawMessage(t, map[string]any{
+				"sessionId":   "page-1",
+				"cueId":       fmt.Sprintf("%d", sequence+1),
+				"cueSequence": sequence + 1,
+				"currentText": text,
+			}),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	done := make(chan error, 1)
+	go func() { done <- host.Serve(context.Background(), &input, &output) }()
+	select {
+	case <-backend.started:
+	case <-time.After(time.Second):
+		t.Fatal("native host did not start both translations concurrently")
+	}
+	close(backend.release)
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	second, err := ReadMessage(&output, DefaultMaxFrameBytes)
-	if err != nil {
+
+	results := make(map[string]runtime.TranslateResult)
+	for range 2 {
+		response, err := ReadMessage(&output, DefaultMaxFrameBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := json.Marshal(response.Payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var result runtime.TranslateResult
+		if err := json.Unmarshal(body, &result); err != nil {
+			t.Fatal(err)
+		}
+		results[response.ID] = result
+	}
+	if !results["Old."].Superseded {
+		t.Fatal("old cue should be superseded")
+	}
+	if results["New."].Superseded {
+		t.Fatal("new cue should remain current")
+	}
+}
+
+func TestServeBoundsConcurrentRequests(t *testing.T) {
+	const (
+		requests = 12
+		limit    = 3
+	)
+	var input bytes.Buffer
+	var output bytes.Buffer
+	backend := &boundedTranslator{
+		started: make(chan struct{}, requests),
+		release: make(chan struct{}),
+	}
+	host := New(Config{
+		MaxConcurrentRequests: limit,
+		RequestTimeout:        time.Second,
+	}, backend)
+	for i := range requests {
+		if err := WriteMessage(&input, Message{
+			ID:   fmt.Sprintf("%d", i),
+			Type: "translate",
+			Payload: mustRawMessage(t, map[string]any{
+				"currentText": fmt.Sprintf("Cue %d.", i),
+			}),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	done := make(chan error, 1)
+	go func() { done <- host.Serve(context.Background(), &input, &output) }()
+	for range limit {
+		select {
+		case <-backend.started:
+		case <-time.After(time.Second):
+			t.Fatal("bounded workers did not start")
+		}
+	}
+	select {
+	case <-backend.started:
+		t.Fatal("request concurrency exceeded configured limit")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(backend.release)
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	if first.Type != "health.result" || second.Type != "translate.result" {
-		t.Fatalf("unexpected response sequence: %s, %s", first.Type, second.Type)
+	if peak := backend.peakCalls(); peak > limit {
+		t.Fatalf("peak concurrency = %d, want <= %d", peak, limit)
+	}
+}
+
+func TestServeCancelsActiveRequestOnEOF(t *testing.T) {
+	var input bytes.Buffer
+	var output bytes.Buffer
+	backend := &cancelAwareTranslator{canceled: make(chan struct{})}
+	host := New(Config{RequestTimeout: time.Second}, backend)
+	if err := WriteMessage(&input, Message{
+		ID:      "closing",
+		Type:    "translate",
+		Payload: mustRawMessage(t, map[string]any{"currentText": "Wait."}),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- host.Serve(context.Background(), &input, &output) }()
+	select {
+	case <-backend.canceled:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("EOF did not cancel active translation")
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
 }
 

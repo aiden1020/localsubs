@@ -34,6 +34,7 @@ repair_test.py
 
 # Chrome extension build output
 dist/
+node_modules/
 
 # Root model_manifest.json is a synced copy of internal/manifest/model_manifest.json
 # The canonical source is internal/manifest/model_manifest.json (embedded into binary)

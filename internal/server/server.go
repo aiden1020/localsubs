@@ -170,6 +170,14 @@ func (s *Server) decodeTranslate(raw map[string]any) (runtime.TranslateRequest, 
 }
 
 func (s *Server) writeCodedError(w http.ResponseWriter, err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		s.writeError(w, http.StatusRequestTimeout, "request_timeout", "Translation request timed out.")
+		return true
+	}
+	if errors.Is(err, context.Canceled) {
+		s.writeError(w, http.StatusRequestTimeout, "request_canceled", "Translation request was canceled.")
+		return true
+	}
 	var coded runtime.CodedError
 	if errors.As(err, &coded) {
 		s.writeError(w, coded.HTTPStatus, coded.Code, coded.Message)
