@@ -18,6 +18,9 @@ Translates English subtitles to Traditional Chinese on-device using the LocalSub
 <a href="https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B">
   <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-FFD21E.svg" alt="Hugging Face model">
 </a>
+<a href="https://huggingface.co/spaces/Aiden1020/localsubs-en-zh-tw-translation">
+  <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-FFD21E.svg" alt="Interactive Hugging Face demo">
+</a>
 
 <br />
     

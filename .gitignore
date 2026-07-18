@@ -43,6 +43,7 @@ dist/
 .claude/
 .agents/
 agent/
+AGENTS.md
 skills-lock.json
 # brag
 brag-output/
