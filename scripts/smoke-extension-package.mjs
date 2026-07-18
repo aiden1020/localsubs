@@ -1,6 +1,7 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { unzipSync } from "fflate";
+import { listFiles } from "./files.mjs";
 
 const extensionDir = path.resolve("dist/extension");
 const expected = [
@@ -15,16 +16,6 @@ const expected = [
   "options.html",
   "options.js"
 ].sort();
-
-async function listFiles(root, relative = "") {
-  const result = [];
-  for (const entry of await readdir(path.join(root, relative), { withFileTypes: true })) {
-    const child = path.join(relative, entry.name);
-    if (entry.isDirectory()) result.push(...await listFiles(root, child));
-    if (entry.isFile()) result.push(child.split(path.sep).join("/"));
-  }
-  return result;
-}
 
 const actual = (await listFiles(extensionDir)).sort();
 if (JSON.stringify(actual) !== JSON.stringify(expected)) {

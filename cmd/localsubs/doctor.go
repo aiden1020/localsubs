@@ -266,11 +266,11 @@ func addLauncherDiagnostics(
 		return
 	}
 
-	started := time.Now()
-	launcher := nativehost.InspectLauncher(nativeStatus.HostPath)
+	inspection := inspectInstalledHelper(nativeStatus, probeVersion)
+	launcher := inspection.Launcher
 	launcherResult := diagnostics.Result{
 		ID: "native_launcher", Category: "Installation", Label: "Launcher",
-		DurationMS: time.Since(started).Milliseconds(),
+		DurationMS: inspection.LauncherDuration,
 	}
 	if launcher.Valid {
 		launcherResult.Status = diagnostics.StatusPass
@@ -290,24 +290,22 @@ func addLauncherDiagnostics(
 		return
 	}
 
-	started = time.Now()
-	version, apiVersion, err := probeVersion(launcher.BinaryPath)
 	helperResult := diagnostics.Result{
 		ID: "installed_helper", Category: "Installation", Label: "Installed helper",
-		DurationMS: time.Since(started).Milliseconds(),
+		DurationMS: inspection.ProbeDuration,
 	}
 	switch {
-	case err != nil:
+	case inspection.ProbeErr != nil:
 		helperResult.Status = diagnostics.StatusFail
-		helperResult.Detail = err.Error()
+		helperResult.Detail = inspection.ProbeErr.Error()
 		helperResult.Remediation = "brew upgrade localsubs && localsubs install"
-	case version != runtime.HelperVersion || apiVersion != runtime.APIVersion:
+	case inspection.Version != runtime.HelperVersion || inspection.APIVersion != runtime.APIVersion:
 		helperResult.Status = diagnostics.StatusFail
-		helperResult.Detail = fmt.Sprintf("helper %s · API %s", version, apiVersion)
+		helperResult.Detail = fmt.Sprintf("helper %s · API %s", inspection.Version, inspection.APIVersion)
 		helperResult.Remediation = "brew upgrade localsubs && localsubs install"
 	default:
 		helperResult.Status = diagnostics.StatusPass
-		helperResult.Detail = fmt.Sprintf("helper %s · API %s", version, apiVersion)
+		helperResult.Detail = fmt.Sprintf("helper %s · API %s", inspection.Version, inspection.APIVersion)
 	}
 	report.Add(helperResult)
 }

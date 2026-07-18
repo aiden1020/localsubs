@@ -12,12 +12,21 @@ export function createTranslatorService(nativeClient, now = () => performance.no
       : 0;
   }
 
+  function resetCompatibility() {
+    compatibilityPromise = null;
+    compatibilityGeneration = -1;
+  }
+
+  function compatibilityError(health) {
+    return new NativeHostError(
+      "incompatible_api",
+      `Helper API ${health.apiVersion || "unknown"} is incompatible with extension API ${EXPECTED_API_VERSION}`
+    );
+  }
+
   function verifyCompatibility(health) {
     if (health.apiVersion !== EXPECTED_API_VERSION) {
-      throw new NativeHostError(
-        "incompatible_api",
-        `Helper API ${health.apiVersion || "unknown"} is incompatible with extension API ${EXPECTED_API_VERSION}`
-      );
+      throw compatibilityError(health);
     }
     return health;
   }
@@ -33,8 +42,7 @@ export function createTranslatorService(nativeClient, now = () => performance.no
           return health;
         })
         .catch((error) => {
-          compatibilityPromise = null;
-          compatibilityGeneration = -1;
+          resetCompatibility();
           throw error;
         });
     }
@@ -58,8 +66,8 @@ export function createTranslatorService(nativeClient, now = () => performance.no
     const startedAt = now();
     const health = await nativeClient.send("health", {});
     if (health.apiVersion !== EXPECTED_API_VERSION) {
-      compatibilityPromise = null;
-      compatibilityGeneration = -1;
+      const error = compatibilityError(health);
+      resetCompatibility();
       return {
         ok: false,
         loading: false,
@@ -67,8 +75,8 @@ export function createTranslatorService(nativeClient, now = () => performance.no
         apiVersion: health.apiVersion,
         helperVersion: health.helperVersion,
         error: {
-          code: "incompatible_api",
-          message: `Helper API ${health.apiVersion || "unknown"} is incompatible with extension API ${EXPECTED_API_VERSION}`
+          code: error.code,
+          message: error.message
         }
       };
     }

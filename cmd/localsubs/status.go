@@ -57,6 +57,15 @@ type readinessSnapshot struct {
 	ModelDurationMS    int64
 }
 
+type helperInstallationInspection struct {
+	Launcher         nativehost.LauncherStatus
+	LauncherDuration int64
+	Version          string
+	APIVersion       string
+	ProbeErr         error
+	ProbeDuration    int64
+}
+
 func modelStateReady(state string) bool {
 	return state == "ready" || state == "verified"
 }
@@ -104,35 +113,58 @@ func inspectHelperInstallation(
 	if probe == nil {
 		probe = probeHelperVersion
 	}
-	launcher := nativehost.LauncherStatus{Path: nativeStatus.HostPath}
+	inspection := inspectInstalledHelper(nativeStatus, probe)
+	launcher := inspection.Launcher
 	helper := installedHelperStatus{}
 	if !nativeStatus.Valid {
 		helper.Reason = "Chrome integration is not installed"
 		return launcher, helper
 	}
-	launcher = nativehost.InspectLauncher(nativeStatus.HostPath)
 	if !launcher.Valid {
 		helper.Reason = launcher.Reason
 		return launcher, helper
 	}
 	helper.Path = launcher.BinaryPath
-	version, apiVersion, err := probe(launcher.BinaryPath)
-	if err != nil {
-		helper.Reason = err.Error()
+	if inspection.ProbeErr != nil {
+		helper.Reason = inspection.ProbeErr.Error()
 		return launcher, helper
 	}
-	helper.Version = version
-	helper.APIVersion = apiVersion
-	if version != runtime.HelperVersion {
-		helper.Reason = fmt.Sprintf("helper %s is installed; %s is required", version, runtime.HelperVersion)
+	helper.Version = inspection.Version
+	helper.APIVersion = inspection.APIVersion
+	if inspection.Version != runtime.HelperVersion {
+		helper.Reason = fmt.Sprintf("helper %s is installed; %s is required", inspection.Version, runtime.HelperVersion)
 		return launcher, helper
 	}
-	if apiVersion != runtime.APIVersion {
-		helper.Reason = fmt.Sprintf("helper API %s is incompatible with API %s", apiVersion, runtime.APIVersion)
+	if inspection.APIVersion != runtime.APIVersion {
+		helper.Reason = fmt.Sprintf("helper API %s is incompatible with API %s", inspection.APIVersion, runtime.APIVersion)
 		return launcher, helper
 	}
 	helper.Ready = true
 	return launcher, helper
+}
+
+func inspectInstalledHelper(
+	nativeStatus nativehost.InstalledStatus,
+	probe helperVersionProbe,
+) helperInstallationInspection {
+	inspection := helperInstallationInspection{
+		Launcher: nativehost.LauncherStatus{Path: nativeStatus.HostPath},
+	}
+	if !nativeStatus.Valid {
+		return inspection
+	}
+
+	started := time.Now()
+	inspection.Launcher = nativehost.InspectLauncher(nativeStatus.HostPath)
+	inspection.LauncherDuration = time.Since(started).Milliseconds()
+	if !inspection.Launcher.Valid {
+		return inspection
+	}
+
+	started = time.Now()
+	inspection.Version, inspection.APIVersion, inspection.ProbeErr = probe(inspection.Launcher.BinaryPath)
+	inspection.ProbeDuration = time.Since(started).Milliseconds()
+	return inspection
 }
 
 func findExecutable(searchPath, name string) (string, error) {

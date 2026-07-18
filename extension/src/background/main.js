@@ -13,6 +13,17 @@ const nativeClient = new NativeClient({
 });
 const { checkLocalTranslator, translateSubtitle } = createTranslatorService(nativeClient);
 
+function respondAsync(promise, sendResponse, fallbackCode) {
+  promise
+    .then((result) => sendResponse(result))
+    .catch((err) => {
+      sendResponse({
+        ok: false,
+        error: errorPayload(err, fallbackCode)
+      });
+    });
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     chrome.tabs.create({
@@ -45,15 +56,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "TRANSLATE_SUBTITLE") {
-    translateSubtitle(message.payload || {})
-      .then((result) => sendResponse(result))
-      .catch((err) => {
-        sendResponse({
-          ok: false,
-          error: errorPayload(err, "translation_failed")
-        });
-      });
-
+    respondAsync(translateSubtitle(message.payload || {}), sendResponse, "translation_failed");
     return true;
   }
 
@@ -61,14 +64,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  checkLocalTranslator(Boolean(message.warmup))
-    .then((result) => sendResponse(result))
-    .catch((err) => {
-      sendResponse({
-        ok: false,
-        error: errorPayload(err, "helper_unavailable")
-      });
-    });
-
+  respondAsync(checkLocalTranslator(Boolean(message.warmup)), sendResponse, "helper_unavailable");
   return true;
 });

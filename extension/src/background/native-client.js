@@ -34,8 +34,7 @@ export class NativeClient {
       try {
         this.getPort().postMessage({ id, type, payload });
       } catch (error) {
-        this.clearTimer(timeout);
-        this.pending.delete(id);
+        this.takePending(id);
         this.reset("native_host_disconnected", "Native host connection reset after send failure");
         reject(new NativeHostError(
           "native_send_failed",
@@ -67,12 +66,8 @@ export class NativeClient {
 
   handleResponse(response) {
     const id = response?.id;
-    if (!id || !this.pending.has(id)) {
-      return;
-    }
-    const pending = this.pending.get(id);
-    this.pending.delete(id);
-    this.clearTimer(pending.timeout);
+    const pending = id && this.takePending(id);
+    if (!pending) return;
     if (!response.ok) {
       pending.reject(new NativeHostError(
         response.error?.code || "native_host_error",
@@ -81,6 +76,14 @@ export class NativeClient {
       return;
     }
     pending.resolve(response.payload || {});
+  }
+
+  takePending(id) {
+    const pending = this.pending.get(id);
+    if (!pending) return null;
+    this.pending.delete(id);
+    this.clearTimer(pending.timeout);
+    return pending;
   }
 
   reset(code, message) {
