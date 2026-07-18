@@ -133,6 +133,30 @@ func TestInspectInstalledValidatesGeneratedManifest(t *testing.T) {
 	if !status.Installed || !status.Valid {
 		t.Fatalf("expected valid installation: %#v", status)
 	}
+	launcher := InspectLauncher(status.HostPath)
+	if !launcher.Valid || launcher.BinaryPath != binary {
+		t.Fatalf("expected valid launcher: %#v", launcher)
+	}
+}
+
+func TestInspectLauncherRejectsMissingTarget(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "launcher")
+	body := "#!/bin/sh\nexec '/missing/localsubs' native-host \"$@\"\n"
+	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	status := InspectLauncher(path)
+	if status.Valid || status.Reason != "native messaging launcher target does not exist" {
+		t.Fatalf("unexpected launcher status: %#v", status)
+	}
+}
+
+func TestParseShellQuotedPathWithApostrophe(t *testing.T) {
+	value := shellQuote("/tmp/user's bin/localsubs")
+	got, ok := parseShellQuoted(value)
+	if !ok || got != "/tmp/user's bin/localsubs" {
+		t.Fatalf("parseShellQuoted(%q) = %q, %v", value, got, ok)
+	}
 }
 
 func TestInspectInstalledRejectsMissingHostPath(t *testing.T) {

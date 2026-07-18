@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -11,18 +12,21 @@ const (
 	IconOK   = "✓"
 	IconFail = "✗"
 	IconWarn = "⚠"
+	IconSkip = "○"
 
-	labelWidth = 10
+	labelWidth          = 10
+	maxInlineValueWidth = 64
 )
 
 var (
-	styleOK    = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	styleFail  = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	styleWarn  = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-	styleLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Width(labelWidth)
-	styleDim   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleBold  = lipgloss.NewStyle().Bold(true)
-	styleErr   = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
+	styleOK        = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	styleFail      = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	styleWarn      = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	styleLabel     = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Width(labelWidth)
+	styleLabelText = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
+	styleDim       = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	styleBold      = lipgloss.NewStyle().Bold(true)
+	styleErr       = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
 )
 
 // PrintHeader prints a bold section title.
@@ -32,6 +36,11 @@ func PrintHeader(title string) {
 
 // PrintRow prints a fixed-width label and a value on one line.
 func PrintRow(label, value string) {
+	if lipgloss.Width(value) > maxInlineValueWidth {
+		fmt.Printf("  %s\n", styleLabelText.Render(label))
+		PrintHint(value)
+		return
+	}
 	fmt.Printf("  %s  %s\n", styleLabel.Render(label), value)
 }
 
@@ -41,26 +50,40 @@ func PrintCheck(ok bool, label, detail string) {
 	if !ok {
 		icon = styleFail.Render(IconFail)
 	}
-	if detail != "" {
-		fmt.Printf("  %s  %-16s  %s\n", icon, label, detail)
-	} else {
-		fmt.Printf("  %s  %s\n", icon, label)
-	}
+	printCheckLine(icon, label, detail)
 }
 
 // PrintWarn prints a ⚠ icon, a label, and an optional detail.
 func PrintWarn(label, detail string) {
-	icon := styleWarn.Render(IconWarn)
-	if detail != "" {
-		fmt.Printf("  %s  %-16s  %s\n", icon, label, detail)
-	} else {
+	printCheckLine(styleWarn.Render(IconWarn), label, detail)
+}
+
+// PrintSkip prints a neutral icon for a check that was not run.
+func PrintSkip(label, detail string) {
+	printCheckLine(styleDim.Render(IconSkip), label, detail)
+}
+
+func printCheckLine(icon, label, detail string) {
+	if detail == "" {
 		fmt.Printf("  %s  %s\n", icon, label)
+		return
 	}
+	if lipgloss.Width(detail) > maxInlineValueWidth {
+		fmt.Printf("  %s  %s\n", icon, label)
+		PrintDetail(detail)
+		return
+	}
+	fmt.Printf("  %s  %-16s  %s\n", icon, label, detail)
 }
 
 // PrintHint prints a dimmed hint line indented under a check.
 func PrintHint(hint string) {
 	fmt.Printf("              %s\n", styleDim.Render(hint))
+}
+
+// PrintDetail prints supporting information below a check or result.
+func PrintDetail(detail string) {
+	fmt.Printf("     %s\n", styleDim.Render(detail))
 }
 
 // PrintBlank prints an empty line.
@@ -85,3 +108,19 @@ func Dim(s string) string { return styleDim.Render(s) }
 
 // Bold returns a bold string.
 func Bold(s string) string { return styleBold.Render(s) }
+
+// CompactPath replaces the current user's home directory with ~ for human output.
+func CompactPath(value string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return value
+	}
+	if value == home {
+		return "~"
+	}
+	prefix := home + string(os.PathSeparator)
+	if strings.HasPrefix(value, prefix) {
+		return "~/" + strings.TrimPrefix(value, prefix)
+	}
+	return value
+}

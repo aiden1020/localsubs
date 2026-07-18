@@ -6,10 +6,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -40,6 +40,9 @@ func main() {
 	if err == nil {
 		return
 	}
+	if errors.Is(err, flag.ErrHelp) {
+		return
+	}
 	var silent silentError
 	if !errors.As(err, &silent) {
 		ui.PrintError(err)
@@ -59,10 +62,14 @@ func run(args []string) error {
 	// User-facing commands
 	case "install":
 		return install(args[1:])
+	case "setup":
+		return setup(args[1:])
 	case "status":
 		return status(args[1:])
 	case "doctor":
 		return doctor(args[1:])
+	case "model":
+		return modelCommand(args[1:])
 	case "logs":
 		return logs()
 	case "version":
@@ -79,36 +86,50 @@ func run(args []string) error {
 		return nativeHost(args[1:])
 	case "install-native-host": // backward-compat alias
 		return install(args[1:])
-	case "model":
-		return modelCommand(args[1:])
-
 	default:
-		printUsage()
-		return fmt.Errorf("unknown command: %s", args[0])
+		err := fmt.Errorf("unknown command: %s", args[0])
+		ui.PrintError(err)
+		fmt.Fprintln(os.Stderr)
+		printUsageTo(os.Stderr)
+		return silentError{err}
 	}
 }
 
 func printUsage() {
-	fmt.Printf("%s  %s\n\n", ui.Bold("localsubs"), ui.Dim("v"+runtime.HelperVersion))
-	fmt.Println(ui.Bold("Setup:"))
+	printUsageTo(os.Stdout)
+}
+
+func printUsageTo(writer io.Writer) {
+	fmt.Fprintf(writer, "%s  %s\n\n", ui.Bold("localsubs"), ui.Dim("v"+runtime.HelperVersion))
+	fmt.Fprintln(writer, ui.Bold("Setup:"))
 	setup := [][2]string{
-		{"model download", "download the translation model (~350 MB)"},
-		{"install", "connect to Chrome"},
+		{"setup [--browser ...]", "Download the model and install browser integration"},
+		{"model download", "Download the translation model (~350 MB)"},
+		{"install", "Install the Chrome integration"},
 	}
 	for _, c := range setup {
-		fmt.Printf("  %-24s%s\n", c[0], ui.Dim(c[1]))
+		fmt.Fprintf(writer, "  %-32s%s\n", c[0], ui.Dim(c[1]))
 	}
-	fmt.Println()
-	fmt.Println(ui.Bold("Commands:"))
+	fmt.Fprintln(writer)
+	fmt.Fprintln(writer, ui.Bold("Commands:"))
 	cmds := [][2]string{
-		{"status", "check installation readiness             [--json]"},
-		{"doctor", "run a full diagnostic"},
-		{"logs", "print log file paths"},
-		{"version", "print version"},
+		{"status [--json]", "Check whether LocalSubs is ready"},
+		{"doctor [--json] [--deep]", "Diagnose setup and inference problems"},
+		{"model status [--json]", "Inspect the installed model"},
+		{"logs", "Print the Native Host log path"},
+		{"version", "Print helper and API versions"},
 	}
 	for _, c := range cmds {
-		fmt.Printf("  %-24s%s\n", c[0], ui.Dim(c[1]))
+		fmt.Fprintf(writer, "  %-32s%s\n", c[0], ui.Dim(c[1]))
 	}
+}
+
+func parseFlags(flags *flag.FlagSet, args []string) error {
+	err := flags.Parse(args)
+	if err == nil || errors.Is(err, flag.ErrHelp) {
+		return err
+	}
+	return silentError{err}
 }
 
 func addBackendFlags(flags *flag.FlagSet) (*bool, *string, *string) {
@@ -125,7 +146,7 @@ func serve(args []string) error {
 	token := flags.String("token", config.DefaultLocalHelperToken, "local bearer token")
 	allowedOrigins := flags.String("allow-origin", "", "comma-separated allowed origins")
 	fakeBackend, backendURL, modelPath := addBackendFlags(flags)
-	if err := flags.Parse(args); err != nil {
+	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
 	if *host != "127.0.0.1" {
@@ -168,7 +189,7 @@ func serve(args []string) error {
 func nativeHost(args []string) error {
 	flags := flag.NewFlagSet("native-host", flag.ContinueOnError)
 	fakeBackend, backendURL, modelPath := addBackendFlags(flags)
-	if err := flags.Parse(args); err != nil {
+	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
 
@@ -215,14 +236,21 @@ func nativeHost(args []string) error {
 }
 
 func install(args []string) error {
+	return installWithNextStep(args, true)
+}
+
+func installWithNextStep(args []string, showNextStep bool) error {
 	flags := flag.NewFlagSet("install", flag.ContinueOnError)
 	browser := flags.String("browser", "chrome", "browser to connect: chrome, chromium, edge")
 	extensionID := flags.String("extension-id", config.DefaultExtensionID, "extension ID allowed to connect")
 	binaryPath := flags.String("path", "", "helper binary path; defaults to current executable")
 	workDir := flags.String("workdir", "", "working directory override")
 	homeDir := flags.String("home", "", "home directory override")
-	if err := flags.Parse(args); err != nil {
+	if err := parseFlags(flags, args); err != nil {
 		return err
+	}
+	if strings.TrimSpace(*browser) == "" {
+		return fmt.Errorf("browser must not be empty")
 	}
 	result, err := nativehost.InstallManifest(nativehost.InstallOptions{
 		HomeDir:     *homeDir,
@@ -234,13 +262,29 @@ func install(args []string) error {
 	if err != nil {
 		return err
 	}
-	b := *browser
-	browserLabel := strings.ToUpper(b[:1]) + b[1:]
-	fmt.Println(ui.OK("Connected to " + browserLabel))
+	browserLabel := displayBrowserName(*browser)
+	fmt.Println(ui.OK(browserLabel + " integration installed"))
 	ui.PrintBlank()
-	ui.PrintRow("Config", result.Path)
+	ui.PrintRow("Config", ui.CompactPath(result.Path))
 	ui.PrintRow("Origin", result.Manifest.AllowedOrigins[0])
+	if showNextStep {
+		ui.PrintBlank()
+		ui.PrintDetail("Next: reload the LocalSubs extension in " + browserLabel + ".")
+	}
 	return nil
+}
+
+func displayBrowserName(browser string) string {
+	switch strings.ToLower(strings.TrimSpace(browser)) {
+	case "chrome", "google-chrome":
+		return "Chrome"
+	case "chromium":
+		return "Chromium"
+	case "edge", "microsoft-edge":
+		return "Microsoft Edge"
+	default:
+		return browser
+	}
 }
 
 type backendOptions struct {
@@ -286,7 +330,7 @@ func status(args []string) error {
 	jsonMode := flags.Bool("json", false, "output raw JSON")
 	browser := flags.String("browser", "chrome", "browser installation to inspect")
 	extensionID := flags.String("extension-id", config.DefaultExtensionID, "extension ID expected to connect")
-	if err := flags.Parse(args); err != nil {
+	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
 	if strings.TrimSpace(*baseURL) != "" {
@@ -311,10 +355,15 @@ func status(args []string) error {
 }
 
 func printStatusHuman(h runtime.Health, baseURL string) {
+	state := ui.OK("Ready")
+	if !h.OK {
+		state = ui.Fail("Needs attention")
+	}
+	fmt.Printf("%s  %s\n\n", ui.Bold("LocalSubs Service"), state)
 	if h.OK {
 		ui.PrintRow("Helper", ui.OK("running")+"  "+ui.Dim(baseURL))
 	} else {
-		ui.PrintRow("Helper", ui.Fail("not running"))
+		ui.PrintRow("Helper", ui.Fail("unavailable"))
 		if h.LastError != "" {
 			ui.PrintHint(h.LastError)
 		}
@@ -335,70 +384,11 @@ func printStatusHuman(h runtime.Health, baseURL string) {
 	}
 	ui.PrintRow("Model", modelState)
 	ui.PrintRow("Profile", h.Profile)
-}
-
-func doctor(args []string) error {
-	flags := flag.NewFlagSet("doctor", flag.ContinueOnError)
-	browser := flags.String("browser", "chrome", "browser installation to inspect")
-	extensionID := flags.String("extension-id", config.DefaultExtensionID, "extension ID expected to connect")
-	if err := flags.Parse(args); err != nil {
-		return err
+	if !h.OK {
+		ui.PrintBlank()
+		fmt.Println(ui.Bold("Next:"))
+		fmt.Println("  localsubs doctor")
 	}
-	homeDir, _ := os.UserHomeDir()
-
-	fmt.Printf("%s  %s\n", ui.Bold("LocalSubs"), ui.Dim("v"+runtime.HelperVersion))
-	ui.PrintBlank()
-
-	// Runtime
-	ui.PrintHeader("Runtime")
-	llamaPath, err := exec.LookPath("llama-server")
-	if err != nil {
-		ui.PrintCheck(false, "llama-server", "not found")
-		ui.PrintHint("install with: brew install llama.cpp")
-	} else {
-		ui.PrintCheck(true, "llama-server", llamaPath)
-	}
-	ui.PrintBlank()
-
-	// Model
-	m, manifestErr := loadManifest()
-	entry, entryOK := m.Entry("")
-	if manifestErr != nil || !entryOK {
-		ui.PrintHeader("Model")
-		ui.PrintCheck(false, "manifest", "embedded manifest is invalid")
-	} else {
-		entry.Path = resolveModelPath(entry.Path)
-		ui.PrintHeader(fmt.Sprintf("Model (%s)", entry.ID))
-		s := model.Check(entry)
-		switch s.State {
-		case "verified", "ready":
-			ui.PrintCheck(true, entry.Path, s.State)
-		case "missing":
-			ui.PrintCheck(false, entry.Path, "missing")
-		default:
-			ui.PrintCheck(false, entry.Path, s.State)
-			ui.PrintHint(s.Reason)
-		}
-	}
-	ui.PrintBlank()
-
-	// Native Host
-	ui.PrintHeader("Native Host (" + *browser + ")")
-	nativeStatus := nativehost.InspectInstalledForExtension(homeDir, *browser, *extensionID)
-	if nativeStatus.Valid {
-		ui.PrintCheck(true, "manifest valid", nativeStatus.ManifestPath)
-		ui.PrintHint(nativeStatus.HostPath)
-	} else {
-		ui.PrintCheck(false, "manifest invalid", nativeStatus.Reason)
-		ui.PrintHint("run: localsubs install --browser " + *browser)
-	}
-	ui.PrintBlank()
-
-	// Data directory
-	ui.PrintHeader("Data directory")
-	fmt.Printf("  %s\n", config.AppDataDir())
-
-	return nil
 }
 
 func logs() error {
@@ -413,15 +403,37 @@ func modelCommand(args []string) error {
 			return modelStatus(args[1:])
 		case "download":
 			return modelDownload()
+		case "-h", "--help", "help":
+			printModelUsage()
+			return nil
 		}
 	}
-	return fmt.Errorf("usage: localsubs model status|download")
+	err := fmt.Errorf("model subcommand is required")
+	if len(args) > 0 {
+		err = fmt.Errorf("unknown model command: %s", args[0])
+	}
+	ui.PrintError(err)
+	fmt.Fprintln(os.Stderr)
+	printModelUsageTo(os.Stderr)
+	return silentError{err}
+}
+
+func printModelUsage() {
+	printModelUsageTo(os.Stdout)
+}
+
+func printModelUsageTo(writer io.Writer) {
+	fmt.Fprintln(writer, "Usage: localsubs model <command>")
+	fmt.Fprintln(writer)
+	fmt.Fprintln(writer, "Commands:")
+	fmt.Fprintln(writer, "  download    Download and verify the translation model")
+	fmt.Fprintln(writer, "  status      Inspect the installed model              [--json]")
 }
 
 func modelStatus(args []string) error {
 	flags := flag.NewFlagSet("model-status", flag.ContinueOnError)
 	jsonMode := flags.Bool("json", false, "output raw JSON")
-	if err := flags.Parse(args); err != nil {
+	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
 
@@ -436,33 +448,50 @@ func modelStatus(args []string) error {
 	entry.Path = resolveModelPath(entry.Path)
 
 	s := runModelCheck(entry)
+	ready := modelStateReady(s.State)
 
 	if *jsonMode {
-		body, err := json.MarshalIndent(s, "", "  ")
+		output := struct {
+			model.Status
+			Command string `json:"command,omitempty"`
+		}{Status: s}
+		if !ready {
+			output.Command = "localsubs model download"
+		}
+		body, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
 			return err
 		}
 		fmt.Println(string(body))
+		if !ready {
+			return silentError{fmt.Errorf("model is not ready")}
+		}
 		return nil
 	}
 
 	printModelStatusHuman(s, entry)
+	if !ready {
+		return silentError{fmt.Errorf("model is not ready")}
+	}
 	return nil
 }
 
 func printModelStatusHuman(s model.Status, entry model.Entry) {
 	ui.PrintRow("Model", s.ID+"  "+ui.Dim("("+s.Version+")"))
-	ui.PrintRow("File", entry.Path)
+	ui.PrintRow("File", ui.CompactPath(entry.Path))
 	switch s.State {
 	case "verified", "ready":
 		ui.PrintRow("State", ui.OK(s.State))
-	case "missing":
-		ui.PrintRow("State", ui.Warn(s.State))
 	default:
 		ui.PrintRow("State", ui.Fail(s.State))
 	}
 	if s.Reason != "" {
 		ui.PrintRow("", ui.Dim(s.Reason))
+	}
+	if !modelStateReady(s.State) {
+		ui.PrintBlank()
+		fmt.Println(ui.Bold("Fix:"))
+		fmt.Println("  localsubs model download")
 	}
 }
 

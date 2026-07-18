@@ -16,6 +16,10 @@ import (
 )
 
 func modelDownload() error {
+	return modelDownloadWithNextStep(true)
+}
+
+func modelDownloadWithNextStep(showNextStep bool) error {
 	m, err := loadManifest()
 	if err != nil {
 		return err
@@ -34,9 +38,13 @@ func modelDownload() error {
 	// Check if already present and valid.
 	check := entry
 	check.Path = destPath
-	if s := model.Check(check); s.State == "verified" || s.State == "ready" {
+	if s := model.Check(check); modelStateReady(s.State) {
 		fmt.Println(ui.OK("Model already downloaded"))
-		ui.PrintRow("File", destPath)
+		ui.PrintRow("File", ui.CompactPath(destPath))
+		if showNextStep {
+			ui.PrintBlank()
+			ui.PrintDetail("Next: localsubs install")
+		}
 		return nil
 	}
 
@@ -67,9 +75,11 @@ func modelDownload() error {
 
 	fmt.Println()
 	fmt.Println(ui.OK("Model ready"))
-	ui.PrintRow("File", destPath)
-	ui.PrintBlank()
-	ui.PrintHint("next: localsubs install")
+	ui.PrintRow("File", ui.CompactPath(destPath))
+	if showNextStep {
+		ui.PrintBlank()
+		ui.PrintDetail("Next: localsubs install")
+	}
 	return nil
 }
 
@@ -196,4 +206,3 @@ func formatBytes(b int64) string {
 		return fmt.Sprintf("%d KB", b/1024)
 	}
 }
-

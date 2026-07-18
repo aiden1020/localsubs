@@ -33,6 +33,29 @@ function createClient(port, options = {}) {
 }
 
 describe("NativeClient", () => {
+  it("preserves the browser receiver when using native timer APIs", async () => {
+    const port = fakePort();
+    const nativeSetTimeout = vi.fn(function () {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return 7;
+    });
+    const nativeClearTimeout = vi.fn(function () {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+    });
+    vi.stubGlobal("setTimeout", nativeSetTimeout);
+    vi.stubGlobal("clearTimeout", nativeClearTimeout);
+    try {
+      const client = createClient(port);
+      const result = client.send("health", {});
+      port.onMessage.emit({ id: "request-1", ok: true, payload: { ok: true } });
+      await expect(result).resolves.toEqual({ ok: true });
+      expect(nativeSetTimeout).toHaveBeenCalledOnce();
+      expect(nativeClearTimeout).toHaveBeenCalledWith(7);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("correlates responses and clears pending state", async () => {
     const port = fakePort();
     const client = createClient(port);

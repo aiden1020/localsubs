@@ -7,8 +7,8 @@ export class NativeClient {
     connectNative,
     getLastError = () => undefined,
     idFactory = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    setTimer = setTimeout,
-    clearTimer = clearTimeout
+    setTimer = (...args) => globalThis.setTimeout(...args),
+    clearTimer = (...args) => globalThis.clearTimeout(...args)
   }) {
     this.hostName = hostName;
     this.timeoutMs = timeoutMs;

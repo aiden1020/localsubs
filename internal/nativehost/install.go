@@ -53,6 +53,13 @@ type InstalledStatus struct {
 	Reason       string `json:"reason,omitempty"`
 }
 
+type LauncherStatus struct {
+	Path       string `json:"path"`
+	BinaryPath string `json:"binaryPath,omitempty"`
+	Valid      bool   `json:"valid"`
+	Reason     string `json:"reason,omitempty"`
+}
+
 func InstallManifest(options InstallOptions) (InstallResult, error) {
 	build, err := BuildManifest(options)
 	if err != nil {
@@ -287,6 +294,56 @@ func validAllowedOrigins(origins []string) bool {
 		}
 	}
 	return true
+}
+
+// InspectLauncher validates the executable referenced by the generated shell
+// launcher. This catches stale Homebrew Cellar paths that a manifest-only
+// check cannot detect.
+func InspectLauncher(path string) LauncherStatus {
+	status := LauncherStatus{Path: path}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		status.Reason = err.Error()
+		return status
+	}
+	const marker = ` native-host "$@"`
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "exec ") {
+			continue
+		}
+		command := strings.TrimPrefix(line, "exec ")
+		index := strings.Index(command, marker)
+		if index < 0 {
+			continue
+		}
+		binary, ok := parseShellQuoted(strings.TrimSpace(command[:index]))
+		if !ok || !filepath.IsAbs(binary) {
+			status.Reason = "native messaging launcher has an invalid helper command"
+			return status
+		}
+		status.BinaryPath = binary
+		info, statErr := os.Stat(binary)
+		if statErr != nil {
+			status.Reason = "native messaging launcher target does not exist"
+			return status
+		}
+		if info.IsDir() || info.Mode().Perm()&0o111 == 0 {
+			status.Reason = "native messaging launcher target is not executable"
+			return status
+		}
+		status.Valid = true
+		return status
+	}
+	status.Reason = "native messaging launcher does not contain a helper command"
+	return status
+}
+
+func parseShellQuoted(value string) (string, bool) {
+	if len(value) < 2 || value[0] != '\'' || value[len(value)-1] != '\'' {
+		return "", false
+	}
+	return strings.ReplaceAll(value[1:len(value)-1], "'\"'\"'", "'"), true
 }
 
 func fileExists(path string) bool {

@@ -41,8 +41,7 @@ brew tap aiden1020/localsubs
 brew trust aiden1020/localsubs
 brew install localsubs
 
-localsubs model download   # ~350 MB, one-time
-localsubs install           # connect to Chrome
+localsubs setup            # download the model and install Chrome integration
 ```
 
 > `brew trust` is required because LocalSubs is distributed via a third-party tap.
@@ -54,16 +53,25 @@ Then install the [LocalSubs Chrome extension](https://chromewebstore.google.com/
 
 | Command | Description |
 |---------|-------------|
+| `localsubs setup` | Download the model and install the browser integration |
 | `localsubs model download` | Download the translation model |
-| `localsubs install` | Connect to Chrome |
-| `localsubs status` | Check Native Messaging installation readiness |
-| `localsubs doctor` | Run a full diagnostic |
+| `localsubs install` | Install the Chrome Native Messaging integration |
+| `localsubs status` | Check the integration, installed helper, runtime, and model |
+| `localsubs doctor` | Diagnose the manifest, launcher, helper, runtime, and model |
 | `localsubs logs` | Print log file paths |
 | `localsubs version` | Print version |
 
 The native helper starts on demand when Chrome connects to it; it is not a
 persistent background service. Use `localsubs status` to validate the installed
-helper, runtime, and model, or `localsubs doctor` for detailed diagnostics.
+helper, runtime, and model, or `localsubs doctor` for detailed diagnostics and
+suggested fixes. Both commands support `--json` for scripts and bug reports.
+`localsubs doctor` exits with a nonzero status when a required component fails.
+Use `localsubs doctor --deep` to temporarily start `llama-server`, load the
+installed model, and run a test inference. The deep check can take up to 90
+seconds and always stops the temporary process before exiting.
+
+To configure Chromium or Microsoft Edge instead of Chrome, run
+`localsubs setup --browser chromium` or `localsubs setup --browser edge`.
 
 ## Model
 

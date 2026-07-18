@@ -6,7 +6,7 @@ import { TranslationController } from "./translation-controller.js";
 import { shouldApplyTranslationResult } from "./translation-request.js";
 
 (() => {
-  const BUILD = "0.3.2";
+  const BUILD = "0.3.3";
   const STATUS_OVERLAY_ID = "localsubs-status";
   const STATUS_HIDE_AFTER_MS = 6500;
   if (window.__openStreamSubtitlesLoaded) {
