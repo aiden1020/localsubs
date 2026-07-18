@@ -26,7 +26,7 @@ const (
 
 // HelperVersion is a variable so GoReleaser can inject the release tag with
 // -X localsubs/internal/runtime.HelperVersion=<version>.
-var HelperVersion = "0.3.1"
+var HelperVersion = "0.3.2"
 
 type Profile struct {
 	Name                 string

@@ -65,7 +65,9 @@ const exitCode = await new Promise((resolve) => child.on("close", resolve));
 if (exitCode !== 0) {
   throw new Error(`native host exited with ${exitCode}: ${stderr.trim()}`);
 }
-const [health, translation] = responses;
+const responsesByID = new Map(responses.map((response) => [response.id, response]));
+const health = responsesByID.get("health-1");
+const translation = responsesByID.get("cue-1");
 if (!health.ok || health.type !== "health.result" || !health.payload?.apiVersion) {
   throw new Error(`unexpected health response: ${JSON.stringify(health)}`);
 }

@@ -18,7 +18,7 @@ describe("translator service", () => {
     const client = {
       send: vi.fn().mockResolvedValue({
         apiVersion: "1",
-        helperVersion: "0.3.1",
+        helperVersion: "0.3.2",
         loading: true,
         ok: false
       })
@@ -34,7 +34,7 @@ describe("translator service", () => {
   it("preserves superseded translation metadata", async () => {
     const client = {
       send: vi.fn()
-        .mockResolvedValueOnce({ apiVersion: "1", helperVersion: "0.3.1", ok: true })
+        .mockResolvedValueOnce({ apiVersion: "1", helperVersion: "0.3.2", ok: true })
         .mockResolvedValueOnce({
           translation: "譯文",
           cache: "miss",
