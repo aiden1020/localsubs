@@ -1,3 +1,5 @@
+//go:build !windows
+
 package nativehost
 
 import (
@@ -67,6 +69,33 @@ func TestInstallManifestWritesChromeManifest(t *testing.T) {
 	}
 	if len(manifest.AllowedOrigins) != 1 || manifest.AllowedOrigins[0] != "chrome-extension://abcdefghijklmnopabcdefghijklmnop/" {
 		t.Fatalf("unexpected allowed origins: %#v", manifest.AllowedOrigins)
+	}
+}
+
+func TestUninstallManifestRemovesUnixManifestAndLauncher(t *testing.T) {
+	home := t.TempDir()
+	binary := filepath.Join(home, "bin", "localsubs")
+	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("helper"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result, err := InstallManifest(InstallOptions{HomeDir: home, Browser: "edge", BinaryPath: binary})
+	if err != nil {
+		t.Fatal(err)
+	}
+	removed, err := UninstallManifest(UninstallOptions{HomeDir: home, Browser: "edge"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !removed.ManifestRemoved || !removed.LauncherRemoved || !removed.RegistrationRemoved {
+		t.Fatalf("unexpected uninstall result: %#v", removed)
+	}
+	for _, path := range []string{result.Path, result.LauncherPath} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("native host file remains: %s (%v)", path, err)
+		}
 	}
 }
 

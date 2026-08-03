@@ -1,0 +1,838 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-03T14:51:34Z",
+  "helperVersion": "0.3.4",
+  "runtimeVersion": "version: 10240 (0b14b87d7)\r\nbuilt with Clang 20.1.8 for Windows x86_64",
+  "backend": "cuda",
+  "runtimePath": "~/AppData/Local/LocalSubs/runtime/b10240/cuda/llama-server.exe",
+  "modelPath": "~/AppData/Local/LocalSubs/models/LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
+  "modelSha256": "525351104440c210f235721d9290b459dac00392331c93008cac401c055c9a76",
+  "datasetPath": "mini_test_set.jsonl",
+  "datasetSha256": "187d03d6305cca9e507bc117284e9b72726dfc2a5497a4f0325a0e2e4961b8f8",
+  "warmupIterations": 3,
+  "gpuOffloadLayers": 99,
+  "startupLatencyMs": 810.176,
+  "system": {
+    "os": "windows",
+    "architecture": "amd64",
+    "cpu": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel",
+    "logicalProcessors": "12",
+    "gpu": "NVIDIA GeForce RTX 3080",
+    "nvidiaDriver": "591.86"
+  },
+  "summary": {
+    "count": 100,
+    "failures": 0,
+    "minMs": 8.66,
+    "meanMs": 28.44816,
+    "p50Ms": 27.294,
+    "p90Ms": 41.795,
+    "p95Ms": 48.902,
+    "p99Ms": 51.49,
+    "maxMs": 68.621,
+    "throughputPerSecond": 35.15165831463265,
+    "exactMatchPercent": 8
+  },
+  "results": [
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000001_ctx1",
+      "latencyMs": 21.597,
+      "currentText": "There are multiple universes.",
+      "expected": "而是存在多重宇宙",
+      "translation": "有好幾顆宇宙",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000016_ctx0",
+      "latencyMs": 13.134,
+      "currentText": "Take up your weapons.",
+      "expected": "拿起武器",
+      "translation": "拿起武器",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000026_ctx0",
+      "latencyMs": 8.66,
+      "currentText": "Get down!",
+      "expected": "趴下",
+      "translation": "趴下",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000035_ctx0",
+      "latencyMs": 19.037,
+      "currentText": "Stop!",
+      "expected": "停",
+      "translation": "住手！",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000053_ctx2",
+      "latencyMs": 21.482,
+      "currentText": "Run!",
+      "expected": "快跑",
+      "translation": "快跑",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000054_ctx2",
+      "latencyMs": 18.025,
+      "currentText": "Brother.",
+      "expected": "大哥",
+      "translation": "哥",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000056_ctx3",
+      "latencyMs": 24.655,
+      "currentText": "Fall back.",
+      "expected": "撤退",
+      "translation": "撤退",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000057_ctx0",
+      "latencyMs": 24.018,
+      "currentText": "Yes.",
+      "expected": "是",
+      "translation": "對",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000073_ctx1",
+      "latencyMs": 30.568,
+      "currentText": "A lunatic asylum.",
+      "expected": "精神病院",
+      "translation": "瘋人院",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000074_ctx0",
+      "latencyMs": 35.154,
+      "currentText": "Okay, okay, okay.",
+      "expected": "好好好",
+      "translation": "好 好 好",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000094_ctx0",
+      "latencyMs": 27.201,
+      "currentText": "Really?",
+      "expected": "真的假的",
+      "translation": "真的嗎？",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000095_ctx1",
+      "latencyMs": 30.684,
+      "currentText": "You are sea woman.",
+      "expected": "你就是海婆子",
+      "translation": "妳是海女",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000101_ctx0",
+      "latencyMs": 28.424,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000106_ctx0",
+      "latencyMs": 11.801,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000108_ctx2",
+      "latencyMs": 30.044,
+      "currentText": "Cooperate?",
+      "expected": "合作",
+      "translation": "配合？",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000118_ctx1",
+      "latencyMs": 21.275,
+      "currentText": "You.",
+      "expected": "你",
+      "translation": "是你",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000123_ctx0",
+      "latencyMs": 23.907,
+      "currentText": "Hai ji.",
+      "expected": "海姬",
+      "translation": "海吉",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000126_ctx1",
+      "latencyMs": 18.912,
+      "currentText": "No way.",
+      "expected": "不可能",
+      "translation": "不會吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000129_ctx2",
+      "latencyMs": 25.355,
+      "currentText": "I know.",
+      "expected": "我明白了",
+      "translation": "我知道",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000131_ctx0",
+      "latencyMs": 49.352,
+      "currentText": "But you are short of people, especially me.",
+      "expected": "但是缺人 尤其缺我",
+      "translation": "但你沒有別人，尤其是我",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000134_ctx2",
+      "latencyMs": 17.224,
+      "currentText": "Wait.",
+      "expected": "等等",
+      "translation": "等一下",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000142_ctx2",
+      "latencyMs": 31.947,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000149_ctx1",
+      "latencyMs": 28.4,
+      "currentText": "Blow it.",
+      "expected": "吹它",
+      "translation": "吹吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000154_ctx0",
+      "latencyMs": 20.533,
+      "currentText": "Brother.",
+      "expected": "兄弟",
+      "translation": "哥",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000169_ctx3",
+      "latencyMs": 33.296,
+      "currentText": "Sea bottle.",
+      "expected": "海瓶子",
+      "translation": "海瓶",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000170_ctx1",
+      "latencyMs": 51.49,
+      "currentText": "Your real name is Ruan Mengmeng.",
+      "expected": "本名 阮萌萌",
+      "translation": "你的真名叫做阮夢夢",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000171_ctx0",
+      "latencyMs": 25.476,
+      "currentText": "Ruan.",
+      "expected": "阮",
+      "translation": "阮",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000179_ctx0",
+      "latencyMs": 30.059,
+      "currentText": "Of course.",
+      "expected": "果然啊",
+      "translation": "當然",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000183_ctx2",
+      "latencyMs": 23.8,
+      "currentText": "I",
+      "expected": "我",
+      "translation": "我",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000194_ctx2",
+      "latencyMs": 28.74,
+      "currentText": "Keep blowing.",
+      "expected": "再吹啊",
+      "translation": "繼續吹",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000199_ctx2",
+      "latencyMs": 48.231,
+      "currentText": "I, Hai Ji, swear by my blood.",
+      "expected": "我海姬 以血起誓",
+      "translation": "我，海吉，以我的手為誓",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000200_ctx2",
+      "latencyMs": 42.623,
+      "currentText": "I will do what I say.",
+      "expected": "言出必行",
+      "translation": "我會照我的話做",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000201_ctx1",
+      "latencyMs": 39.195,
+      "currentText": "You can stand if you want.",
+      "expected": "你要想站着就站着",
+      "translation": "你可以站著，如果你願意",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000208_ctx3",
+      "latencyMs": 34.955,
+      "currentText": "Just wait.",
+      "expected": "等着吧你",
+      "translation": "等著吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000219_ctx1",
+      "latencyMs": 25.152,
+      "currentText": "Yes.",
+      "expected": "好",
+      "translation": "是的",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000220_ctx1",
+      "latencyMs": 32.266,
+      "currentText": "Fasten it tight.",
+      "expected": "拴牢了啊",
+      "translation": "緊扣",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000222_ctx2",
+      "latencyMs": 49.129,
+      "currentText": "- One, two, three, go. -Come on.",
+      "expected": "一二三 走",
+      "translation": "一、二、三，開始",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000223_ctx2",
+      "latencyMs": 19.529,
+      "currentText": "-Go.",
+      "expected": "走",
+      "translation": "去吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000225_ctx3",
+      "latencyMs": 24.788,
+      "currentText": "Course.",
+      "expected": "航向",
+      "translation": "當然",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000229_ctx1",
+      "latencyMs": 18.59,
+      "currentText": "Idiot.",
+      "expected": "山炮",
+      "translation": "白癡",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000234_ctx2",
+      "latencyMs": 33.938,
+      "currentText": "-Yes. -Yes.",
+      "expected": "是",
+      "translation": "對，對",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000238_ctx0",
+      "latencyMs": 19.608,
+      "currentText": "Yes.",
+      "expected": "好",
+      "translation": "對",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000245_ctx0",
+      "latencyMs": 29.656,
+      "currentText": "Mine, I...",
+      "expected": "我的 我",
+      "translation": "我的...",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000246_ctx0",
+      "latencyMs": 33.927,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000249_ctx0",
+      "latencyMs": 11.249,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000251_ctx0",
+      "latencyMs": 33.457,
+      "currentText": "You...",
+      "expected": "你",
+      "translation": "你...",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000254_ctx0",
+      "latencyMs": 17.951,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000256_ctx0",
+      "latencyMs": 17.014,
+      "currentText": "You.",
+      "expected": "你",
+      "translation": "是你",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000272_ctx2",
+      "latencyMs": 32.392,
+      "currentText": "Did you forget?",
+      "expected": "你忘了",
+      "translation": "妳忘了嗎？",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000277_ctx1",
+      "latencyMs": 23.751,
+      "currentText": "All right.",
+      "expected": "好吧",
+      "translation": "好",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000294_ctx1",
+      "latencyMs": 30.926,
+      "currentText": "She believed it!",
+      "expected": "信了",
+      "translation": "她相信了",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000295_ctx0",
+      "latencyMs": 9.657,
+      "currentText": "Yes.",
+      "expected": "是啊",
+      "translation": "對",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000299_ctx0",
+      "latencyMs": 29.793,
+      "currentText": "This can be nice.",
+      "expected": "也挺好",
+      "translation": "這樣不錯",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000302_ctx3",
+      "latencyMs": 33.247,
+      "currentText": "I have a story.",
+      "expected": "我有故事",
+      "translation": "我有個故事",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000304_ctx2",
+      "latencyMs": 25.962,
+      "currentText": "Damn.",
+      "expected": "我去",
+      "translation": "該死",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000306_ctx2",
+      "latencyMs": 44.593,
+      "currentText": "Well, well, well.",
+      "expected": "得得得",
+      "translation": "嗯，嗯，嗯。",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000308_ctx0",
+      "latencyMs": 12.4,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000314_ctx2",
+      "latencyMs": 32.035,
+      "currentText": "Are you sick?",
+      "expected": "病了",
+      "translation": "你身體不舒服嗎？",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000326_ctx0",
+      "latencyMs": 24.547,
+      "currentText": "Final stage.",
+      "expected": "晚期",
+      "translation": "最後一關",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000329_ctx1",
+      "latencyMs": 34.998,
+      "currentText": "But I know what I am.",
+      "expected": "但是我有自知之明",
+      "translation": "但我知道自己是什麼",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000335_ctx3",
+      "latencyMs": 46.037,
+      "currentText": "I want to cry with you, laugh with you",
+      "expected": "陪你哭 陪你笑",
+      "translation": "我想跟你一起哭，跟你一起笑",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000336_ctx2",
+      "latencyMs": 41.795,
+      "currentText": "and go to distant places with you.",
+      "expected": "陪你去天涯海角",
+      "translation": "還有，可以跟你一起去很遠的地方",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000339_ctx1",
+      "latencyMs": 28.338,
+      "currentText": "all I have is you.",
+      "expected": "只有你",
+      "translation": "我只有你",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000357_ctx2",
+      "latencyMs": 29.21,
+      "currentText": "Quickly.",
+      "expected": "快",
+      "translation": "快點",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000359_ctx2",
+      "latencyMs": 23.532,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000363_ctx2",
+      "latencyMs": 31.873,
+      "currentText": "Help me!",
+      "expected": "救我",
+      "translation": "救我！",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000373_ctx0",
+      "latencyMs": 34.65,
+      "currentText": "Where is my knife?",
+      "expected": "我刀呢",
+      "translation": "我的刀呢？",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000374_ctx0",
+      "latencyMs": 22.137,
+      "currentText": "Take it.",
+      "expected": "接着",
+      "translation": "拿著",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000376_ctx1",
+      "latencyMs": 32.215,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000378_ctx0",
+      "latencyMs": 15.67,
+      "currentText": "Hai Ji.",
+      "expected": "海姬",
+      "translation": "海智",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000383_ctx0",
+      "latencyMs": 48.902,
+      "currentText": "You are hard to kill, aren't you?",
+      "expected": "你命不是挺硬的嘛",
+      "translation": "你不容易被殺死，對吧？",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000391_ctx3",
+      "latencyMs": 34.275,
+      "currentText": "You are finally awake, my brother.",
+      "expected": "兄弟呀 你可算是醒了呀",
+      "translation": "你終於醒了，我的兄弟",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000400_ctx3",
+      "latencyMs": 22.472,
+      "currentText": "Have a seat.",
+      "expected": "坐坐坐",
+      "translation": "坐吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000416_ctx1",
+      "latencyMs": 24.838,
+      "currentText": "It is really you.",
+      "expected": "真的是你啊",
+      "translation": "真的是你",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000417_ctx2",
+      "latencyMs": 23.51,
+      "currentText": "I finally found you.",
+      "expected": "我可找到你了",
+      "translation": "我終於找到你了",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000418_ctx1",
+      "latencyMs": 34.132,
+      "currentText": "You were looking for me?",
+      "expected": "你找我",
+      "translation": "你在找我？",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000420_ctx3",
+      "latencyMs": 41.237,
+      "currentText": "No, no, no.",
+      "expected": "不不不",
+      "translation": "不，不，不。",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000430_ctx1",
+      "latencyMs": 22.091,
+      "currentText": "I rescued you.",
+      "expected": "我救下了你",
+      "translation": "我救了你",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000444_ctx0",
+      "latencyMs": 23.292,
+      "currentText": "Rest assured.",
+      "expected": "放心吧",
+      "translation": "你放心",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000449_ctx0",
+      "latencyMs": 22.337,
+      "currentText": "Right.",
+      "expected": "是啊",
+      "translation": "好",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000459_ctx1",
+      "latencyMs": 31.477,
+      "currentText": "Something went wrong! Something went wrong!",
+      "expected": "不好了不好了",
+      "translation": "出問題了 出問題了",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000463_ctx0",
+      "latencyMs": 32.833,
+      "currentText": "I had no choice.",
+      "expected": "我也是被逼的",
+      "translation": "我別無選擇",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000466_ctx1",
+      "latencyMs": 28.959,
+      "currentText": "Run.",
+      "expected": "快走",
+      "translation": "快跑",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000468_ctx3",
+      "latencyMs": 16.235,
+      "currentText": "Run.",
+      "expected": "快走",
+      "translation": "快跑",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000471_ctx1",
+      "latencyMs": 30.375,
+      "currentText": "Go, go.",
+      "expected": "走 走",
+      "translation": "走 走",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000472_ctx0",
+      "latencyMs": 27.209,
+      "currentText": "Go.",
+      "expected": "走",
+      "translation": "去吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000477_ctx3",
+      "latencyMs": 26.022,
+      "currentText": "Yes.",
+      "expected": "是",
+      "translation": "是",
+      "exactMatch": true
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000481_ctx1",
+      "latencyMs": 27.294,
+      "currentText": "Even if I have to die,",
+      "expected": "就算是死",
+      "translation": "就算我得死",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000483_ctx0",
+      "latencyMs": 17.853,
+      "currentText": "No way.",
+      "expected": "不行",
+      "translation": "不會吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000506_ctx0",
+      "latencyMs": 22.548,
+      "currentText": "[North Sea Yama North Sea Mengpo] [Ruan Mengmeng] Weird.",
+      "expected": "奇怪",
+      "translation": "怪了",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000521_ctx0",
+      "latencyMs": 24.52,
+      "currentText": "Take a look.",
+      "expected": "瞧一瞧 看一看",
+      "translation": "你看看",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000522_ctx2",
+      "latencyMs": 20.399,
+      "currentText": "Hold on.",
+      "expected": "等等",
+      "translation": "等一下",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000529_ctx2",
+      "latencyMs": 68.621,
+      "currentText": "The price yesterday was 988, and today it is only 688.",
+      "expected": "昨天九八八 今天只要六八八",
+      "translation": "昨天是988，今天只有688",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000531_ctx1",
+      "latencyMs": 29.189,
+      "currentText": "Fast, fast.",
+      "expected": "快快快快",
+      "translation": "快點 快點",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000532_ctx0",
+      "latencyMs": 49.662,
+      "currentText": "Here. 688.",
+      "expected": "六八八",
+      "translation": "給你，688號",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000534_ctx1",
+      "latencyMs": 18.615,
+      "currentText": "See.",
+      "expected": "得",
+      "translation": "看吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000536_ctx3",
+      "latencyMs": 31.371,
+      "currentText": "Take it yourself.",
+      "expected": "自己拿",
+      "translation": "你自己拿吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000540_ctx1",
+      "latencyMs": 36.852,
+      "currentText": "You saw...",
+      "expected": "你看到",
+      "translation": "你們看見了...",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000553_ctx3",
+      "latencyMs": 23.297,
+      "currentText": "Let's go.",
+      "expected": "走走走",
+      "translation": "走吧",
+      "exactMatch": false
+    },
+    {
+      "id": "opensubtitles_OpenSubtitles.en-zh_TW_00000571_ctx3",
+      "latencyMs": 39.133,
+      "currentText": "No, the sentence before that.",
+      "expected": "上一句",
+      "translation": "不，剛才的那句",
+      "exactMatch": false
+    }
+  ]
+}

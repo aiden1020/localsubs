@@ -32,7 +32,7 @@ func TestAssembleLocalStatusRequiresEveryRuntimeComponent(t *testing.T) {
 	launcher.Valid = true
 	helper.Ready = false
 	if status := assembleLocalStatus(native, launcher, helper, runtimeStatus, modelStatus); status.Ready ||
-		status.Command != "brew upgrade localsubs && localsubs install" {
+		status.Command != helperUpgradeCommand() {
 		t.Fatalf("unexpected incompatible helper status: %#v", status)
 	}
 	helper.Ready = true
@@ -49,15 +49,7 @@ func TestAssembleLocalStatusRequiresEveryRuntimeComponent(t *testing.T) {
 
 func TestInspectHelperInstallationRejectsVersionMismatch(t *testing.T) {
 	root := t.TempDir()
-	binary := filepath.Join(root, "localsubs")
-	if err := os.WriteFile(binary, []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	launcherPath := filepath.Join(root, "launcher")
-	launcherBody := "#!/bin/sh\nexec '" + binary + "' native-host \"$@\"\n"
-	if err := os.WriteFile(launcherPath, []byte(launcherBody), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	_, launcherPath := makeTestHost(t, root)
 	launcher, helper := inspectHelperInstallation(nativehost.InstalledStatus{
 		Valid: true, HostPath: launcherPath,
 	}, func(string) (string, string, error) {
@@ -73,7 +65,7 @@ func TestInspectHelperInstallationRejectsVersionMismatch(t *testing.T) {
 
 func TestFindExecutableUsesProvidedNativeHostPath(t *testing.T) {
 	dir := t.TempDir()
-	binary := filepath.Join(dir, "llama-server")
+	binary := filepath.Join(dir, testExecutableName("llama-server"))
 	if err := os.WriteFile(binary, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}

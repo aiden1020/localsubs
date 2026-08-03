@@ -1,16 +1,18 @@
 {
   "name": "localsubs-extension",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build:extension": "node scripts/build-extension.mjs",
     "check": "node scripts/check-versions.mjs && node --check extension/src/background/main.js && node --check extension/src/content/main.js && node --check extension/src/options.js",
     "check:extension-reproducibility": "node scripts/check-extension-reproducibility.mjs",
+    "generate:winget": "node scripts/generate-winget-manifests.mjs",
     "package:extension": "npm run check && npm run build:extension && node scripts/package-extension.mjs",
     "smoke:extension": "node scripts/smoke-extension-package.mjs",
     "smoke:goreleaser": "node scripts/smoke-goreleaser.mjs",
     "test": "vitest run",
+    "test:e2e:windows": "npm run build:extension && go build -o dist/localsubs.exe ./cmd/localsubs && node scripts/test-browser-native-e2e.mjs",
     "test:integration": "node scripts/test-native-host.mjs",
     "test:version-injection": "node scripts/test-version-injection.mjs"
   },
@@ -19,6 +21,7 @@
     "esbuild": "^0.25.0",
     "fflate": "^0.8.2",
     "jsdom": "^26.0.0",
+    "puppeteer-core": "^25.4.0",
     "vitest": "^3.0.0"
   }
 }

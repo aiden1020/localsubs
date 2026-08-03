@@ -109,6 +109,9 @@ func runDeepInferenceProbe(
 	}
 	profile := runtime.DefaultProfile()
 	profile.ModelPath = snapshot.Model.Path
+	if snapshot.Runtime.Backend == runtime.BackendCPU {
+		profile.GPULayers = 0
+	}
 	backend, err := runtime.StartManagedBackend(ctx, runtime.LlamaServerCommand{
 		Binary:  snapshot.Runtime.Path,
 		Model:   profile.ModelPath,
@@ -188,8 +191,8 @@ func buildDoctorReport(
 		runtimeResult.Detail = snapshot.Runtime.Path
 	} else {
 		runtimeResult.Status = diagnostics.StatusFail
-		runtimeResult.Detail = "not found in the Native Host PATH"
-		runtimeResult.Remediation = "brew install llama.cpp"
+		runtimeResult.Detail = "no compatible LocalSubs runtime was found"
+		runtimeResult.Remediation = runtimeInstallCommand()
 	}
 	report.Add(runtimeResult)
 
@@ -298,11 +301,11 @@ func addLauncherDiagnostics(
 	case inspection.ProbeErr != nil:
 		helperResult.Status = diagnostics.StatusFail
 		helperResult.Detail = inspection.ProbeErr.Error()
-		helperResult.Remediation = "brew upgrade localsubs && localsubs install"
+		helperResult.Remediation = helperUpgradeCommand()
 	case inspection.Version != runtime.HelperVersion || inspection.APIVersion != runtime.APIVersion:
 		helperResult.Status = diagnostics.StatusFail
 		helperResult.Detail = fmt.Sprintf("helper %s · API %s", inspection.Version, inspection.APIVersion)
-		helperResult.Remediation = "brew upgrade localsubs && localsubs install"
+		helperResult.Remediation = helperUpgradeCommand()
 	default:
 		helperResult.Status = diagnostics.StatusPass
 		helperResult.Detail = fmt.Sprintf("helper %s · API %s", inspection.Version, inspection.APIVersion)

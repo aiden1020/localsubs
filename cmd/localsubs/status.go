@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"localsubs/internal/config"
 	"localsubs/internal/manifest"
 	"localsubs/internal/model"
 	"localsubs/internal/nativehost"
@@ -18,8 +17,9 @@ import (
 )
 
 type localRuntimeStatus struct {
-	Found bool   `json:"found"`
-	Path  string `json:"path,omitempty"`
+	Found   bool                `json:"found"`
+	Backend runtime.BackendMode `json:"backend,omitempty"`
+	Path    string              `json:"path,omitempty"`
 }
 
 type installedHelperStatus struct {
@@ -79,8 +79,10 @@ func collectReadiness(homeDir, browser, extensionID string) readinessSnapshot {
 	snapshot.NativeDurationMS = time.Since(started).Milliseconds()
 
 	started = time.Now()
-	llamaPath, llamaErr := findExecutable(config.NativeHostBasePath, "llama-server")
-	snapshot.Runtime = localRuntimeStatus{Found: llamaErr == nil, Path: llamaPath}
+	candidates, llamaErr := runtime.DiscoverRuntimeCandidates(runtime.BackendAuto)
+	if llamaErr == nil && len(candidates) > 0 {
+		snapshot.Runtime = localRuntimeStatus{Found: true, Backend: candidates[0].Backend, Path: candidates[0].Path}
+	}
 	snapshot.RuntimeDurationMS = time.Since(started).Milliseconds()
 
 	started = time.Now()
@@ -169,10 +171,12 @@ func inspectInstalledHelper(
 
 func findExecutable(searchPath, name string) (string, error) {
 	for _, directory := range filepath.SplitList(searchPath) {
-		candidate := filepath.Join(directory, name)
-		info, err := os.Stat(candidate)
-		if err == nil && !info.IsDir() && info.Mode().Perm()&0o111 != 0 {
-			return candidate, nil
+		for _, executableName := range executableNames(name) {
+			candidate := filepath.Join(directory, executableName)
+			info, err := os.Stat(candidate)
+			if err == nil && runnableFile(info, candidate) {
+				return candidate, nil
+			}
 		}
 	}
 	return "", fmt.Errorf("%s not found in native host PATH", name)
@@ -227,7 +231,7 @@ func printLocalStatusHuman(status localStatus) {
 		ui.PrintHint(status.InstalledHelper.Reason)
 	}
 	if status.Runtime.Found {
-		ui.PrintRow("Runtime", ui.OK("llama.cpp available"))
+		ui.PrintRow("Runtime", ui.OK("llama.cpp "+string(status.Runtime.Backend)+" available"))
 		ui.PrintHint(ui.CompactPath(status.Runtime.Path))
 	} else {
 		ui.PrintRow("Runtime", ui.Fail("llama.cpp unavailable"))
@@ -257,9 +261,9 @@ func localStatusFix(status localStatus) string {
 	case !status.NativeHost.Valid || !status.Launcher.Valid:
 		return "localsubs install --browser " + status.NativeHost.Browser
 	case !status.InstalledHelper.Ready:
-		return "brew upgrade localsubs && localsubs install"
+		return helperUpgradeCommand()
 	case !status.Runtime.Found:
-		return "brew install llama.cpp"
+		return runtimeInstallCommand()
 	case !modelStateReady(status.Model.State):
 		return "localsubs model download"
 	default:

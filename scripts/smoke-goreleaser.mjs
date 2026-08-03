@@ -15,13 +15,18 @@ const publishedChecksums = new Map(
 const binaries = artifacts.filter((artifact) => artifact.type === "Binary");
 const archives = artifacts.filter((artifact) => artifact.type === "Archive");
 const targets = new Set(binaries.map((artifact) => `${artifact.goos}/${artifact.goarch}`));
-for (const target of ["darwin/amd64", "darwin/arm64"]) {
+for (const target of ["darwin/amd64", "darwin/arm64", "windows/amd64"]) {
   if (!targets.has(target)) {
     throw new Error(`GoReleaser snapshot is missing ${target}`);
   }
 }
-if (archives.length !== 2 || !archives.every((artifact) => artifact.extra?.Format === "tar.gz")) {
-  throw new Error("GoReleaser snapshot must contain exactly two Darwin tar.gz archives");
+const darwinArchives = archives.filter((artifact) => artifact.goos === "darwin");
+const windowsArchives = archives.filter((artifact) => artifact.goos === "windows");
+if (darwinArchives.length !== 2 || !darwinArchives.every((artifact) => artifact.extra?.Format === "tar.gz")) {
+  throw new Error("GoReleaser snapshot must contain two Darwin tar.gz archives");
+}
+if (windowsArchives.length !== 1 || windowsArchives[0].extra?.Format !== "zip") {
+  throw new Error("GoReleaser snapshot must contain one Windows amd64 zip archive");
 }
 if (!artifacts.some((artifact) => artifact.type === "Checksum" && artifact.name === "checksums.txt")) {
   throw new Error("GoReleaser snapshot is missing checksums.txt");
@@ -44,9 +49,11 @@ for (const archive of archives) {
   if (publishedChecksums.get(archive.name) !== checksum) {
     throw new Error(`checksums.txt does not match ${archive.name}`);
   }
-  const expectedURL = `https://github.com/aiden1020/localsubs/releases/download/${metadata.tag}/${archive.name}`;
-  if (!formulaBody.includes(`url "${expectedURL}"`) || !formulaBody.includes(`sha256 "${checksum}"`)) {
-    throw new Error(`Homebrew formula does not reference ${archive.name} from this release`);
+  if (archive.goos === "darwin") {
+    const expectedURL = `https://github.com/aiden1020/localsubs/releases/download/${metadata.tag}/${archive.name}`;
+    if (!formulaBody.includes(`url "${expectedURL}"`) || !formulaBody.includes(`sha256 "${checksum}"`)) {
+      throw new Error(`Homebrew formula does not reference ${archive.name} from this release`);
+    }
   }
 }
 

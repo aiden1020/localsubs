@@ -26,7 +26,7 @@ const (
 
 // HelperVersion is a variable so GoReleaser can inject the release tag with
 // -X localsubs/internal/runtime.HelperVersion=<version>.
-var HelperVersion = "0.3.4"
+var HelperVersion = "0.4.0"
 
 type Profile struct {
 	Name                 string
@@ -295,13 +295,14 @@ func CleanTranslation(text string) string {
 }
 
 type LlamaClient struct {
-	mu         sync.RWMutex
-	BaseURL    string
-	HTTPClient *http.Client
-	Profile    Profile
-	ModelReady bool
-	Owned      bool
-	LastError  string
+	mu          sync.RWMutex
+	BaseURL     string
+	HTTPClient  *http.Client
+	Profile     Profile
+	ModelReady  bool
+	Owned       bool
+	BackendKind string
+	LastError   string
 }
 
 func (c *LlamaClient) setLastError(message string) {
@@ -317,14 +318,19 @@ func (c *LlamaClient) lastError() string {
 }
 
 func NewLlamaClient(baseURL string, profile Profile, owned bool) *LlamaClient {
+	return NewLlamaClientWithBackend(baseURL, profile, owned, "llama.cpp")
+}
+
+func NewLlamaClientWithBackend(baseURL string, profile Profile, owned bool, backendKind string) *LlamaClient {
 	return &LlamaClient{
 		BaseURL: strings.TrimRight(baseURL, "/"),
 		HTTPClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		Profile:    profile,
-		ModelReady: true,
-		Owned:      owned,
+		Profile:     profile,
+		ModelReady:  true,
+		Owned:       owned,
+		BackendKind: backendKind,
 	}
 }
 
@@ -400,7 +406,7 @@ func (c *LlamaClient) Health(ctx context.Context) Health {
 		APIVersion:    APIVersion,
 		HelperVersion: HelperVersion,
 		Backend: BackendState{
-			Kind:  "llama.cpp",
+			Kind:  c.BackendKind,
 			Ready: ready,
 			Owned: c.Owned,
 		},

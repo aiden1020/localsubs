@@ -2,12 +2,16 @@ package config
 
 import (
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestNativeHostLogPathForHome(t *testing.T) {
 	home := filepath.Join("tmp", "user")
 	want := filepath.Join(home, "Library", "Application Support", "LocalSubs", "logs", "native-host.log")
+	if runtime.GOOS == "windows" {
+		want = filepath.Join(home, "AppData", "Local", "LocalSubs", "logs", "native-host.log")
+	}
 	if got := NativeHostLogPathForHome(home); got != want {
 		t.Fatalf("log path = %q, want %q", got, want)
 	}

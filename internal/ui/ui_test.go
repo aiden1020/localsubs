@@ -8,6 +8,7 @@ import (
 func TestCompactPathOnlyReplacesHomePrefix(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	path := filepath.Join(home, "Library", "Application Support", "LocalSubs")
 	if got := CompactPath(path); got != "~/Library/Application Support/LocalSubs" {
 		t.Fatalf("CompactPath(%q) = %q", path, got)

@@ -10,6 +10,44 @@ permissions:
   contents: read
 
 jobs:
+  windows:
+    name: Windows native verification
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install extension dependencies
+        run: npm ci
+
+      - name: Run Windows Go tests
+        run: go test ./...
+
+      - name: Run extension tests
+        run: npm test
+
+      - name: Test Windows Native Messaging protocol
+        run: npm run test:integration
+
+      - name: Build and smoke-test Windows helper
+        shell: pwsh
+        run: |
+          go build -o dist/localsubs.exe ./cmd/localsubs
+          ./dist/localsubs.exe version
+          ./dist/localsubs.exe runtime status --json
+
+      - name: Test Edge Native Messaging end to end
+        run: npm run test:e2e:windows -- --browser edge --fake-backend
+
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -92,10 +130,12 @@ jobs:
   release:
     name: Publish release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: verify
+    needs: [verify, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout release tag
@@ -110,6 +150,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Publish with GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -118,3 +163,37 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Generate WinGet manifests from the published archive
+        run: |
+          node scripts/generate-winget-manifests.mjs \
+            --version "${GITHUB_REF_NAME#v}" \
+            --installer dist/localsubs_windows_amd64.zip \
+            --output dist/winget
+
+      - name: Upload WinGet submission manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests-${{ github.ref_name }}
+          path: dist/winget/*.yaml
+          if-no-files-found: error
+
+      - name: Download verified extension package
+        uses: actions/download-artifact@v4
+        with:
+          name: localsubs-chrome-extension
+          path: dist/extension
+
+      - name: Add extension package to the GitHub release
+        run: gh release upload "$GITHUB_REF_NAME" dist/extension/*.zip --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/localsubs_*.tar.gz
+            dist/localsubs_*.zip
+            dist/checksums.txt
+            dist/extension/*.zip

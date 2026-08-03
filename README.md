@@ -31,10 +31,12 @@ https://github.com/user-attachments/assets/5bf883fb-ed50-43f2-a052-47e8f2c9c415
 
 ## Requirements
 
-- macOS (Apple Silicon or Intel)
-- Chrome / Chromium
+- macOS (Apple Silicon or Intel), or Windows 10/11 x64
+- Chrome / Chromium / Microsoft Edge
 
 ## Installation
+
+### macOS
 
 ```bash
 brew tap aiden1020/localsubs
@@ -49,17 +51,53 @@ localsubs setup            # download the model and install Chrome integration
 
 Then install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb) and start watching.
 
+### Windows
+
+After the package is listed in the WinGet Community repository, install the
+same portable release ZIP without an independent installer or paid code-signing
+certificate:
+
+```powershell
+winget install --id Aiden1020.LocalSubs --exact
+localsubs setup --backend auto
+```
+
+Until that listing is approved, download `localsubs_windows_amd64.zip` from the
+[GitHub release](https://github.com/aiden1020/localsubs/releases), extract it to
+a stable directory such as `%LOCALAPPDATA%\Programs\LocalSubs`, and run:
+
+```powershell
+.\localsubs.exe setup --backend auto
+```
+
+`auto` downloads the pinned CUDA 12.4 runtime when an NVIDIA GPU is available,
+and otherwise downloads the pure CPU runtime. You can force either path with
+`--backend cuda` or `--backend cpu`. The downloaded llama.cpp runtime and model
+are checksum-verified and stored under `%LOCALAPPDATA%\LocalSubs`.
+
+For a manually extracted ZIP, do not move `localsubs.exe` after setup. The
+Chrome/Edge Native Messaging registration points to its absolute path. Re-run
+`localsubs install` after moving or upgrading it. WinGet manages the executable
+location and command alias for WinGet installations.
+
+Then install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb) and start watching.
+
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `localsubs setup` | Download the model and install the browser integration |
+| `localsubs runtime download --backend cpu\|cuda` | Download a checksum-verified Windows llama.cpp runtime |
+| `localsubs runtime status [--json]` | Inspect the installed CPU and CUDA runtimes |
 | `localsubs model download` | Download the translation model |
 | `localsubs install` | Install the Chrome Native Messaging integration |
+| `localsubs uninstall [--browser all]` | Remove browser integrations but preserve downloaded data |
+| `localsubs uninstall --purge --yes` | Remove integrations, models, runtimes, logs, and settings |
 | `localsubs status` | Check the integration, installed helper, runtime, and model |
 | `localsubs doctor` | Diagnose the manifest, launcher, helper, runtime, and model |
 | `localsubs logs` | Print log file paths |
 | `localsubs version` | Print version |
+| `localsubs benchmark --backend cpu\|cuda` | Benchmark llama.cpp with a subtitle JSONL set |
 
 The native helper starts on demand when Chrome connects to it; it is not a
 persistent background service. Use `localsubs status` to validate the installed
@@ -72,6 +110,15 @@ seconds and always stops the temporary process before exiting.
 
 To configure Chromium or Microsoft Edge instead of Chrome, run
 `localsubs setup --browser chromium` or `localsubs setup --browser edge`.
+
+Before removing the Windows package, disconnect browser integrations. Add
+`--purge --yes` only when you also want to delete the downloaded model and
+runtime:
+
+```powershell
+localsubs uninstall
+winget uninstall --id Aiden1020.LocalSubs --exact
+```
 
 ## Model
 
@@ -93,6 +140,26 @@ localsubs install
 ```
 
 The previous GGUF file is not removed automatically. After verifying that the new model works, you may delete the old model from `~/Library/Application Support/LocalSubs/models/`.
+
+On Windows, models are stored in `%LOCALAPPDATA%\LocalSubs\models`.
+
+## Latency benchmark
+
+The repository includes a 100-case subtitle workload in `mini_test_set.jsonl`.
+Run the CPU and NVIDIA CUDA paths independently so the report records startup
+time, per-case latency, P50/P90/P95/P99, throughput, output, and exact match:
+
+```powershell
+localsubs benchmark --backend cpu --dataset mini_test_set.jsonl --output benchmark-results\windows-cpu.json
+localsubs benchmark --backend cuda --dataset mini_test_set.jsonl --output benchmark-results\windows-cuda.json
+```
+
+The JSON report includes the pinned llama.cpp build, model and dataset SHA-256,
+hardware information, GPU offload layer count, and every measured sample.
+
+Windows browser E2E results for Chrome and Edge, including CPU, CUDA, automatic
+fallback, and process cleanup, are recorded in
+[`e2e-results/README.md`](./e2e-results/README.md).
 
 ## Technical Report
 
@@ -116,3 +183,5 @@ If you use LocalSubs in research, please cite:
 ## License
 
 Apache 2.0 — see [LICENSE](./LICENSE).
+
+See also the [privacy statement](./PRIVACY.md) and [security policy](./SECURITY.md).

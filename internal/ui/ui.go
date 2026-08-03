@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -120,7 +121,7 @@ func CompactPath(value string) string {
 	}
 	prefix := home + string(os.PathSeparator)
 	if strings.HasPrefix(value, prefix) {
-		return "~/" + strings.TrimPrefix(value, prefix)
+		return "~/" + filepath.ToSlash(strings.TrimPrefix(value, prefix))
 	}
 	return value
 }

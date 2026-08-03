@@ -4,12 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -28,18 +25,7 @@ func TestBuildDoctorReportReady(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	binary := filepath.Join(root, "localsubs")
-	if err := os.WriteFile(binary, []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	launcher := filepath.Join(root, "launcher")
-	if err := os.WriteFile(
-		launcher,
-		[]byte("#!/bin/sh\nexec '"+binary+"' native-host \"$@\"\n"),
-		0o755,
-	); err != nil {
-		t.Fatal(err)
-	}
+	_, launcher := makeTestHost(t, root)
 	snapshot := readinessSnapshot{
 		NativeHost: nativehost.InstalledStatus{
 			Browser: "chrome", Installed: true, Valid: true,
@@ -99,12 +85,8 @@ func TestBuildDoctorReportFailsRequiredChecksAndSkipsDependents(t *testing.T) {
 }
 
 func TestProbeHelperVersion(t *testing.T) {
-	binary := filepath.Join(t.TempDir(), "localsubs")
-	body := "#!/bin/sh\nprintf 'localsubs 9.8.7  api 1\\n'\n"
-	if err := os.WriteFile(binary, []byte(body), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	version, apiVersion, err := probeHelperVersion(binary)
+	t.Setenv(testModeEnvironment, "version")
+	version, apiVersion, err := probeHelperVersion(os.Args[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,47 +204,8 @@ func TestRunDeepInferenceProbeTimesOut(t *testing.T) {
 
 func prepareFakeLlamaServer(t *testing.T) (string, string) {
 	t.Helper()
-	t.Setenv("LOCALSUBS_TEST_LLAMA_SERVER", "1")
-	t.Setenv("LOCALSUBS_TEST_BINARY", os.Args[0])
+	t.Setenv(testModeEnvironment, "llama-server")
 	portFile := filepath.Join(t.TempDir(), "port")
 	t.Setenv("LOCALSUBS_TEST_PORT_FILE", portFile)
-	launcher := filepath.Join(t.TempDir(), "llama-server")
-	body := "#!/bin/sh\nexec \"$LOCALSUBS_TEST_BINARY\" -test.run=^TestDoctorFakeLlamaServer$ -- \"$@\"\n"
-	if err := os.WriteFile(launcher, []byte(body), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	return launcher, portFile
-}
-
-func TestDoctorFakeLlamaServer(t *testing.T) {
-	if os.Getenv("LOCALSUBS_TEST_LLAMA_SERVER") != "1" {
-		return
-	}
-	port := ""
-	for index, argument := range os.Args {
-		if argument == "--port" && index+1 < len(os.Args) {
-			port = os.Args[index+1]
-			break
-		}
-	}
-	if _, err := strconv.Atoi(port); err != nil {
-		os.Exit(2)
-	}
-	if err := os.WriteFile(os.Getenv("LOCALSUBS_TEST_PORT_FILE"), []byte(port), 0o600); err != nil {
-		os.Exit(2)
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(writer http.ResponseWriter, _ *http.Request) {
-		writer.WriteHeader(http.StatusOK)
-	})
-	mux.HandleFunc("/completion", func(writer http.ResponseWriter, _ *http.Request) {
-		if delay, err := time.ParseDuration(os.Getenv("LOCALSUBS_TEST_COMPLETION_DELAY")); err == nil {
-			time.Sleep(delay)
-		}
-		writer.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(writer, `{"content":"你好"}`)
-	})
-	if err := http.ListenAndServe("127.0.0.1:"+port, mux); err != nil {
-		os.Exit(2)
-	}
+	return os.Args[0], portFile
 }

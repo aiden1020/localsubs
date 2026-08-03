@@ -34,3 +34,39 @@ func TestRootUsageIncludesUserFacingModelStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeInvocationRecognizesBrowserNativeHostArgs(t *testing.T) {
+	args, browserInvocation := normalizeInvocation([]string{
+		"chrome-extension://abcdefghijklmnopabcdefghijklmnop/",
+		"--parent-window=0",
+	})
+	if !browserInvocation || len(args) != 1 || args[0] != "native-host" {
+		t.Fatalf("unexpected normalized invocation: %#v, browser=%v", args, browserInvocation)
+	}
+	versionArgs, browserInvocation := normalizeInvocation([]string{"version"})
+	if browserInvocation || len(versionArgs) != 1 || versionArgs[0] != "version" {
+		t.Fatalf("normal CLI invocation changed: %#v, browser=%v", versionArgs, browserInvocation)
+	}
+}
+
+func TestDefaultBackendModeSupportsProcessOverride(t *testing.T) {
+	t.Setenv("LOCALSUBS_BACKEND", " cpu ")
+	if got := defaultBackendMode(); got != "cpu" {
+		t.Fatalf("defaultBackendMode() = %q, want cpu", got)
+	}
+	t.Setenv("LOCALSUBS_BACKEND", "")
+	if got := defaultBackendMode(); got != "auto" {
+		t.Fatalf("defaultBackendMode() = %q, want auto", got)
+	}
+}
+
+func TestDefaultFakeBackendRequiresExplicitE2EEnvironment(t *testing.T) {
+	t.Setenv("LOCALSUBS_E2E_FAKE_BACKEND", "1")
+	if !defaultFakeBackend() {
+		t.Fatal("defaultFakeBackend() = false, want true")
+	}
+	t.Setenv("LOCALSUBS_E2E_FAKE_BACKEND", "true")
+	if defaultFakeBackend() {
+		t.Fatal("defaultFakeBackend() accepted a value other than 1")
+	}
+}

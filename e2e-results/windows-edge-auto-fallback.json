@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-03T17:03:53.055Z",
+  "browser": "edge",
+  "browserExecutable": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "extensionID": "dpacileladlkfgdjbdjdjhgnepicejjb",
+  "nativeHost": "localsubs_helper",
+  "requestedBackend": "auto",
+  "expectedBackend": "cpu",
+  "fakeBackend": false,
+  "simulatedCudaFailure": true,
+  "headless": true,
+  "passed": true,
+  "cleanupPassed": true,
+  "browserVersion": "Edg/151.0.4129.59",
+  "ui": {
+    "statusClass": "service-status is-ready",
+    "title": "本機模型已就緒",
+    "detail": "回應時間 1 ms 透過 native helper."
+  },
+  "actualBackend": "cpu",
+  "health": {
+    "ok": true,
+    "latencyMs": 76,
+    "translation": "準備好了",
+    "transport": "native",
+    "apiVersion": "1",
+    "helperVersion": "0.4.0",
+    "backend": {
+      "kind": "llama.cpp-cpu",
+      "ready": true,
+      "owned": true
+    },
+    "model": {
+      "id": "localsubs-en-zh-tw-0.6b",
+      "version": "2026.07",
+      "status": "ready"
+    }
+  },
+  "translation": {
+    "ok": true,
+    "translation": "我馬上回來",
+    "cache": "miss",
+    "superseded": false,
+    "model": "localsubs-en-zh-tw-0.6b",
+    "transport": "native"
+  },
+  "processesObserved": {
+    "helper": [
+      19376
+    ],
+    "runtime": [
+      15340
+    ]
+  },
+  "durationMs": 3823,
+  "browserCloseForced": false,
+  "cleanup": {
+    "helper": [],
+    "runtime": []
+  }
+}

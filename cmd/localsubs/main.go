@@ -36,7 +36,8 @@ func (e silentError) Error() string { return e.cause.Error() }
 func (e silentError) Unwrap() error { return e.cause }
 
 func main() {
-	err := run(os.Args[1:])
+	args, browserInvocation := normalizeInvocation(os.Args[1:])
+	err := run(args)
 	if err == nil {
 		return
 	}
@@ -47,10 +48,17 @@ func main() {
 	if !errors.As(err, &silent) {
 		ui.PrintError(err)
 	}
-	if len(os.Args) > 1 && os.Args[1] == "native-host" {
+	if browserInvocation || len(args) > 0 && args[0] == "native-host" {
 		writeNativeHostError(err)
 	}
 	os.Exit(1)
+}
+
+func normalizeInvocation(args []string) ([]string, bool) {
+	if nativehost.IsBrowserInvocation(args) {
+		return []string{"native-host"}, true
+	}
+	return args, false
 }
 
 func run(args []string) error {
@@ -62,6 +70,8 @@ func run(args []string) error {
 	// User-facing commands
 	case "install":
 		return install(args[1:])
+	case "uninstall":
+		return uninstallCommand(args[1:])
 	case "setup":
 		return setup(args[1:])
 	case "status":
@@ -70,6 +80,10 @@ func run(args []string) error {
 		return doctor(args[1:])
 	case "model":
 		return modelCommand(args[1:])
+	case "runtime":
+		return runtimeCommand(args[1:])
+	case "benchmark":
+		return benchmarkCommand(args[1:])
 	case "logs":
 		return logs()
 	case "version":
@@ -104,8 +118,10 @@ func printUsageTo(writer io.Writer) {
 	fmt.Fprintln(writer, ui.Bold("Setup:"))
 	setup := [][2]string{
 		{"setup [--browser ...]", "Download the model and install browser integration"},
+		{"runtime download --backend ...", "Download the Windows CPU or CUDA runtime"},
 		{"model download", "Download the translation model (~350 MB)"},
 		{"install", "Install the Chrome integration"},
+		{"uninstall [--browser all]", "Remove browser integration and optionally local data"},
 	}
 	for _, c := range setup {
 		fmt.Fprintf(writer, "  %-32s%s\n", c[0], ui.Dim(c[1]))
@@ -113,6 +129,7 @@ func printUsageTo(writer io.Writer) {
 	fmt.Fprintln(writer)
 	fmt.Fprintln(writer, ui.Bold("Commands:"))
 	cmds := [][2]string{
+		{"benchmark --backend cpu|cuda", "Benchmark llama.cpp with a JSONL subtitle set"},
 		{"status [--json]", "Check whether LocalSubs is ready"},
 		{"doctor [--json] [--deep]", "Diagnose setup and inference problems"},
 		{"model status [--json]", "Inspect the installed model"},
@@ -132,11 +149,23 @@ func parseFlags(flags *flag.FlagSet, args []string) error {
 	return silentError{err}
 }
 
-func addBackendFlags(flags *flag.FlagSet) (*bool, *string, *string) {
-	fakeBackend := flags.Bool("fake-backend", false, "use in-process fake backend")
+func addBackendFlags(flags *flag.FlagSet) (*bool, *string, *string, *string) {
+	fakeBackend := flags.Bool("fake-backend", defaultFakeBackend(), "use in-process fake backend")
 	backendURL := flags.String("backend-url", "", "existing llama-server URL for development")
 	modelPath := flags.String("model", runtime.DefaultModelFilename, "GGUF model path")
-	return fakeBackend, backendURL, modelPath
+	backendMode := flags.String("backend", defaultBackendMode(), "inference backend: auto, cpu, or cuda")
+	return fakeBackend, backendURL, modelPath, backendMode
+}
+
+func defaultFakeBackend() bool {
+	return os.Getenv("LOCALSUBS_E2E_FAKE_BACKEND") == "1"
+}
+
+func defaultBackendMode() string {
+	if value := strings.TrimSpace(os.Getenv("LOCALSUBS_BACKEND")); value != "" {
+		return value
+	}
+	return string(runtime.BackendAuto)
 }
 
 func serve(args []string) error {
@@ -145,7 +174,7 @@ func serve(args []string) error {
 	port := flags.Int("port", 8765, "helper bind port")
 	token := flags.String("token", config.DefaultLocalHelperToken, "local bearer token")
 	allowedOrigins := flags.String("allow-origin", "", "comma-separated allowed origins")
-	fakeBackend, backendURL, modelPath := addBackendFlags(flags)
+	fakeBackend, backendURL, modelPath, backendMode := addBackendFlags(flags)
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
@@ -158,6 +187,7 @@ func serve(args []string) error {
 		fakeBackend: *fakeBackend,
 		backendURL:  *backendURL,
 		modelPath:   *modelPath,
+		backendMode: *backendMode,
 	})
 	if err != nil {
 		return err
@@ -188,7 +218,7 @@ func serve(args []string) error {
 
 func nativeHost(args []string) error {
 	flags := flag.NewFlagSet("native-host", flag.ContinueOnError)
-	fakeBackend, backendURL, modelPath := addBackendFlags(flags)
+	fakeBackend, backendURL, modelPath, backendMode := addBackendFlags(flags)
 	if err := parseFlags(flags, args); err != nil {
 		return err
 	}
@@ -214,6 +244,7 @@ func nativeHost(args []string) error {
 			fakeBackend: *fakeBackend,
 			backendURL:  *backendURL,
 			modelPath:   *modelPath,
+			backendMode: *backendMode,
 		})
 		if err != nil {
 			loading.SetError(err)
@@ -291,6 +322,7 @@ type backendOptions struct {
 	fakeBackend bool
 	backendURL  string
 	modelPath   string
+	backendMode string
 }
 
 func buildTranslator(ctx context.Context, options backendOptions) (runtime.Translator, runtime.Profile, func(), error) {
@@ -302,25 +334,39 @@ func buildTranslator(ctx context.Context, options backendOptions) (runtime.Trans
 	case options.fakeBackend:
 		return &runtime.StaticTranslator{Profile: profile, Translation: "我馬上回來。", Ready: true}, profile, cleanup, nil
 	case options.backendURL != "":
-		return runtime.NewLlamaClient(options.backendURL, profile, false), profile, cleanup, nil
+		return runtime.NewLlamaClientWithBackend(options.backendURL, profile, false, "llama.cpp-external"), profile, cleanup, nil
 	default:
-		backendPort, err := runtime.AllocateLocalPort()
+		mode, err := runtime.ParseBackendMode(options.backendMode)
 		if err != nil {
 			return nil, profile, cleanup, err
 		}
-		command := runtime.LlamaServerCommand{
-			Binary:  "llama-server",
-			Model:   profile.ModelPath,
-			Host:    "127.0.0.1",
-			Port:    backendPort,
-			Profile: profile,
-		}
-		started, err := runtime.StartManagedBackend(ctx, command, 60*time.Second)
+		candidates, err := runtime.DiscoverRuntimeCandidates(mode)
 		if err != nil {
 			return nil, profile, cleanup, err
 		}
-		cleanup = func() { started.Stop() }
-		return runtime.NewLlamaClient(started.BaseURL, profile, true), profile, cleanup, nil
+		var startupErrors []error
+		for _, candidate := range candidates {
+			candidateProfile := profile
+			if candidate.Backend == runtime.BackendCPU {
+				candidateProfile.GPULayers = 0
+			}
+			backendPort, portErr := runtime.AllocateLocalPort()
+			if portErr != nil {
+				return nil, profile, cleanup, portErr
+			}
+			started, startErr := runtime.StartManagedBackend(ctx, runtime.LlamaServerCommand{
+				Binary: candidate.Path, Model: candidateProfile.ModelPath,
+				Host: "127.0.0.1", Port: backendPort, Profile: candidateProfile,
+			}, 60*time.Second)
+			if startErr != nil {
+				startupErrors = append(startupErrors, fmt.Errorf("%s runtime: %w", candidate.Backend, startErr))
+				continue
+			}
+			cleanup = func() { started.Stop() }
+			kind := "llama.cpp-" + string(candidate.Backend)
+			return runtime.NewLlamaClientWithBackend(started.BaseURL, candidateProfile, true, kind), candidateProfile, cleanup, nil
+		}
+		return nil, profile, cleanup, errors.Join(startupErrors...)
 	}
 }
 

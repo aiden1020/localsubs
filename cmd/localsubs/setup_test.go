@@ -21,7 +21,7 @@ func TestSetupHelpAndBrowserValidation(t *testing.T) {
 func TestRunSetupDownloadsBeforeInstalling(t *testing.T) {
 	events := make([]string, 0, 2)
 	var installArgs []string
-	err := runSetup("edge", "extension", setupDependencies{
+	err := runSetup("edge", "extension", "auto", setupDependencies{
 		downloadModel: func() error {
 			events = append(events, "download")
 			return nil
@@ -47,7 +47,7 @@ func TestRunSetupDownloadsBeforeInstalling(t *testing.T) {
 func TestRunSetupStopsWhenDownloadFails(t *testing.T) {
 	downloadErr := errors.New("download failed")
 	installed := false
-	err := runSetup("chrome", "extension", setupDependencies{
+	err := runSetup("chrome", "extension", "auto", setupDependencies{
 		downloadModel: func() error { return downloadErr },
 		installIntegration: func([]string) error {
 			installed = true

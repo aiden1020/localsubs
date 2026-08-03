@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"os/exec"
 	"strconv"
 	"time"
@@ -37,6 +36,8 @@ func (c LlamaServerCommand) Args() []string {
 type ManagedBackend struct {
 	BaseURL string
 	cmd     *exec.Cmd
+	done    chan struct{}
+	waitErr error
 }
 
 func AllocateLocalPort() (int, error) {
@@ -64,7 +65,12 @@ func StartManagedBackend(ctx context.Context, command LlamaServerCommand, readyT
 	backend := &ManagedBackend{
 		BaseURL: fmt.Sprintf("http://%s:%d", command.Host, command.Port),
 		cmd:     cmd,
+		done:    make(chan struct{}),
 	}
+	go func() {
+		backend.waitErr = cmd.Wait()
+		close(backend.done)
+	}()
 	if err := backend.waitReady(ctx, readyTimeout); err != nil {
 		_ = backend.Stop()
 		return nil, err
@@ -77,8 +83,8 @@ func (b *ManagedBackend) Stop() error {
 		return nil
 	}
 	_ = b.cmd.Process.Kill() // ignore error: process may already be dead
-	_ = b.cmd.Wait()         // always reap to prevent orphaned children
-	return nil
+	<-b.done                 // always reap to prevent orphaned children
+	return b.waitErr
 }
 
 func (b *ManagedBackend) waitReady(ctx context.Context, timeout time.Duration) error {
@@ -88,6 +94,14 @@ func (b *ManagedBackend) waitReady(ctx context.Context, timeout time.Duration) e
 	deadline := time.Now().Add(timeout)
 	client := http.Client{Timeout: time.Second}
 	for time.Now().Before(deadline) {
+		select {
+		case <-b.done:
+			if b.waitErr != nil {
+				return fmt.Errorf("llama-server exited before becoming ready: %w", b.waitErr)
+			}
+			return fmt.Errorf("llama-server exited before becoming ready")
+		default:
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.BaseURL+"/health", nil)
 		if err != nil {
 			return err
@@ -102,6 +116,11 @@ func (b *ManagedBackend) waitReady(ctx context.Context, timeout time.Duration) e
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-b.done:
+			if b.waitErr != nil {
+				return fmt.Errorf("llama-server exited before becoming ready: %w", b.waitErr)
+			}
+			return fmt.Errorf("llama-server exited before becoming ready")
 		case <-time.After(200 * time.Millisecond):
 		}
 	}
@@ -109,19 +128,5 @@ func (b *ManagedBackend) waitReady(ctx context.Context, timeout time.Duration) e
 }
 
 func resolveExecutable(binary string) (string, error) {
-	if path, err := exec.LookPath(binary); err == nil {
-		return path, nil
-	}
-	if binary != "llama-server" {
-		return "", fmt.Errorf("%s not found on PATH", binary)
-	}
-	for _, candidate := range []string{
-		"/opt/homebrew/bin/llama-server",
-		"/usr/local/bin/llama-server",
-	} {
-		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
-			return candidate, nil
-		}
-	}
-	return "", fmt.Errorf("llama-server not found; install it with `brew install llama.cpp`")
+	return platformResolveExecutable(binary)
 }
