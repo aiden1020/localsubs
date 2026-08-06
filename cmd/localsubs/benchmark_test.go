@@ -8,13 +8,22 @@ import (
 )
 
 func TestLoadMiniBenchmarkSetAndParsePrompts(t *testing.T) {
-	path := filepath.Join("..", "..", "mini_test_set.jsonl")
-	cases, err := loadBenchmarkCases(path, 0)
+	cases, datasetPath, datasetSHA256, err := loadBenchmarkDataset("", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if datasetPath != builtInBenchmarkDatasetPath {
+		t.Fatalf("dataset path = %q, want %q", datasetPath, builtInBenchmarkDatasetPath)
+	}
 	if len(cases) != 100 {
 		t.Fatalf("mini test set has %d cases, want 100", len(cases))
+	}
+	fileSHA256, err := fileSHA256(filepath.Join("..", "..", "mini_test_set.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if datasetSHA256 != fileSHA256 {
+		t.Fatalf("embedded dataset SHA-256 = %q, repository dataset = %q", datasetSHA256, fileSHA256)
 	}
 	request, expected, err := benchmarkRequest(cases[0])
 	if err != nil {
@@ -22,6 +31,17 @@ func TestLoadMiniBenchmarkSetAndParsePrompts(t *testing.T) {
 	}
 	if request.CurrentText != "There are multiple universes." || len(request.ContextLines) != 1 || expected != "而是存在多重宇宙" {
 		t.Fatalf("unexpected parsed benchmark case: %#v, expected %q", request, expected)
+	}
+}
+
+func TestLoadCustomBenchmarkDataset(t *testing.T) {
+	path := filepath.Join("..", "..", "mini_test_set.jsonl")
+	cases, datasetPath, _, err := loadBenchmarkDataset(path, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if datasetPath != path || len(cases) != 1 {
+		t.Fatalf("custom dataset path = %q, cases = %d", datasetPath, len(cases))
 	}
 }
 

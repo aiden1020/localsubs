@@ -25,7 +25,7 @@ go vet ./...
 goreleaser check
 goreleaser release --snapshot --clean
 npm run smoke:goreleaser
-npm run generate:winget -- --version 0.4.0 --installer dist/localsubs_windows_amd64.zip --output dist/winget
+npm run generate:winget -- --version 0.4.1 --installer dist/localsubs_windows_amd64.zip --output dist/winget
 git diff --check
 ```
 

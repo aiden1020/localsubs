@@ -3,6 +3,19 @@
 All notable user-facing changes are documented in this file. LocalSubs uses
 semantic versioning.
 
+## [0.4.1] - 2026-08-06
+
+### Fixed
+
+- Bundle the 100-case benchmark dataset into the CLI so installed releases can
+  run `localsubs benchmark` without a repository checkout or separate file.
+
+### Changed
+
+- Detect Windows and macOS on the extension options page and show the matching
+  WinGet or Homebrew installation instructions. Unsupported platforms no
+  longer display commands that cannot work there.
+
 ## [0.4.0] - 2026-08-04
 
 ### Added
@@ -27,4 +40,5 @@ semantic versioning.
   Windows implementation.
 - Setup selects the best available Windows backend with `--backend auto`.
 
+[0.4.1]: https://github.com/aiden1020/localsubs/releases/tag/v0.4.1
 [0.4.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.4.0

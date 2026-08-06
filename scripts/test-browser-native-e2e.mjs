@@ -283,13 +283,18 @@ async function run() {
         timeout: 30000
       });
     }
+    const expectedSetupCommand = options.browser === "edge"
+      ? "localsubs setup --browser edge --backend auto"
+      : "localsubs setup --backend auto";
     report.ui = await poll(
       () => page.evaluate(() => ({
         statusClass: document.querySelector("#service-status")?.className || "",
         title: document.querySelector("#service-status-title")?.textContent || "",
-        detail: document.querySelector("#service-status-detail")?.textContent || ""
+        detail: document.querySelector("#service-status-detail")?.textContent || "",
+        setupCommand: document.querySelector("#setup-command")?.textContent || ""
       })),
-      (state) => state.statusClass.includes("is-ready"),
+      (state) => state.statusClass.includes("is-ready")
+        && state.setupCommand === expectedSetupCommand,
       options.timeoutMs,
       1000
     );
@@ -315,7 +320,8 @@ async function run() {
     report.ui = await page.evaluate(() => ({
       statusClass: document.querySelector("#service-status")?.className || "",
       title: document.querySelector("#service-status-title")?.textContent || "",
-      detail: document.querySelector("#service-status-detail")?.textContent || ""
+      detail: document.querySelector("#service-status-detail")?.textContent || "",
+      setupCommand: document.querySelector("#setup-command")?.textContent || ""
     }));
     if (!health?.ok || health.apiVersion !== "1" || !health.backend?.ready) {
       throw new Error(`unexpected health response: ${JSON.stringify(health)}`);
@@ -350,7 +356,8 @@ async function run() {
       report.ui = await page.evaluate(() => ({
         statusClass: document.querySelector("#service-status")?.className || "",
         title: document.querySelector("#service-status-title")?.textContent || "",
-        detail: document.querySelector("#service-status-detail")?.textContent || ""
+        detail: document.querySelector("#service-status-detail")?.textContent || "",
+        setupCommand: document.querySelector("#setup-command")?.textContent || ""
       })).catch(() => report.ui);
     }
     report.browserErrors = browserErrors;

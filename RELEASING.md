@@ -29,7 +29,7 @@ its Windows archive:
 ```bash
 goreleaser release --snapshot --clean
 npm run smoke:goreleaser
-npm run generate:winget -- --version 0.4.0 \
+npm run generate:winget -- --version 0.4.1 \
   --installer dist/localsubs_windows_amd64.zip \
   --output dist/winget
 ```
@@ -43,9 +43,9 @@ After reviewing the diff and local RC, commit the release, push it, and create
 the matching annotated tag:
 
 ```bash
-git tag -a v0.4.0 -m "LocalSubs v0.4.0"
+git tag -a v0.4.1 -m "LocalSubs v0.4.1"
 git push origin main
-git push origin v0.4.0
+git push origin v0.4.1
 ```
 
 The tag workflow waits for both verification jobs, publishes GitHub and
@@ -59,7 +59,7 @@ and sandbox-test the directory before submitting it to
 `microsoft/winget-pkgs`:
 
 ```powershell
-winget validate .\winget-manifests-v0.4.0
+winget validate .\winget-manifests-v0.4.1
 ```
 
 The first package submission requires a normal community-repository pull

@@ -169,6 +169,49 @@ h2 {
   margin-top: 16px;
 }
 
+.platform-status,
+.unsupported-platform {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.platform-status p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.platform-status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(245, 184, 75, 0.14);
+}
+
+.unsupported-platform {
+  justify-content: flex-start;
+}
+
+.setup-grid[hidden],
+.unsupported-platform[hidden] {
+  display: none;
+}
+
+.install-guide-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .setup-card {
   display: grid;
   grid-template-columns: auto 1fr;

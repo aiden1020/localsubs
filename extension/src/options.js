@@ -1,13 +1,25 @@
 import { DEFAULT_SETTINGS, migrateStoredSettings } from "./core/settings.js";
+import {
+  detectSetupBrowser,
+  detectSetupPlatform,
+  getPlatformSetup
+} from "./core/platform-setup.js";
 
 const I18N = {
   "zh-Hant": {
     setupTitle: "設定",
     intro: "即時、完全本機、免費且開源的串流字幕翻譯。",
+    detectingPlatform: "正在偵測作業系統...",
+    platformWindows: "已偵測到 Windows。請在 PowerShell 執行以下指令。",
+    platformMacOS: "已偵測到 macOS。請在 Terminal 執行以下指令。",
+    platformUnsupported: "此平台尚未支援。LocalSubs CLI 目前支援 macOS 與 Windows 10/11 x64。",
+    viewInstallGuide: "查看安裝說明",
     installRuntimeTitle: "安裝本機 runtime",
-    installRuntimeText: "安裝 LocalSubs CLI。字幕文字不會送到雲端。",
+    installRuntimeTextWindows: "透過 WinGet 安裝 LocalSubs CLI。字幕文字不會送到雲端。",
+    installRuntimeTextMacOS: "透過 Homebrew 安裝 LocalSubs CLI。字幕文字不會送到雲端。",
     oneTimeSetupTitle: "完成一次性設定",
-    oneTimeSetupText: "下載翻譯模型並連接 Chrome。這兩個指令只需要執行一次。",
+    oneTimeSetupTextWindows: "自動選擇 NVIDIA CUDA 或 CPU runtime、下載模型並連接目前的瀏覽器。只需要執行一次。",
+    oneTimeSetupTextMacOS: "下載翻譯模型並連接目前的瀏覽器。只需要執行一次。",
     checkAndWatchTitle: "檢查並開始使用",
     checkAndWatchText: "確認本機模型可用，然後開啟支援的串流頁面並啟用英文字幕。",
     copy: "Copy",
@@ -45,10 +57,17 @@ const I18N = {
   en: {
     setupTitle: "Setup",
     intro: "Real-time, fully local, free and open source subtitle translation for streaming video.",
+    detectingPlatform: "Detecting your operating system...",
+    platformWindows: "Windows detected. Run these commands in PowerShell.",
+    platformMacOS: "macOS detected. Run these commands in Terminal.",
+    platformUnsupported: "This platform is not supported yet. The LocalSubs CLI currently supports macOS and Windows 10/11 x64.",
+    viewInstallGuide: "View installation guide",
     installRuntimeTitle: "Install the local runtime",
-    installRuntimeText: "Install the LocalSubs CLI. Subtitle text is never sent to the cloud.",
+    installRuntimeTextWindows: "Install the LocalSubs CLI with WinGet. Subtitle text is never sent to the cloud.",
+    installRuntimeTextMacOS: "Install the LocalSubs CLI with Homebrew. Subtitle text is never sent to the cloud.",
     oneTimeSetupTitle: "Finish one-time setup",
-    oneTimeSetupText: "Download the translation model and connect Chrome. These commands only need to run once.",
+    oneTimeSetupTextWindows: "Select the NVIDIA CUDA or CPU runtime automatically, download the model, and connect this browser. Run this once.",
+    oneTimeSetupTextMacOS: "Download the translation model and connect this browser. Run this once.",
     checkAndWatchTitle: "Check and start watching",
     checkAndWatchText: "Confirm the local model is available, then open a supported streaming page with English subtitles enabled.",
     copy: "Copy",
@@ -93,6 +112,15 @@ const statusDetail = document.getElementById("service-status-detail");
 const checkServiceButton = document.getElementById("check-service");
 const warmupServiceButton = document.getElementById("warmup-service");
 const openSupportedSiteButton = document.getElementById("open-supported-site");
+const platformStatusText = document.getElementById("platform-status-text");
+const setupGrid = document.getElementById("setup-grid");
+const unsupportedPlatform = document.getElementById("unsupported-platform");
+const installRuntimeText = document.getElementById("install-runtime-text");
+const oneTimeSetupText = document.getElementById("one-time-setup-text");
+const installShellLabel = document.getElementById("install-shell-label");
+const setupShellLabel = document.getElementById("setup-shell-label");
+const installCommand = document.getElementById("install-command");
+const setupCommand = document.getElementById("setup-command");
 
 const fields = {
   translationEnabled: document.getElementById("translation-enabled"),
@@ -131,6 +159,43 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-language]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.language === currentLanguage);
   });
+}
+
+function applyPlatform({ platform, browser }) {
+  const setup = getPlatformSetup(platform, browser);
+  if (!setup) {
+    platformStatusText.dataset.i18n = "platformUnsupported";
+    setupGrid.hidden = true;
+    unsupportedPlatform.hidden = false;
+    applyLanguage(currentLanguage);
+    return;
+  }
+
+  platformStatusText.dataset.i18n = setup.platformTextKey;
+  installRuntimeText.dataset.i18n = setup.installTextKey;
+  oneTimeSetupText.dataset.i18n = setup.setupTextKey;
+  installShellLabel.textContent = setup.shellLabel;
+  setupShellLabel.textContent = setup.shellLabel;
+  installCommand.textContent = setup.installCommand;
+  setupCommand.textContent = setup.setupCommand;
+  unsupportedPlatform.hidden = true;
+  setupGrid.hidden = false;
+  applyLanguage(currentLanguage);
+}
+
+async function resolveSetupEnvironment() {
+  try {
+    const platformInfo = await chrome.runtime.getPlatformInfo();
+    return {
+      platform: detectSetupPlatform(platformInfo, navigator),
+      browser: detectSetupBrowser(navigator)
+    };
+  } catch {
+    return {
+      platform: detectSetupPlatform({}, navigator),
+      browser: detectSetupBrowser(navigator)
+    };
+  }
 }
 
 function updateOutputs(settings) {
@@ -304,6 +369,8 @@ openSupportedSiteButton.addEventListener("click", () => {
 });
 
 applyLanguage(DEFAULT_SETTINGS.optionsLanguage);
+
+void resolveSetupEnvironment().then(applyPlatform);
 
 void loadSettings().then(() => {
   void checkService();

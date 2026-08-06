@@ -145,17 +145,19 @@ On Windows, models are stored in `%LOCALAPPDATA%\LocalSubs\models`.
 
 ## Latency benchmark
 
-The repository includes a 100-case subtitle workload in `mini_test_set.jsonl`.
-Run the CPU and NVIDIA CUDA paths independently so the report records startup
-time, per-case latency, P50/P90/P95/P99, throughput, output, and exact match:
+The CLI includes a built-in 100-case subtitle workload, so installed releases
+do not need a separate dataset file. Run the CPU and NVIDIA CUDA paths
+independently so the report records startup time, per-case latency,
+P50/P90/P95/P99, throughput, output, and exact match:
 
 ```powershell
-localsubs benchmark --backend cpu --dataset mini_test_set.jsonl --output benchmark-results\windows-cpu.json
-localsubs benchmark --backend cuda --dataset mini_test_set.jsonl --output benchmark-results\windows-cuda.json
+localsubs benchmark --backend cpu --output benchmark-results\windows-cpu.json
+localsubs benchmark --backend cuda --output benchmark-results\windows-cuda.json
 ```
 
 The JSON report includes the pinned llama.cpp build, model and dataset SHA-256,
 hardware information, GPU offload layer count, and every measured sample.
+Pass `--dataset <path>` to benchmark a custom JSONL workload instead.
 
 Windows browser E2E results for Chrome and Edge, including CPU, CUDA, automatic
 fallback, and process cleanup, are recorded in

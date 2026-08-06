@@ -32,15 +32,24 @@
         </div>
       </section>
 
-      <section class="setup-grid" aria-label="Setup steps">
+      <div class="platform-status" aria-live="polite">
+        <span class="platform-status-dot" aria-hidden="true"></span>
+        <p id="platform-status-text" data-i18n="detectingPlatform">正在偵測作業系統...</p>
+      </div>
+
+      <section id="unsupported-platform" class="unsupported-platform" hidden>
+        <a class="secondary-button install-guide-link" href="https://github.com/aiden1020/localsubs#installation" target="_blank" rel="noopener" data-i18n="viewInstallGuide">查看安裝說明</a>
+      </section>
+
+      <section id="setup-grid" class="setup-grid" aria-label="Setup steps" hidden>
         <article class="setup-card">
           <div class="step-marker">1</div>
           <div class="step-body">
             <h2 data-i18n="installRuntimeTitle">安裝本機 runtime</h2>
-            <p data-i18n="installRuntimeText">安裝 LocalSubs CLI。字幕文字不會送到雲端。</p>
+            <p id="install-runtime-text">安裝 LocalSubs CLI。字幕文字不會送到雲端。</p>
             <div class="code-block">
               <div class="code-toolbar">
-                <span>Shell</span>
+                <span id="install-shell-label">Shell</span>
                 <button class="copy-button" type="button" data-copy-target="install-command" data-i18n="copy">Copy</button>
               </div>
               <pre><code id="install-command">brew tap aiden1020/localsubs
@@ -54,14 +63,13 @@ brew install localsubs</code></pre>
           <div class="step-marker">2</div>
           <div class="step-body">
             <h2 data-i18n="oneTimeSetupTitle">完成一次性設定</h2>
-            <p data-i18n="oneTimeSetupText">下載翻譯模型並連接 Chrome。這兩個指令只需要執行一次。</p>
+            <p id="one-time-setup-text">下載翻譯模型並連接 Chrome。只需要執行一次。</p>
             <div class="code-block">
               <div class="code-toolbar">
-                <span>Shell</span>
+                <span id="setup-shell-label">Shell</span>
                 <button class="copy-button" type="button" data-copy-target="setup-command" data-i18n="copy">Copy</button>
               </div>
-              <pre><code id="setup-command">localsubs model download   # ~350 MB, one-time
-localsubs install           # connect to Chrome</code></pre>
+              <pre><code id="setup-command">localsubs setup</code></pre>
             </div>
           </div>
         </article>

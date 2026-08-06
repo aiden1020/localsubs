@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -16,11 +18,13 @@ import (
 	"strings"
 	"time"
 
+	embeddeddata "localsubs"
 	localruntime "localsubs/internal/runtime"
 	"localsubs/internal/ui"
 )
 
 const benchmarkSchemaVersion = 1
+const builtInBenchmarkDatasetPath = "builtin:mini_test_set.jsonl"
 
 type benchmarkMessage struct {
 	Role    string `json:"role"`
@@ -89,7 +93,7 @@ func benchmarkCommand(args []string) error {
 	backendValue := flags.String("backend", "auto", "inference backend: auto, cpu, or cuda")
 	runtimePath := flags.String("runtime", "", "explicit llama-server executable")
 	modelPath := flags.String("model", localruntime.DefaultModelFilename, "GGUF model path")
-	datasetPath := flags.String("dataset", "mini_test_set.jsonl", "JSONL benchmark dataset")
+	datasetPath := flags.String("dataset", "", "custom JSONL benchmark dataset (default: built-in 100-case workload)")
 	outputPath := flags.String("output", "", "write the full JSON report to this path")
 	warmup := flags.Int("warmup", 3, "warmup requests before measurement")
 	limit := flags.Int("limit", 0, "maximum measured samples; 0 uses all")
@@ -110,7 +114,7 @@ func benchmarkCommand(args []string) error {
 	if err != nil {
 		return err
 	}
-	cases, err := loadBenchmarkCases(*datasetPath, *limit)
+	cases, resolvedDatasetPath, datasetSHA256, err := loadBenchmarkDataset(*datasetPath, *limit)
 	if err != nil {
 		return err
 	}
@@ -121,7 +125,10 @@ func benchmarkCommand(args []string) error {
 	if info, err := os.Stat(resolvedModel); err != nil || info.IsDir() {
 		return fmt.Errorf("benchmark model not found: %s", resolvedModel)
 	}
-	report, err := executeBenchmark(candidate, resolvedModel, *datasetPath, cases, *warmup, *startupTimeout, *requestTimeout)
+	report, err := executeBenchmark(
+		candidate, resolvedModel, resolvedDatasetPath, datasetSHA256,
+		cases, *warmup, *startupTimeout, *requestTimeout,
+	)
 	if reportErr := writeBenchmarkReport(report, *outputPath, *jsonMode); reportErr != nil {
 		return reportErr
 	}
@@ -153,6 +160,7 @@ func executeBenchmark(
 	candidate localruntime.RuntimeCandidate,
 	modelPath string,
 	datasetPath string,
+	datasetSHA256 string,
 	cases []benchmarkCase,
 	warmup int,
 	startupTimeout time.Duration,
@@ -162,11 +170,11 @@ func executeBenchmark(
 		SchemaVersion: benchmarkSchemaVersion, GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		HelperVersion: localruntime.HelperVersion, Backend: candidate.Backend,
 		RuntimePath: ui.CompactPath(candidate.Path), ModelPath: ui.CompactPath(modelPath), DatasetPath: datasetPath,
+		DatasetSHA256:    datasetSHA256,
 		WarmupIterations: warmup, System: collectBenchmarkSystem(),
 	}
 	report.RuntimeVersion = executableVersion(candidate.Path)
 	report.ModelSHA256, _ = fileSHA256(modelPath)
-	report.DatasetSHA256, _ = fileSHA256(datasetPath)
 
 	profile := localruntime.DefaultProfile()
 	profile.ModelPath = modelPath
@@ -237,14 +245,29 @@ func executeBenchmark(
 	return report, nil
 }
 
-func loadBenchmarkCases(path string, limit int) ([]benchmarkCase, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
+func loadBenchmarkDataset(path string, limit int) ([]benchmarkCase, string, string, error) {
+	resolvedPath := strings.TrimSpace(path)
+	var body []byte
+	var err error
+	if resolvedPath == "" {
+		resolvedPath = builtInBenchmarkDatasetPath
+		body = embeddeddata.MiniBenchmarkDataset()
+	} else {
+		body, err = os.ReadFile(resolvedPath)
+		if err != nil {
+			return nil, "", "", fmt.Errorf("read benchmark dataset %q: %w", resolvedPath, err)
+		}
 	}
-	defer file.Close()
+	cases, err := decodeBenchmarkCases(bytes.NewReader(body), limit)
+	if err != nil {
+		return nil, "", "", err
+	}
+	return cases, resolvedPath, bytesSHA256(body), nil
+}
+
+func decodeBenchmarkCases(reader io.Reader, limit int) ([]benchmarkCase, error) {
 	cases := make([]benchmarkCase, 0, 100)
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		var item benchmarkCase
@@ -387,6 +410,11 @@ func fileSHA256(path string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func bytesSHA256(body []byte) string {
+	hash := sha256.Sum256(body)
+	return hex.EncodeToString(hash[:])
 }
 
 func executableVersion(path string) string {
