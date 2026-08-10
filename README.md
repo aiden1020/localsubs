@@ -34,13 +34,43 @@ https://github.com/user-attachments/assets/5bf883fb-ed50-43f2-a052-47e8f2c9c415
 - macOS (Apple Silicon or Intel), or Windows 10/11 x64
 - Chrome / Chromium / Microsoft Edge
 
+## Inference architecture
+
+The MV3 background service worker owns the inference router and exposes one
+translation interface to the content script. It supports two backends:
+
+- `webllm` is the default for new installations. It runs the MLC model in the
+  extension service worker through WebGPU and does not require the Go helper.
+- `native` connects to `localsubs_helper` through Chrome Native Messaging and
+  runs llama.cpp on CPU or NVIDIA CUDA. Updates preserve this backend for users
+  who installed an earlier native-only extension.
+
+The WebLLM backend is GPU-only. The browser must expose a WebGPU adapter with
+the `shader-f16` feature; there is no WebLLM CPU fallback. Unsupported devices
+can use the native helper instead. Changing the backend in extension settings
+unloads the inactive WebLLM engine or resets the native connection without a
+browser restart.
+
+Production uses WebLLM 0.2.84 with model ID
+`LocalSubs-EN-ZH-TW-0.6B-64k-q4f16_1-MLC-v1`, a 256-token context window, and a
+16-token output limit. The approximately 272 MB `q4f16_1` weights are loaded
+from `webllm-64k-q4f16_1-v1/` in the Hugging Face model repository. The matching
+no-subgroup WebGPU model library is bundled as `model-lib.wasm`.
+
+WebLLM artifacts use IndexedDB rather than CacheStorage. The latter cannot
+reliably cache the bundled `chrome-extension://` WASM resource. The content
+script may preheat an already cached model, but it deliberately does not start
+an uncached model download; that download must be initiated from the extension
+settings page.
+
+See [WEBLLM_EXPERIMENT.md](./WEBLLM_EXPERIMENT.md) for framework comparisons,
+conversion details, benchmark results, and the production parameter choices.
+
 ## Installation
 
 Install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb).
-New installations use WebLLM by default: no helper is required, and the
-extension downloads and caches an approximately 272 MB 64k-vocabulary `q4f16_1` model on
-first use. Open LocalSubs settings to download and warm up the model in
-advance.
+New installations use WebLLM by default, so no helper is required. Open
+LocalSubs settings to download and prepare the browser model before playback.
 
 The native helper remains available as an optional backend. It offers the
 lowest latency with the NVIDIA CUDA runtime and provides a fallback when
@@ -92,6 +122,53 @@ Chrome/Edge Native Messaging registration points to its absolute path. Re-run
 location and command alias for WinGet installations.
 
 Select **Native helper** in the extension settings after setup.
+
+## Extension development
+
+Install JavaScript dependencies and run the unit test suite:
+
+```bash
+npm ci
+npm test
+```
+
+Build the production extension, package its reproducible file set, and verify
+the ZIP contents:
+
+```bash
+npm run build:extension
+npm run package:extension
+npm run smoke:extension
+npm run check:extension-reproducibility
+```
+
+The unpacked production build is written to `dist/extension`, and the Chrome
+Web Store archive is written to
+`dist/localsubs-chrome-extension-v<version>.zip`. The production build excludes
+all experiment pages, benchmark datasets, wllama runtimes, and localhost
+permissions.
+
+Run the real extension lifecycle test in Chrome or Edge:
+
+```bash
+npm run test:webllm:extension
+npm run test:webllm:extension -- --warmup --remote
+```
+
+The first command checks backend selection and capability reporting without
+downloading a model. The second downloads the published Hugging Face artifacts,
+then verifies model storage, engine initialization, and a translation request.
+Omit `--remote` to serve pre-converted artifacts from
+`dist/LocalSubs-EN-ZH-TW-0.6B-q4f16_1-current-MLC` instead. Add `--headed` to
+keep the browser UI visible while the test runs.
+
+Experiment bundles are built separately and never enter the production ZIP:
+
+```bash
+npm run build:extension:experiments
+npm run test:webllm:benchmark -- --headed
+npm run test:wllama:standalone -- --headed
+```
 
 ## Commands
 
