@@ -3,6 +3,31 @@
 All notable user-facing changes are documented in this file. LocalSubs uses
 semantic versioning.
 
+## [0.5.0] - 2026-08-11
+
+### Added
+
+- Run the LocalSubs MLC model directly in the extension through WebLLM and
+  WebGPU, with browser inference selected by default for new installations.
+- Let users switch between browser inference and the optional native helper,
+  and show WebGPU capability, model download, preparation, and readiness in
+  extension settings.
+
+### Changed
+
+- Use the optimized 64,024-token `q4f16_1` model with a bundled no-subgroup
+  WebGPU library, a 256-token context window, and a 16-token output limit.
+- Preheat an already downloaded browser model before the first subtitle while
+  requiring uncached downloads to be started explicitly from settings.
+- Preserve the native helper backend for existing installations and keep it
+  available for CPU inference, NVIDIA CUDA, or browsers without compatible
+  WebGPU support.
+
+### Fixed
+
+- Store WebLLM artifacts in IndexedDB so the bundled `chrome-extension://`
+  model library does not fail through CacheStorage's `Cache.add()` path.
+
 ## [0.4.1] - 2026-08-06
 
 ### Fixed
@@ -40,5 +65,6 @@ semantic versioning.
   Windows implementation.
 - Setup selects the best available Windows backend with `--backend auto`.
 
+[0.5.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.5.0
 [0.4.1]: https://github.com/aiden1020/localsubs/releases/tag/v0.4.1
 [0.4.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.4.0
