@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LocalSubs llama.cpp WebGPU experiment</title>
+    <link rel="stylesheet" href="webllm-experiment.css">
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">LocalSubs experiment</p>
+      <h1>llama.cpp WebGPU GGUF probe</h1>
+      <p class="intro">Runs the production LocalSubs Q5_K_M GGUF directly inside this extension through wllama and the llama.cpp WebGPU backend.</p>
+
+      <section class="card">
+        <dl>
+          <div><dt>Model</dt><dd>LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf</dd></div>
+          <div><dt>Runtime</dt><dd>wllama 3.5.1 · llama.cpp WebGPU</dd></div>
+          <div><dt>Dataset</dt><dd>100 production benchmark cases · 3 warmups</dd></div>
+          <div><dt>Acceptance</dt><dd>100/100 success, P95 ≤ 300 ms, exact match ≥ native 8%</dd></div>
+          <div><dt>Adapter</dt><dd id="adapter-status">Checking...</dd></div>
+        </dl>
+        <progress id="load-progress" max="100" value="0">0%</progress>
+        <p id="status" data-kind="idle" aria-live="polite">Ready to initialize.</p>
+        <div class="actions">
+          <button id="initialize" type="button">1. Load production GGUF</button>
+          <button id="run" type="button" disabled>2. Run 100 cases</button>
+          <button id="download" type="button" disabled>Download JSON</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Report</h2>
+        <pre id="results">No measurements yet.</pre>
+      </section>
+    </main>
+    <script src="wllama-experiment.js"></script>
+  </body>
+</html>

@@ -30,6 +30,7 @@ export class TranslationController {
   handleSettingsChange(previous, next) {
     if (
       previous.targetLanguage !== next.targetLanguage ||
+      previous.inferenceBackend !== next.inferenceBackend ||
       previous.hideNativeSubtitles !== next.hideNativeSubtitles ||
       previous.localTranslatorCtxSize !== next.localTranslatorCtxSize ||
       previous.showPendingOriginalText !== next.showPendingOriginalText
@@ -103,7 +104,7 @@ export class TranslationController {
       if (error?.name === "AbortError") return null;
       if (this.now() - this.lastWarningAt > 30000) {
         this.lastWarningAt = this.now();
-        this.showStatus("Local translator is not running. Open setup to start the model service.");
+        this.showStatus("LocalSubs translator is unavailable. Open settings to check the selected backend.");
       }
       return null;
     }

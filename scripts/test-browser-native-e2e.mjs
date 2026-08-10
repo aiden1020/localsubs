@@ -283,6 +283,12 @@ async function run() {
         timeout: 30000
       });
     }
+    // This suite verifies the optional native path; new installs otherwise
+    // default to WebLLM.
+    await page.evaluate(async () => {
+      await chrome.storage.sync.set({ inferenceBackend: "native" });
+    });
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
     const expectedSetupCommand = options.browser === "edge"
       ? "localsubs setup --browser edge --backend auto"
       : "localsubs setup --backend auto";

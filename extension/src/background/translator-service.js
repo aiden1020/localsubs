@@ -118,5 +118,9 @@ export function createTranslatorService(nativeClient, now = () => performance.no
     };
   }
 
-  return { checkLocalTranslator, translateSubtitle };
+  return {
+    checkLocalTranslator,
+    checkTranslator: checkLocalTranslator,
+    translateSubtitle
+  };
 }

@@ -36,7 +36,18 @@ https://github.com/user-attachments/assets/5bf883fb-ed50-43f2-a052-47e8f2c9c415
 
 ## Installation
 
-### macOS
+Install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb).
+New installations use WebLLM by default: no helper is required, and the
+extension downloads and caches an approximately 272 MB 64k-vocabulary `q4f16_1` model on
+first use. Open LocalSubs settings to download and warm up the model in
+advance.
+
+The native helper remains available as an optional backend. It offers the
+lowest latency with the NVIDIA CUDA runtime and provides a fallback when
+WebGPU is unavailable. Existing native-helper users remain on that backend
+after upgrading.
+
+### Optional native helper: macOS
 
 ```bash
 brew tap aiden1020/localsubs
@@ -49,9 +60,9 @@ localsubs setup            # download the model and install Chrome integration
 > `brew trust` is required because LocalSubs is distributed via a third-party tap.
 > It authorizes Homebrew to install formulas from this tap on your machine.
 
-Then install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb) and start watching.
+Select **Native helper** in the extension settings after setup.
 
-### Windows
+### Optional native helper: Windows
 
 After the package is listed in the WinGet Community repository, install the
 same portable release ZIP without an independent installer or paid code-signing
@@ -80,7 +91,7 @@ Chrome/Edge Native Messaging registration points to its absolute path. Re-run
 `localsubs install` after moving or upgrading it. WinGet manages the executable
 location and command alias for WinGet installations.
 
-Then install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb) and start watching.
+Select **Native helper** in the extension settings after setup.
 
 ## Commands
 
@@ -124,7 +135,8 @@ winget uninstall --id Aiden1020.LocalSubs --exact
 
 LocalSubs uses [LocalSubs-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B), a fine-tuned model optimized for subtitle-length English → Traditional Chinese translation.
 
-The helper downloads the default GGUF runtime artifact:
+WebLLM uses the browser-optimized `q4f16_1` MLC artifacts. The optional native
+helper downloads the default GGUF runtime artifact:
 
 ```text
 LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf

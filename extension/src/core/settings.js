@@ -1,4 +1,5 @@
 export const DEFAULT_SETTINGS = Object.freeze({
+  inferenceBackend: "webllm",
   translationEnabled: true,
   hideNativeSubtitles: true,
   showPendingOriginalText: true,
@@ -19,6 +20,7 @@ export function clampNumber(value, min, max, fallback) {
 
 export function sanitizeSettings(rawSettings = {}) {
   return {
+    inferenceBackend: rawSettings.inferenceBackend === "native" ? "native" : "webllm",
     translationEnabled: rawSettings.translationEnabled !== false,
     hideNativeSubtitles: rawSettings.hideNativeSubtitles !== false,
     showPendingOriginalText: rawSettings.showPendingOriginalText !== false,
@@ -58,6 +60,13 @@ export function sanitizeSettings(rawSettings = {}) {
     ),
     optionsLanguage: rawSettings.optionsLanguage === "en" ? "en" : DEFAULT_SETTINGS.optionsLanguage
   };
+}
+
+export function inferenceBackendForInstall(reason, storedBackend) {
+  if (storedBackend === "webllm" || storedBackend === "native") {
+    return storedBackend;
+  }
+  return reason === "update" ? "native" : DEFAULT_SETTINGS.inferenceBackend;
 }
 
 export function migrateStoredSettings(stored = {}) {

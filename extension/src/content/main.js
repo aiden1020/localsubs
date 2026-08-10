@@ -382,22 +382,43 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
       return;
     }
     try {
-      const result = await chrome.runtime.sendMessage({
-        type: "CHECK_LOCAL_TRANSLATOR",
+      let result = await chrome.runtime.sendMessage({
+        type: "CHECK_TRANSLATOR",
         warmup: false
       });
       if (!settings.translationEnabled || generation !== modelPollGeneration) {
         clearStatusMessage();
         return;
       }
+      if (result?.needsInitialization) {
+        showStatusMessage("LocalSubs: Loading cached WebLLM model...", true);
+        result = await chrome.runtime.sendMessage({
+          type: "CHECK_TRANSLATOR",
+          warmup: true
+        });
+        if (!settings.translationEnabled || generation !== modelPollGeneration) {
+          clearStatusMessage();
+          return;
+        }
+      }
       if (result?.ok) {
         if (!modelReadyShown) {
           modelReadyShown = true;
           showStatusMessage("LocalSubs: Model ready");
         }
+        if (lastCaption && !lastTranslation && !activeTranslationAbortController) {
+          activeCaptionRequestId += 1;
+          captionDetectedAt = Date.now();
+          overlayRenderer.enterPending(lastCaption);
+          void renderTranslationForCaption(lastCaption, activeCaptionRequestId);
+        }
       } else if (result?.loading) {
         showStatusMessage("LocalSubs: Loading model...", true);
         modelPollTimer = window.setTimeout(() => pollUntilModelReady(generation), 4000);
+      } else if (result?.needsDownload) {
+        showStatusMessage("LocalSubs: WebLLM model will download with the first subtitle. Click for settings.", true);
+      } else if (result?.needsInitialization) {
+        showStatusMessage("LocalSubs: WebLLM model is cached and ready to load.");
       } else if (result?.error?.code === "incompatible_api") {
         showStatusMessage(`LocalSubs: ${result.error.message}`, true);
       } else {

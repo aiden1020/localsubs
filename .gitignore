@@ -1,56 +1,62 @@
-# macOS
+# Operating system files
 .DS_Store
+Thumbs.db
+Desktop.ini
 
-# Go
-bin/
+# Local agent and developer tooling
+/.claude/
+/.agents/
+/agent/
+/AGENTS.md
+/agents.toml
+/agents.lock
+/skills-lock.json
+/brag-output/
+
+# Dependencies and downloaded tools
+/node_modules/
+/.e2e-browsers/
+/.tools/
+
+# Build and test output
+/bin/
+/dist/
+/localsubs
+/.gocache/
 *.test
 coverage.out
 
-# Python
-.venv/
-venv/
-.gocache/
+# Python environments and caches
+/.venv/
+/.venv312/
+/venv/
 __pycache__/
 *.py[cod]
 *.egg-info/
+.pytest_cache/
+.ruff_cache/
 
-# Model weights and large binaries (never commit these)
+# Local model checkpoints and large artifacts
+/final/
+/LMT0.6b_finetuned_v1/
+/LMT0.6b_mlx_8bit/
+/asset/
 *.gguf
 *.bin
 *.safetensors
 *.pt
 *.pth
-LMT0.6b_finetuned_v1/
-LMT0.6b_mlx_8bit/
 
-# Download temp files
+# Temporary downloads and package-manager logs
 *.part
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Go build output at repo root
-/localsubs
+# Local-only scripts and reports
+/repair_test.py
+/docs/
 
-# Local test scripts
-repair_test.py
-
-# Chrome extension build output
-dist/
-node_modules/
-.e2e-browsers/
-
-# Root model_manifest.json is a synced copy of internal/manifest/model_manifest.json
-# The canonical source is internal/manifest/model_manifest.json (embedded into binary)
+# Generated copy; internal/manifest/model_manifest.json is canonical and embedded.
 /model_manifest.json
-
-# Claude Code local memory (personal, not for contributors)
-.claude/
-.agents/
-agent/
-AGENTS.md
-skills-lock.json
-# brag
-brag-output/
-
-# Local technical report
-docs/
-
-asset/

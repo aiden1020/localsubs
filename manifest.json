@@ -5,6 +5,9 @@
   "description": "Real-time, fully local AI subtitle translation for streaming video.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA63Nv3eoHagFTTc3j4/Kq4DAEX3y7z5khPoOGWMJUgz5T5+XOumPs5zuYwV1/JBxi9o2dX1NoNOm/P9qOA4ik8qBbpB1BJ+uLbO6ATLxPHwOqGrAoRr8VgI8XonOTNfmQU3Jyz9fpYw5n7QnWPqo4gloiCX6xR9PCG/Zxx1RXd0O/DgSs5jy1WdRdeQCB+cgAqjX8ETAV2RyycgkizVNl3XBLlXpxtrJFCmh8ZPDHv0JeH0Fg+hBNhrSaps0IPiIqQqtCUqZKCkN+yQven9VbWgmiKNCSJmWtKlm2iUCoOlQvosIFqyMp0wHJhLegMu/HZv9IDq4PXkHJrq/OeI+K6QIDAQAB",
   "permissions": ["storage", "nativeMessaging"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src https://huggingface.co https://*.huggingface.co https://*.hf.co"
+  },
   "options_page": "options.html",
   "icons": {
     "16": "icons/icon-16.png",
@@ -26,7 +29,10 @@
   },
   "host_permissions": [
     "*://*.max.com/*",
-    "*://*.hbomax.com/*"
+    "*://*.hbomax.com/*",
+    "https://huggingface.co/*",
+    "https://*.huggingface.co/*",
+    "https://*.hf.co/*"
   ],
   "content_scripts": [
     {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SETTINGS,
+  inferenceBackendForInstall,
   migrateStoredSettings,
   sanitizeSettings
 } from "../src/core/settings.js";
@@ -36,5 +37,17 @@ describe("settings", () => {
     expect(settings.optionsLanguage).toBe("en");
     expect(settings.fontSize).toBe(36);
     expect(settings).not.toHaveProperty("localTranslatorEnabled");
+  });
+
+  it("uses WebLLM for new installs and preserves native for legacy upgrades", () => {
+    expect(inferenceBackendForInstall("install", undefined)).toBe("webllm");
+    expect(inferenceBackendForInstall("update", undefined)).toBe("native");
+    expect(inferenceBackendForInstall("update", "webllm")).toBe("webllm");
+    expect(inferenceBackendForInstall("install", "native")).toBe("native");
+  });
+
+  it("sanitizes unsupported inference backends to WebLLM", () => {
+    expect(sanitizeSettings({ inferenceBackend: "cloud" }).inferenceBackend).toBe("webllm");
+    expect(sanitizeSettings({ inferenceBackend: "native" }).inferenceBackend).toBe("native");
   });
 });

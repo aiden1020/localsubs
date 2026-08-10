@@ -12,6 +12,7 @@ const expected = [
   "icons/icon-32.png",
   "icons/icon-48.png",
   "manifest.json",
+  "model-lib.wasm",
   "options.css",
   "options.html",
   "options.js"
@@ -40,6 +41,9 @@ for (const relative of expected) {
 }
 if (manifest.host_permissions?.some((permission) => permission.includes("localhost") || permission.includes("127.0.0.1"))) {
   throw new Error("extension manifest still contains obsolete localhost permissions");
+}
+if (manifest.sandbox || manifest.content_security_policy?.sandbox) {
+  throw new Error("production extension manifest contains experiment-only sandbox configuration");
 }
 
 console.log(`Extension package smoke test passed for v${manifest.version}`);

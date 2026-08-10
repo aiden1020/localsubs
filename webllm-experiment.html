@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LocalSubs WebLLM latency experiment</title>
+    <link rel="stylesheet" href="webllm-experiment.css">
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">LocalSubs experiment</p>
+      <h1>WebLLM latency probe</h1>
+      <p class="intro">Runs Qwen3 0.6B inside this extension in a dedicated Web Worker. The first load downloads and caches model artifacts.</p>
+
+      <section class="card">
+        <dl>
+          <div><dt>Model</dt><dd>Qwen3-0.6B-q4f16_1-MLC</dd></div>
+          <div><dt>Context</dt><dd>256 tokens (production default)</dd></div>
+          <div><dt>Acceptance</dt><dd>10/10 success and warm P95 ≤ 300 ms</dd></div>
+          <div><dt>Adapter</dt><dd id="adapter-status">Checking...</dd></div>
+        </dl>
+        <progress id="load-progress" max="100" value="0">0%</progress>
+        <p id="status" data-kind="idle" aria-live="polite">Ready to initialize.</p>
+        <div class="actions">
+          <button id="initialize" type="button">1. Load model</button>
+          <button id="run" type="button" disabled>2. Run benchmark</button>
+          <button id="download" type="button" disabled>Download JSON</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Report</h2>
+        <pre id="results">No measurements yet.</pre>
+      </section>
+    </main>
+    <script src="webllm-experiment.js"></script>
+  </body>
+</html>
