@@ -3,7 +3,6 @@
 package nativehost
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,16 +42,4 @@ func UninstallManifest(options UninstallOptions) (UninstallResult, error) {
 	result.LauncherRemoved, err = removeFileIfPresent(result.LauncherPath)
 	result.RegistrationRemoved = result.ManifestRemoved
 	return result, err
-}
-
-func removeFileIfPresent(path string) (bool, error) {
-	err := os.Remove(path)
-	switch {
-	case err == nil:
-		return true, nil
-	case errors.Is(err, os.ErrNotExist):
-		return false, nil
-	default:
-		return false, err
-	}
 }

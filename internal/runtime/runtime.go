@@ -488,28 +488,26 @@ func (t *LoadingTranslator) isReady() bool {
 	}
 }
 
+func (t *LoadingTranslator) initializationHealth(status string) Health {
+	return Health{
+		APIVersion:    APIVersion,
+		HelperVersion: HelperVersion,
+		Backend:       BackendState{Kind: "llama.cpp", Ready: false, Owned: true},
+		Model:         ModelState{ID: t.profile.ModelID, Version: t.profile.ModelVersion, Status: status},
+		Profile:       t.profile.Name,
+	}
+}
+
 func (t *LoadingTranslator) Health(ctx context.Context) Health {
 	if !t.isReady() {
-		return Health{
-			OK:            false,
-			Loading:       true,
-			APIVersion:    APIVersion,
-			HelperVersion: HelperVersion,
-			Backend:       BackendState{Kind: "llama.cpp", Ready: false, Owned: true},
-			Model:         ModelState{ID: t.profile.ModelID, Version: t.profile.ModelVersion, Status: "loading"},
-			Profile:       t.profile.Name,
-		}
+		health := t.initializationHealth("loading")
+		health.Loading = true
+		return health
 	}
 	if t.errInit != nil {
-		return Health{
-			OK:            false,
-			APIVersion:    APIVersion,
-			HelperVersion: HelperVersion,
-			Backend:       BackendState{Kind: "llama.cpp", Ready: false, Owned: true},
-			Model:         ModelState{ID: t.profile.ModelID, Version: t.profile.ModelVersion, Status: "error"},
-			Profile:       t.profile.Name,
-			LastError:     t.errInit.Error(),
-		}
+		health := t.initializationHealth("error")
+		health.LastError = t.errInit.Error()
+		return health
 	}
 	return t.inner.Health(ctx)
 }

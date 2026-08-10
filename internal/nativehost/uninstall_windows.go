@@ -4,7 +4,6 @@ package nativehost
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -47,7 +46,7 @@ func UninstallManifest(options UninstallOptions) (UninstallResult, error) {
 		return result, err
 	}
 	if !remaining {
-		result.ManifestRemoved, err = removeWindowsFileIfPresent(result.ManifestPath)
+		result.ManifestRemoved, err = removeFileIfPresent(result.ManifestPath)
 	}
 	return result, err
 }
@@ -68,16 +67,4 @@ func windowsHostRegistrationExists(hostName string) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-func removeWindowsFileIfPresent(path string) (bool, error) {
-	err := os.Remove(path)
-	switch {
-	case err == nil:
-		return true, nil
-	case errors.Is(err, os.ErrNotExist):
-		return false, nil
-	default:
-		return false, err
-	}
 }

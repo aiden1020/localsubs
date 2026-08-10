@@ -3,7 +3,6 @@
 package nativehost
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,14 +14,8 @@ import (
 )
 
 func InstallManifest(options InstallOptions) (InstallResult, error) {
-	build, err := BuildManifest(options)
+	build, err := prepareInstall(options)
 	if err != nil {
-		return InstallResult{}, err
-	}
-	if err := os.MkdirAll(filepath.Dir(build.ManifestPath), 0o755); err != nil {
-		return InstallResult{}, err
-	}
-	if err := os.MkdirAll(filepath.Dir(build.LogPath), 0o755); err != nil {
 		return InstallResult{}, err
 	}
 	if err := writeManifest(build.ManifestPath, build.Manifest); err != nil {
@@ -31,7 +24,7 @@ func InstallManifest(options InstallOptions) (InstallResult, error) {
 	if err := registerNativeHost(options.Browser, build.Manifest.Name, build.ManifestPath); err != nil {
 		return InstallResult{}, err
 	}
-	return InstallResult{Path: build.ManifestPath, LauncherPath: build.Manifest.Path, Manifest: build.Manifest}, nil
+	return InstallResult{Path: build.ManifestPath, LauncherPath: build.LauncherPath, Manifest: build.Manifest}, nil
 }
 
 func BuildManifest(options InstallOptions) (ManifestBuild, error) {
@@ -68,35 +61,6 @@ func BuildManifest(options InstallOptions) (ManifestBuild, error) {
 		LogPath: filepath.Join(appDataDir, "logs", "native-host.log"), Manifest: manifest,
 		BinaryPath: absoluteBinaryPath, WorkDir: absoluteWorkDir,
 	}, nil
-}
-
-func resolveInstallPaths(options InstallOptions) (string, string, error) {
-	binaryPath := strings.TrimSpace(options.BinaryPath)
-	if binaryPath == "" {
-		executable, err := os.Executable()
-		if err != nil {
-			return "", "", err
-		}
-		binaryPath = executable
-	}
-	absoluteBinaryPath, err := filepath.Abs(binaryPath)
-	if err != nil {
-		return "", "", err
-	}
-	workDir := strings.TrimSpace(options.WorkDir)
-	if workDir == "" {
-		workDir = inferWorkDir(absoluteBinaryPath)
-	}
-	absoluteWorkDir, err := filepath.Abs(workDir)
-	return absoluteBinaryPath, absoluteWorkDir, err
-}
-
-func writeManifest(path string, manifest Manifest) error {
-	body, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(body, '\n'), 0o644)
 }
 
 func browserRegistryRoot(browser string) (string, error) {

@@ -84,6 +84,48 @@ func inferWorkDir(binaryPath string) string {
 	return binaryDir
 }
 
+func resolveInstallPaths(options InstallOptions) (string, string, error) {
+	binaryPath := strings.TrimSpace(options.BinaryPath)
+	if binaryPath == "" {
+		executable, err := os.Executable()
+		if err != nil {
+			return "", "", err
+		}
+		binaryPath = executable
+	}
+	absoluteBinaryPath, err := filepath.Abs(binaryPath)
+	if err != nil {
+		return "", "", err
+	}
+	workDir := strings.TrimSpace(options.WorkDir)
+	if workDir == "" {
+		workDir = inferWorkDir(absoluteBinaryPath)
+	}
+	absoluteWorkDir, err := filepath.Abs(workDir)
+	return absoluteBinaryPath, absoluteWorkDir, err
+}
+
+func writeManifest(path string, manifest Manifest) error {
+	body, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(body, '\n'), 0o644)
+}
+
+func prepareInstall(options InstallOptions) (ManifestBuild, error) {
+	build, err := BuildManifest(options)
+	if err != nil {
+		return ManifestBuild{}, err
+	}
+	for _, path := range []string{build.ManifestPath, build.LogPath} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return ManifestBuild{}, err
+		}
+	}
+	return build, nil
+}
+
 // InspectInstalled validates the native messaging manifest and the host path
 // it references. Native hosts are started on demand, so this describes
 // installation readiness rather than whether a persistent process is running.

@@ -87,6 +87,13 @@ func (b *ManagedBackend) Stop() error {
 	return b.waitErr
 }
 
+func (b *ManagedBackend) exitedBeforeReadyError() error {
+	if b.waitErr != nil {
+		return fmt.Errorf("llama-server exited before becoming ready: %w", b.waitErr)
+	}
+	return fmt.Errorf("llama-server exited before becoming ready")
+}
+
 func (b *ManagedBackend) waitReady(ctx context.Context, timeout time.Duration) error {
 	if timeout <= 0 {
 		timeout = 60 * time.Second
@@ -96,10 +103,7 @@ func (b *ManagedBackend) waitReady(ctx context.Context, timeout time.Duration) e
 	for time.Now().Before(deadline) {
 		select {
 		case <-b.done:
-			if b.waitErr != nil {
-				return fmt.Errorf("llama-server exited before becoming ready: %w", b.waitErr)
-			}
-			return fmt.Errorf("llama-server exited before becoming ready")
+			return b.exitedBeforeReadyError()
 		default:
 		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.BaseURL+"/health", nil)
@@ -117,10 +121,7 @@ func (b *ManagedBackend) waitReady(ctx context.Context, timeout time.Duration) e
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-b.done:
-			if b.waitErr != nil {
-				return fmt.Errorf("llama-server exited before becoming ready: %w", b.waitErr)
-			}
-			return fmt.Errorf("llama-server exited before becoming ready")
+			return b.exitedBeforeReadyError()
 		case <-time.After(200 * time.Millisecond):
 		}
 	}

@@ -3,7 +3,6 @@
 package nativehost
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,14 +12,8 @@ import (
 )
 
 func InstallManifest(options InstallOptions) (InstallResult, error) {
-	build, err := BuildManifest(options)
+	build, err := prepareInstall(options)
 	if err != nil {
-		return InstallResult{}, err
-	}
-	if err := os.MkdirAll(filepath.Dir(build.ManifestPath), 0o755); err != nil {
-		return InstallResult{}, err
-	}
-	if err := os.MkdirAll(filepath.Dir(build.LogPath), 0o755); err != nil {
 		return InstallResult{}, err
 	}
 	launcher := []byte(
@@ -149,35 +142,6 @@ func InspectLauncher(path string) LauncherStatus {
 	}
 	status.Reason = "native messaging launcher does not contain a helper command"
 	return status
-}
-
-func resolveInstallPaths(options InstallOptions) (string, string, error) {
-	binaryPath := strings.TrimSpace(options.BinaryPath)
-	if binaryPath == "" {
-		executable, err := os.Executable()
-		if err != nil {
-			return "", "", err
-		}
-		binaryPath = executable
-	}
-	absoluteBinaryPath, err := filepath.Abs(binaryPath)
-	if err != nil {
-		return "", "", err
-	}
-	workDir := strings.TrimSpace(options.WorkDir)
-	if workDir == "" {
-		workDir = inferWorkDir(absoluteBinaryPath)
-	}
-	absoluteWorkDir, err := filepath.Abs(workDir)
-	return absoluteBinaryPath, absoluteWorkDir, err
-}
-
-func writeManifest(path string, manifest Manifest) error {
-	body, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(body, '\n'), 0o644)
 }
 
 func shellQuote(value string) string {
