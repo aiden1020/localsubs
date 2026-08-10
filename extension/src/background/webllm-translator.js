@@ -64,7 +64,10 @@ export function createWebLLMTranslator({
       low_resource_required: true,
       required_features: ["shader-f16"]
     }],
-    cacheBackend: "cache"
+    // CacheStorage cannot reliably cache chrome-extension:// resources such as
+    // the bundled model library. IndexedDB supports both those resources and
+    // the remote Hugging Face model shards.
+    cacheBackend: "indexeddb"
   };
 
   async function inspectCapability() {

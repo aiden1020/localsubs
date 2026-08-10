@@ -68,7 +68,9 @@ describe("WebLLM translator", () => {
     expect(createEngine).toHaveBeenCalledOnce();
     expect(createEngine).toHaveBeenCalledWith(
       expect.any(String),
-      expect.any(Object),
+      expect.objectContaining({
+        appConfig: expect.objectContaining({ cacheBackend: "indexeddb" })
+      }),
       { context_window_size: WEBLLM_CONTEXT_WINDOW_SIZE }
     );
     expect((await createEngine.mock.results[0].value).completions.create)
