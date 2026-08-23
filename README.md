@@ -7,8 +7,8 @@
   <h3 align="center">LocalSubs</h3>
 
   <p align="center">
-Real-time, fully local AI subtitle translation for streaming video.
-Translates English subtitles to Traditional Chinese on-device using the LocalSubs 0.6B model — no data leaves your machine.
+Free English and Traditional Chinese dual subtitles for HBO Max on macOS and Windows.
+Keep the original dialogue on screen while Taiwan-optimized Traditional Chinese fills in what you miss. Translation runs locally on your device.
 
 <br />
 

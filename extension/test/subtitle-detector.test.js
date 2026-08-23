@@ -18,7 +18,7 @@ function makeVisible() {
 }
 
 describe("SubtitleDetector", () => {
-  it("detects a visible Max caption and reports its container", () => {
+  it("detects a visible HBO Max caption and reports its container", () => {
     document.body.innerHTML = fixture("single-line.html");
     makeVisible();
     const onNodeChange = vi.fn();

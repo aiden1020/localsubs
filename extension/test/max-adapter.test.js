@@ -16,7 +16,7 @@ function loadFixture(name) {
   );
 }
 
-describe("Max subtitle adapter", () => {
+describe("HBO Max subtitle adapter", () => {
   it("extracts a single cue from its caption container", () => {
     loadFixture("single-line.html");
     const cue = document.querySelector("[data-testid='cueBoxRowTextCue']");

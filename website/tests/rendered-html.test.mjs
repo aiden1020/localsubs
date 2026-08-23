@@ -33,9 +33,9 @@ test("renders an indexable Traditional Chinese landing page", async () => {
 
   const html = await response.text();
   assert.match(html, /<html lang="zh-Hant-TW">/);
-  assert.match(html, /<title>LocalSubs｜免費 HBO Max／Max 中英雙字幕 Chrome 擴充功能<\/title>/);
+  assert.match(html, /<title>LocalSubs｜免費 HBO Max 英文＋繁中雙字幕 Chrome 擴充功能<\/title>/);
   assert.match(html, /<link rel="canonical" href="https:\/\/localsubs\.aidenw\.me"\/>/);
-  assert.match(html, /<h1>在 Max 看原文/);
+  assert.match(html, /<h1>在 HBO Max 看原文/);
   assert.match(html, /type="application\/ld\+json"/);
   assert.match(html, /"@type":"SoftwareApplication"/);
   assert.doesNotMatch(html, /tsztowong\.chatgpt\.site/);
