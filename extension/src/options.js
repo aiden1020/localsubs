@@ -8,7 +8,7 @@ import {
 const I18N = {
   "zh-Hant": {
     setupTitle: "設定",
-    intro: "即時、完全本機、免費且開源的串流字幕翻譯。",
+    intro: "免費為 HBO Max 加入英文＋台灣繁中雙字幕，支援 macOS 與 Windows。",
     inferenceEyebrow: "翻譯模式",
     inferenceTitle: "選擇適合你的翻譯方式",
     inferenceBackend: "翻譯方式",
@@ -86,7 +86,7 @@ const I18N = {
   },
   en: {
     setupTitle: "Setup",
-    intro: "Real-time, fully local, free and open source subtitle translation for streaming video.",
+    intro: "Free English and Traditional Chinese dual subtitles for HBO Max on macOS and Windows.",
     inferenceEyebrow: "Translation mode",
     inferenceTitle: "Choose how LocalSubs translates",
     inferenceBackend: "Translation mode",
@@ -578,7 +578,7 @@ warmupServiceButton.addEventListener("click", () => {
 });
 
 openSupportedSiteButton.addEventListener("click", () => {
-  window.open("https://www.max.com/", "_blank", "noopener");
+  window.open("https://www.hbomax.com/", "_blank", "noopener");
 });
 
 applyLanguage(DEFAULT_SETTINGS.optionsLanguage);

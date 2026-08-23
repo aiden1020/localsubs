@@ -70,10 +70,10 @@ export default function Home() {
 
       <section className="hero shell" id="top">
         <div className="heroCopy">
-          <div className="eyebrow"><span /> 免費 MAX 英文 × 繁中雙字幕 CHROME 擴充功能</div>
-          <h1>在 Max 看原文，<br /><em>也跟得上劇情。</em></h1>
+          <div className="eyebrow"><span /> 免費 HBO MAX 英文 × 繁中雙字幕 CHROME 擴充功能</div>
+          <h1>在 HBO Max 看原文，<br /><em>也跟得上劇情。</em></h1>
           <p className="lede">
-            LocalSubs 是免費 Chrome 擴充功能，在 HBO Max／Max 同步閱讀英文原句與針對台灣用語優化的繁中翻譯。
+            LocalSubs 是免費 Chrome 擴充功能，在 HBO Max 同步閱讀英文原句與針對台灣用語優化的繁中翻譯。
           </p>
           <div className="heroActions">
             <a className="button buttonAccent" href={storeUrl} target="_blank" rel="noreferrer">
@@ -119,13 +119,13 @@ export default function Home() {
 
       <section className="experience shell" id="experience">
         <div className="sectionHeading">
-          <p className="kicker">Max 已經有字幕，為什麼還需要 LocalSubs？</p>
+          <p className="kicker">HBO Max 已經有字幕，為什麼還需要 LocalSubs？</p>
           <h2>不用在英文和繁中之間二選一。</h2>
-          <p>Max 一次只能顯示一種字幕。LocalSubs 保留英文原句，再用繁中補上沒聽懂的地方。</p>
+          <p>HBO Max 一次只能顯示一種字幕。LocalSubs 保留英文原句，再用繁中補上沒聽懂的地方。</p>
         </div>
-        <div className="dualChoice" aria-label="Max 單字幕與 LocalSubs 雙字幕比較">
+        <div className="dualChoice" aria-label="HBO Max 單字幕與 LocalSubs 雙字幕比較">
           <div className="singleChoice">
-            <span className="choiceLabel">MAX 原生字幕</span>
+            <span className="choiceLabel">HBO MAX 原生字幕</span>
             <div><b>只看英文</b><strong>看見原句</strong><p>但沒聽懂的關鍵句只能靠猜。</p></div>
             <div><b>只看繁中</b><strong>跟上劇情</strong><p>但看不到演員真正說了什麼。</p></div>
           </div>
@@ -147,7 +147,7 @@ export default function Home() {
         <ol className="stepList">
           <li><span>01</span><div><h3>免費加到 Chrome</h3><p>從 Chrome 線上應用程式商店免費安裝 LocalSubs，不用月費。</p></div><b>安裝擴充功能</b></li>
           <li><span>02</span><div><h3>完成一次本機設定</h3><p>首次開啟時下載離線翻譯功能，之後字幕就能直接在裝置上處理。</p></div><b>只需設定一次</b></li>
-          <li><span>03</span><div><h3>打開 Max</h3><p>開啟英文字幕並開始播放，LocalSubs 會同步加入繁中翻譯。</p></div><b>開始雙字幕</b></li>
+          <li><span>03</span><div><h3>打開 HBO Max</h3><p>開啟英文字幕並開始播放，LocalSubs 會同步加入繁中翻譯。</p></div><b>開始雙字幕</b></li>
         </ol>
       </section>
 
@@ -163,7 +163,7 @@ export default function Home() {
             <div className="localMachine">
               <div className="machineHeader"><span>全部在你的電腦裡完成</span><b><i /> 不呼叫外部服務</b></div>
               <div className="privateFlow">
-                <div className="flowStep"><small>MAX 英文字幕</small><strong>How did you know?</strong></div>
+                <div className="flowStep"><small>HBO MAX 英文字幕</small><strong>How did you know?</strong></div>
                 <span className="flowArrow" aria-hidden="true">→</span>
                 <div className="flowStep flowLocal"><img src="/localsubs-logo.png" alt="" width="38" height="38" /><small>LOCALSUBS</small><strong>本機翻譯</strong></div>
                 <span className="flowArrow" aria-hidden="true">→</span>
@@ -201,8 +201,8 @@ export default function Home() {
         </div>
         <div className="faqList">
           <details>
-            <summary>HBO Max／Max 可以同時顯示中英雙字幕嗎？<b>＋</b></summary>
-            <p>Max 原生一次只能顯示一種字幕。安裝 LocalSubs 後，開啟英文字幕即可在同一個播放畫面同步加入繁中翻譯。</p>
+            <summary>HBO Max 可以同時顯示中英雙字幕嗎？<b>＋</b></summary>
+            <p>HBO Max 原生一次只能顯示一種字幕。安裝 LocalSubs 後，開啟英文字幕即可在同一個播放畫面同步加入繁中翻譯。</p>
           </details>
           <details>
             <summary>LocalSubs 需要付費或建立帳號嗎？<b>＋</b></summary>
@@ -223,7 +223,7 @@ export default function Home() {
         <div className="ctaMarquee" aria-hidden="true">原文 · 繁中 · 原文 · 繁中</div>
         <div className="ctaContent">
           <img src="/localsubs-logo.png" alt="LocalSubs 圖示" width="78" height="78" />
-          <h2>免費開啟 Max<br />英文＋繁中雙字幕。</h2>
+          <h2>免費開啟 HBO Max<br />英文＋繁中雙字幕。</h2>
           <p>不用月費，也不需建立帳號。</p>
           <a className="button buttonDark" href={storeUrl} target="_blank" rel="noreferrer"><ChromeIcon /> 免費加到 Chrome，開啟雙語字幕 <Arrow /></a>
         </div>
@@ -231,7 +231,7 @@ export default function Home() {
 
       <footer className="footer shell">
         <a className="brand footerBrand" href="#top"><img src="/localsubs-logo.png" alt="" width="34" height="34" /><span>LocalSubs</span></a>
-        <p>在 Max 看原文，也跟得上劇情。</p>
+        <p>在 HBO Max 看原文，也跟得上劇情。</p>
         <div><a href="https://github.com/aiden1020/localsubs" target="_blank" rel="noreferrer">GitHub</a><a href="https://github.com/aiden1020/localsubs/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">隱私</a><a href={storeUrl} target="_blank" rel="noreferrer">Chrome 商店</a></div>
       </footer>
     </main>
