@@ -1,6 +1,6 @@
 <br />
 <div align="center">
-  <a href="https://github.com/aiden1020/localsubs">
+  <a href="https://localsubs.aidenw.me">
     <img src="icons/logo.png" alt="Logo" width="80" height="80">
   </a>
 
@@ -20,6 +20,9 @@ Translates English subtitles to Traditional Chinese on-device using the LocalSub
 </a>
 <a href="https://huggingface.co/spaces/Aiden1020/localsubs-en-zh-tw-translation">
   <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-FFD21E.svg" alt="Interactive Hugging Face demo">
+</a>
+<a href="https://localsubs.aidenw.me">
+  <img src="https://img.shields.io/badge/Website-localsubs.aidenw.me-d9ff66.svg" alt="LocalSubs project website">
 </a>
 
 <br />
