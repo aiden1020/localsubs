@@ -176,6 +176,69 @@ func TestHandleHealth(t *testing.T) {
 	}
 }
 
+func TestHandleModelCatalogAndActions(t *testing.T) {
+	var downloaded, selected, removed string
+	host := New(Config{
+		ListModels: func() ([]ModelInfo, error) {
+			return []ModelInfo{{Channel: "stable", Name: "Official", Downloadable: true}}, nil
+		},
+		DownloadModel: func(channel string) (bool, error) {
+			downloaded = channel
+			return true, nil
+		},
+		SelectModel: func(channel string) (bool, error) {
+			selected = channel
+			return true, nil
+		},
+		RemoveModel: func(channel string) error {
+			removed = channel
+			return nil
+		},
+	}, &runtime.StaticTranslator{Profile: runtime.DefaultProfile(), Ready: true})
+
+	list := host.Handle(context.Background(), Message{ID: "list", Type: "list_models"})
+	if !list.OK {
+		t.Fatalf("list models failed: %#v", list.Error)
+	}
+	body, err := json.Marshal(list.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var catalog struct {
+		Models []ModelInfo `json:"models"`
+	}
+	if err := json.Unmarshal(body, &catalog); err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Models) != 1 || catalog.Models[0].Channel != "stable" {
+		t.Fatalf("model catalog = %#v", catalog.Models)
+	}
+
+	for _, test := range []struct {
+		typeName string
+		call     func() Response
+		got      *string
+	}{
+		{"select_model", func() Response {
+			return host.Handle(context.Background(), Message{Type: "select_model", Payload: mustRawMessage(t, map[string]string{"channel": "stable"})})
+		}, &selected},
+		{"download_model", func() Response {
+			return host.Handle(context.Background(), Message{Type: "download_model", Payload: mustRawMessage(t, map[string]string{"channel": "stable"})})
+		}, &downloaded},
+		{"remove_model", func() Response {
+			return host.Handle(context.Background(), Message{Type: "remove_model", Payload: mustRawMessage(t, map[string]string{"channel": "stable"})})
+		}, &removed},
+	} {
+		response := test.call()
+		if !response.OK {
+			t.Errorf("%s failed: %#v", test.typeName, response.Error)
+		}
+		if *test.got != "stable" {
+			t.Errorf("%s channel = %q", test.typeName, *test.got)
+		}
+	}
+}
+
 func TestHandleInvalidTranslatePayload(t *testing.T) {
 	host := New(Config{}, &runtime.StaticTranslator{Profile: runtime.DefaultProfile(), Ready: true})
 	response := host.Handle(context.Background(), Message{

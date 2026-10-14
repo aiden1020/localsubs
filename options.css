@@ -223,6 +223,79 @@ h2 {
   line-height: 1.55;
 }
 
+.helper-model-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+.helper-model-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.helper-model-content {
+  min-width: 0;
+}
+
+.helper-model-content h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.helper-model-content p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.helper-model-content .helper-model-meta {
+  color: var(--accent-strong);
+  font-size: 12px;
+}
+
+.helper-model-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.helper-model-selected,
+.helper-model-action-hint {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.model-action-button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #10161d;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.model-action-button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.model-action-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
 .model-download {
   display: grid;
   gap: 14px;
@@ -591,5 +664,14 @@ output {
   .model-download-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .helper-model-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .helper-model-actions {
+    justify-content: flex-start;
   }
 }

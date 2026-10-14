@@ -48,6 +48,6 @@ brews:
       bin.install "localsubs"
     caveats: |
       Get started:
-        localsubs setup   # download the model and install Chrome integration
+        localsubs setup   # install Chrome integration, then choose models in Options
     test: |
       assert_match "localsubs", shell_output("#{bin}/localsubs version")

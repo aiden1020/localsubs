@@ -80,6 +80,7 @@ export class TranslationController {
           cueId,
           currentText: text,
           contextLines,
+          contextLimit: settings.localTranslatorCtxSize,
           sourceLanguage: "en",
           targetLanguage: settings.targetLanguage
         })
