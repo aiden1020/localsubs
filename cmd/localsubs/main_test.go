@@ -28,7 +28,10 @@ func TestParseFlagsDistinguishesHelpFromInvalidInput(t *testing.T) {
 func TestRootUsageIncludesUserFacingModelStatus(t *testing.T) {
 	var output bytes.Buffer
 	printUsageTo(&output)
-	for _, expected := range []string{"model download", "model status [--json]", "doctor [--json] [--deep]"} {
+	for _, expected := range []string{
+		"model download", "model status [--json]", "doctor [--json] [--deep]",
+		"benchmark --backend cpu|cuda|metal",
+	} {
 		if !strings.Contains(output.String(), expected) {
 			t.Fatalf("usage does not contain %q:\n%s", expected, output.String())
 		}

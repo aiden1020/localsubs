@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,81 +10,109 @@ import (
 	"strings"
 	"time"
 
-	"localsubs/internal/config"
 	"localsubs/internal/model"
 	"localsubs/internal/runtime"
 	"localsubs/internal/ui"
 )
 
-func modelDownload() error {
-	return modelDownloadWithNextStep(true)
+func modelDownload(args []string) error {
+	flags := flag.NewFlagSet("model download", flag.ContinueOnError)
+	channel := flags.String("channel", "", "official model channel to download (default: stable)")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	return modelDownloadChannel(*channel, true)
 }
 
-func modelDownloadWithNextStep(showNextStep bool) error {
+func modelDownloadChannel(channel string, showNextStep bool) error {
 	m, err := loadManifest()
 	if err != nil {
 		return err
 	}
-	entry, ok := m.Entry("")
+	entry, ok := m.Entry(channel)
 	if !ok {
-		return fmt.Errorf("model manifest has no default channel")
+		return fmt.Errorf("unknown model channel %q", channel)
 	}
-	if entry.URL == "" {
-		return fmt.Errorf("no download URL configured in manifest")
-	}
-
-	destDir := filepath.Join(config.AppDataDir(), "models")
-	destPath := filepath.Join(destDir, entry.Path)
-
-	// Check if already present and valid.
-	check := entry
-	check.Path = destPath
-	if s := model.Check(check); modelStateReady(s.State) {
-		fmt.Println(ui.OK("Model already downloaded"))
-		ui.PrintRow("File", ui.CompactPath(destPath))
-		if showNextStep {
-			ui.PrintBlank()
-			ui.PrintDetail("Next: localsubs install")
-		}
-		return nil
-	}
-
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
+	if err := downloadModelEntry(entry, os.Stdout); err != nil {
 		return err
 	}
-
-	fmt.Printf("  Downloading %s  %s\n",
-		ui.Bold(entry.Path),
-		ui.Dim("("+formatBytes(entry.SizeBytes)+")"),
-	)
-
-	if err := downloadWithProgress(destPath, entry.URL, entry.SizeBytes); err != nil {
+	destPath, err := managedModelPath(entry.Path)
+	if err != nil {
 		return err
 	}
-	fmt.Println()
-
-	if entry.SHA256 != "" {
-		fmt.Print("  Verifying checksum...")
-		check.Path = destPath
-		s := model.Check(check)
-		if s.State != "verified" {
-			_ = os.Remove(destPath)
-			return fmt.Errorf(" checksum mismatch — file removed, please try again")
-		}
-		fmt.Println(" " + ui.OK("ok"))
-	}
-
-	fmt.Println()
-	fmt.Println(ui.OK("Model ready"))
-	ui.PrintRow("File", ui.CompactPath(destPath))
 	if showNextStep {
+		fmt.Println()
+		fmt.Println(ui.OK("Model ready"))
+		ui.PrintRow("File", ui.CompactPath(destPath))
 		ui.PrintBlank()
 		ui.PrintDetail("Next: localsubs install")
 	}
 	return nil
 }
 
+func downloadModelEntry(entry model.Entry, progress io.Writer) error {
+	destPath, err := managedModelPath(entry.Path)
+	if err != nil {
+		return err
+	}
+	destDir := filepath.Dir(destPath)
+
+	check := entry
+	check.Path = destPath
+	if s := checkManagedModel(check); modelStateReady(s.State) {
+		if progress != nil {
+			fmt.Fprintln(progress, ui.OK("Model already downloaded"))
+			fmt.Fprintf(progress, "  File: %s\n", ui.CompactPath(destPath))
+		}
+		return nil
+	}
+	if strings.TrimSpace(entry.URL) == "" {
+		return fmt.Errorf("model %q is not available for download", entry.Name)
+	}
+
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return err
+	}
+
+	if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if progress != nil {
+		fmt.Fprintf(progress, "  Downloading %s  %s\n",
+			ui.Bold(entry.Path),
+			ui.Dim("("+formatBytes(entry.SizeBytes)+")"),
+		)
+	}
+
+	if err := downloadWithProgressTo(destPath, entry.URL, entry.SizeBytes, progress); err != nil {
+		return err
+	}
+	if progress != nil {
+		fmt.Fprintln(progress)
+	}
+
+	if entry.SHA256 != "" {
+		if progress != nil {
+			fmt.Fprint(progress, "  Verifying checksum...")
+		}
+		check.Path = destPath
+		s := model.Check(check)
+		if s.State != "verified" {
+			_ = os.Remove(destPath)
+			return fmt.Errorf(" checksum mismatch — file removed, please try again")
+		}
+		if progress != nil {
+			fmt.Fprintln(progress, " "+ui.OK("ok"))
+		}
+	}
+	return nil
+}
+
 func downloadWithProgress(destPath, url string, totalBytes int64) error {
+	return downloadWithProgressTo(destPath, url, totalBytes, os.Stdout)
+}
+
+func downloadWithProgressTo(destPath, url string, totalBytes int64, writer io.Writer) error {
 	partPath := destPath + ".part"
 
 	// Check for resumable partial download.
@@ -132,6 +161,7 @@ func downloadWithProgress(destPath, url string, totalBytes int64) error {
 
 	pr := &progressReader{
 		r:         resp.Body,
+		writer:    writer,
 		total:     totalBytes,
 		current:   startByte,
 		startedAt: time.Now(),
@@ -149,6 +179,7 @@ func downloadWithProgress(destPath, url string, totalBytes int64) error {
 
 type progressReader struct {
 	r         io.Reader
+	writer    io.Writer
 	total     int64
 	current   int64
 	startedAt time.Time
@@ -167,6 +198,9 @@ func (p *progressReader) Read(buf []byte) (int, error) {
 }
 
 func (p *progressReader) render() {
+	if p.writer == nil {
+		return
+	}
 	const barWidth = 26
 	var pct float64
 	if p.total > 0 {
@@ -185,14 +219,14 @@ func (p *progressReader) render() {
 	}
 
 	if p.total > 0 {
-		fmt.Printf("\r  [%s] %5.1f%%  %s / %s%s",
+		fmt.Fprintf(p.writer, "\r  [%s] %5.1f%%  %s / %s%s",
 			bar, pct*100,
 			formatBytes(p.current),
 			formatBytes(p.total),
 			speed,
 		)
 	} else {
-		fmt.Printf("\r  %s%s", formatBytes(p.current), speed)
+		fmt.Fprintf(p.writer, "\r  %s%s", formatBytes(p.current), speed)
 	}
 }
 

@@ -18,14 +18,10 @@ func TestSetupHelpAndBrowserValidation(t *testing.T) {
 	}
 }
 
-func TestRunSetupDownloadsBeforeInstalling(t *testing.T) {
-	events := make([]string, 0, 2)
+func TestRunSetupInstallsWithoutChoosingModels(t *testing.T) {
+	events := make([]string, 0, 1)
 	var installArgs []string
 	err := runSetup("edge", "extension", "auto", setupDependencies{
-		downloadModel: func() error {
-			events = append(events, "download")
-			return nil
-		},
 		installIntegration: func(args []string) error {
 			events = append(events, "install")
 			installArgs = append([]string(nil), args...)
@@ -35,30 +31,12 @@ func TestRunSetupDownloadsBeforeInstalling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(events, []string{"download", "install"}) {
+	if !reflect.DeepEqual(events, []string{"install"}) {
 		t.Fatalf("setup order = %#v", events)
 	}
 	wantArgs := []string{"--browser", "edge", "--extension-id", "extension"}
 	if !reflect.DeepEqual(installArgs, wantArgs) {
 		t.Fatalf("install args = %#v, want %#v", installArgs, wantArgs)
-	}
-}
-
-func TestRunSetupStopsWhenDownloadFails(t *testing.T) {
-	downloadErr := errors.New("download failed")
-	installed := false
-	err := runSetup("chrome", "extension", "auto", setupDependencies{
-		downloadModel: func() error { return downloadErr },
-		installIntegration: func([]string) error {
-			installed = true
-			return nil
-		},
-	})
-	if !errors.Is(err, downloadErr) {
-		t.Fatalf("setup error = %v, want download failure", err)
-	}
-	if installed {
-		t.Fatal("setup must not install the integration after a download failure")
 	}
 }
 

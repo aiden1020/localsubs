@@ -4,6 +4,7 @@
   "models": [
     {
       "channel": "stable",
+      "name": "LocalSubs Standard 0.6B",
       "id": "localsubs-en-zh-tw-0.6b",
       "version": "2026.07",
       "runtime": "llama.cpp",
@@ -18,6 +19,42 @@
       },
       "url": "https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B/resolve/main/LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
       "sha256": "525351104440c210f235721d9290b459dac00392331c93008cac401c055c9a76"
+    },
+    {
+      "channel": "rowtune-dev",
+      "name": "80k2 Rowtune 0.6B (Alpha)",
+      "id": "localsubs-en-zh-tw-0.6b-80k2-rowtune",
+      "version": "dev",
+      "runtime": "llama.cpp",
+      "path": "0.6B-80k2-cpt-sft70-rowtune.Q4_K_M.gguf",
+      "sizeBytes": 333621664,
+      "description": "Local development model for subtitle translation experiments.",
+      "profile": {
+        "nPredict": 24,
+        "ctxSize": 1,
+        "cachePrompt": true,
+        "cacheReuse": -1
+      },
+      "url": "",
+      "sha256": "1c67b79cef1157b563a84d96fb6b7c89d9dccd09db76c26ff4ce552396e75051"
+    },
+    {
+      "channel": "1.7b-dev",
+      "name": "80k3 CPT-SFT70 1.7B (Alpha)",
+      "id": "localsubs-en-zh-tw-1.7b-80k3-cpt-sft70",
+      "version": "dev",
+      "runtime": "llama.cpp",
+      "path": "1.7B-80k3-cpt-sft70.Q4_K_M.gguf",
+      "sizeBytes": 983902976,
+      "description": "Local development 1.7B model for subtitle translation experiments.",
+      "profile": {
+        "nPredict": 24,
+        "ctxSize": 1,
+        "cachePrompt": true,
+        "cacheReuse": -1
+      },
+      "url": "",
+      "sha256": "484139083ada9474fa66e00b9199a2236a01a27fffa02b9f21cf0cd08ff8c46d"
     }
   ]
 }

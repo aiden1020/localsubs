@@ -22,14 +22,14 @@ export class NativeClient {
     this.pending = new Map();
   }
 
-  send(type, payload) {
+  send(type, payload, timeoutMs = this.timeoutMs) {
     return new Promise((resolve, reject) => {
       const id = this.idFactory();
       const timeout = this.setTimer(() => {
         this.pending.delete(id);
         reject(new NativeHostError("native_request_timeout", "Native host request timed out"));
         this.reset("native_host_disconnected", "Native host connection reset after request timeout");
-      }, this.timeoutMs);
+      }, timeoutMs);
       this.pending.set(id, { resolve, reject, timeout });
       try {
         this.getPort().postMessage({ id, type, payload });

@@ -13,7 +13,6 @@ import (
 
 type setupDependencies struct {
 	downloadRuntime    func(string) error
-	downloadModel      func() error
 	installIntegration func([]string) error
 }
 
@@ -35,9 +34,6 @@ func setup(args []string) error {
 		return err
 	}
 	dependencies := setupDependencies{
-		downloadModel: func() error {
-			return modelDownloadWithNextStep(false)
-		},
 		installIntegration: func(installArgs []string) error {
 			return installWithNextStep(installArgs, false)
 		},
@@ -52,10 +48,10 @@ func setup(args []string) error {
 
 func runSetup(browser, extensionID, backend string, dependencies setupDependencies) error {
 	fmt.Printf("%s  %s\n\n", ui.Bold("LocalSubs Setup"), ui.Dim("v"+runtime.HelperVersion))
-	totalSteps := 2
+	totalSteps := 1
 	step := 1
 	if dependencies.downloadRuntime != nil {
-		totalSteps = 3
+		totalSteps = 2
 		ui.PrintHeader(fmt.Sprintf("Step %d of %d · Inference runtime", step, totalSteps))
 		if err := dependencies.downloadRuntime(backend); err != nil {
 			return err
@@ -63,13 +59,6 @@ func runSetup(browser, extensionID, backend string, dependencies setupDependenci
 		step++
 		ui.PrintBlank()
 	}
-	ui.PrintHeader(fmt.Sprintf("Step %d of %d · Translation model", step, totalSteps))
-	if err := dependencies.downloadModel(); err != nil {
-		return err
-	}
-
-	ui.PrintBlank()
-	step++
 	ui.PrintHeader(fmt.Sprintf("Step %d of %d · %s integration", step, totalSteps, displayBrowserName(browser)))
 	if err := dependencies.installIntegration([]string{
 		"--browser", browser,
@@ -80,6 +69,6 @@ func runSetup(browser, extensionID, backend string, dependencies setupDependenci
 
 	ui.PrintBlank()
 	fmt.Println(ui.OK("Setup complete"))
-	ui.PrintDetail("Next: reload the LocalSubs extension in " + displayBrowserName(browser) + ".")
+	ui.PrintDetail("Next: reload the extension, then choose and download models in Options.")
 	return nil
 }
