@@ -117,9 +117,9 @@ func printUsageTo(writer io.Writer) {
 	fmt.Fprintf(writer, "%s  %s\n\n", ui.Bold("localsubs"), ui.Dim("v"+runtime.HelperVersion))
 	fmt.Fprintln(writer, ui.Bold("Setup:"))
 	setup := [][2]string{
-		{"setup [--browser ...]", "Download the model and install browser integration"},
+		{"setup [--browser ...]", "Install runtime and browser integration"},
 		{"runtime download --backend ...", "Download the Windows CPU or CUDA runtime"},
-		{"model download", "Download the translation model (~350 MB)"},
+		{"model download [--channel ID]", "Download an official model"},
 		{"install", "Install the Chrome integration"},
 		{"uninstall [--browser all]", "Remove browser integration and optionally local data"},
 	}
@@ -129,7 +129,7 @@ func printUsageTo(writer io.Writer) {
 	fmt.Fprintln(writer)
 	fmt.Fprintln(writer, ui.Bold("Commands:"))
 	cmds := [][2]string{
-		{"benchmark --backend cpu|cuda", "Benchmark llama.cpp with a JSONL subtitle set"},
+		{"benchmark --backend cpu|cuda|metal", "Benchmark llama.cpp with a JSONL subtitle set"},
 		{"status [--json]", "Check whether LocalSubs is ready"},
 		{"doctor [--json] [--deep]", "Diagnose setup and inference problems"},
 		{"model status [--json]", "Inspect the installed model"},
@@ -218,8 +218,21 @@ func serve(args []string) error {
 
 func nativeHost(args []string) error {
 	flags := flag.NewFlagSet("native-host", flag.ContinueOnError)
-	fakeBackend, backendURL, modelPath, backendMode := addBackendFlags(flags)
+	fakeBackend, backendURL, _, backendMode := addBackendFlags(flags)
 	if err := parseFlags(flags, args); err != nil {
+		return err
+	}
+	modelManifest, err := loadManifest()
+	if err != nil {
+		return fmt.Errorf("load model manifest: %w", err)
+	}
+	modelChannel := selectedModelChannel(modelManifest)
+	modelEntry, ok := modelManifest.Entry(modelChannel)
+	if !ok {
+		return fmt.Errorf("model channel %q is missing from the manifest", modelChannel)
+	}
+	selectedModelPath, err := managedModelPath(modelEntry.Path)
+	if err != nil {
 		return err
 	}
 
@@ -228,7 +241,9 @@ func nativeHost(args []string) error {
 
 	// Pre-compute profile so the service and loading translator agree on it.
 	profile := runtime.DefaultProfile()
-	profile.ModelPath = resolveModelPath(*modelPath)
+	profile.ModelPath = selectedModelPath
+	profile.ModelID = modelEntry.ID
+	profile.ModelVersion = modelEntry.Version
 	loading := runtime.NewLoadingTranslator(profile)
 
 	// Start llama-server in the background so the host can serve messages
@@ -241,10 +256,12 @@ func nativeHost(args []string) error {
 	go func() {
 		defer wg.Done()
 		translator, _, cleanup, err := buildTranslator(ctx, backendOptions{
-			fakeBackend: *fakeBackend,
-			backendURL:  *backendURL,
-			modelPath:   *modelPath,
-			backendMode: *backendMode,
+			fakeBackend:  *fakeBackend,
+			backendURL:   *backendURL,
+			modelPath:    selectedModelPath,
+			backendMode:  *backendMode,
+			modelID:      modelEntry.ID,
+			modelVersion: modelEntry.Version,
 		})
 		if err != nil {
 			loading.SetError(err)
@@ -256,9 +273,15 @@ func nativeHost(args []string) error {
 	}()
 
 	service := session.NewService(loading, profile)
+	models := newModelManager(modelManifest)
 	host := nativehost.New(nativehost.Config{
 		DefaultContextLines: profile.SubtitleContextLines,
 		IdleTimeout:         30 * time.Minute,
+		ModelChannel:        modelChannel,
+		SelectModel:         models.selectModel,
+		ListModels:          models.list,
+		DownloadModel:       models.downloadModel,
+		RemoveModel:         models.removeModel,
 	}, service)
 	serveErr := host.Serve(ctx, os.Stdin, os.Stdout)
 	cancel()  // signal goroutine to proceed with cleanup
@@ -319,14 +342,22 @@ func displayBrowserName(browser string) string {
 }
 
 type backendOptions struct {
-	fakeBackend bool
-	backendURL  string
-	modelPath   string
-	backendMode string
+	fakeBackend  bool
+	backendURL   string
+	modelPath    string
+	backendMode  string
+	modelID      string
+	modelVersion string
 }
 
 func buildTranslator(ctx context.Context, options backendOptions) (runtime.Translator, runtime.Profile, func(), error) {
 	profile := runtime.DefaultProfile()
+	if options.modelID != "" {
+		profile.ModelID = options.modelID
+	}
+	if options.modelVersion != "" {
+		profile.ModelVersion = options.modelVersion
+	}
 	profile.ModelPath = resolveModelPath(options.modelPath)
 	cleanup := func() {}
 
@@ -448,7 +479,7 @@ func modelCommand(args []string) error {
 		case "status":
 			return modelStatus(args[1:])
 		case "download":
-			return modelDownload()
+			return modelDownload(args[1:])
 		case "-h", "--help", "help":
 			printModelUsage()
 			return nil
@@ -472,7 +503,7 @@ func printModelUsageTo(writer io.Writer) {
 	fmt.Fprintln(writer, "Usage: localsubs model <command>")
 	fmt.Fprintln(writer)
 	fmt.Fprintln(writer, "Commands:")
-	fmt.Fprintln(writer, "  download    Download and verify the translation model")
+	fmt.Fprintln(writer, "  download    Download and verify an official model [--channel ID]")
 	fmt.Fprintln(writer, "  status      Inspect the installed model              [--json]")
 }
 
@@ -487,11 +518,14 @@ func modelStatus(args []string) error {
 	if err != nil {
 		return err
 	}
-	entry, ok := m.Entry("")
+	entry, ok := m.Entry(selectedModelChannel(m))
 	if !ok {
-		return fmt.Errorf("model manifest has no default channel")
+		return fmt.Errorf("selected model channel is missing from the manifest")
 	}
-	entry.Path = resolveModelPath(entry.Path)
+	entry.Path, err = managedModelPath(entry.Path)
+	if err != nil {
+		return err
+	}
 
 	s := runModelCheck(entry)
 	ready := modelStateReady(s.State)
@@ -502,7 +536,7 @@ func modelStatus(args []string) error {
 			Command string `json:"command,omitempty"`
 		}{Status: s}
 		if !ready {
-			output.Command = "localsubs model download"
+			output.Command = "localsubs model download --channel " + entry.Channel
 		}
 		body, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
@@ -541,7 +575,7 @@ func printModelStatusHuman(s model.Status, entry model.Entry) {
 	}
 }
 
-// modelCheckMsg carries the result of model.Check back to the bubbletea runtime.
+// modelCheckMsg carries the result of checking the LocalSubs-managed model file.
 type modelCheckMsg model.Status
 
 type modelCheckSpinner struct {
@@ -553,7 +587,7 @@ type modelCheckSpinner struct {
 
 func (m modelCheckSpinner) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Tick, func() tea.Msg {
-		return modelCheckMsg(model.Check(m.entry))
+		return modelCheckMsg(checkManagedModel(m.entry))
 	})
 }
 
@@ -583,7 +617,7 @@ func runModelCheck(entry model.Entry) model.Status {
 	isTTY := err == nil && (fi.Mode()&os.ModeCharDevice) != 0
 
 	if !isTTY || entry.SHA256 == "" {
-		return model.Check(entry)
+		return checkManagedModel(entry)
 	}
 
 	s := spinner.New()
@@ -592,7 +626,7 @@ func runModelCheck(entry model.Entry) model.Status {
 	p := tea.NewProgram(m)
 	final, err := p.Run()
 	if err != nil {
-		return model.Check(entry)
+		return checkManagedModel(entry)
 	}
 	return final.(modelCheckSpinner).result
 }

@@ -27,6 +27,24 @@ type Config struct {
 	MaxConcurrentRequests int
 	RequestTimeout        time.Duration
 	IdleTimeout           time.Duration // exit after this long with no messages; 0 = no timeout
+	ModelChannel          string
+	SelectModel           func(string) (bool, error)
+	ListModels            func() ([]ModelInfo, error)
+	DownloadModel         func(string) (bool, error)
+	RemoveModel           func(string) error
+}
+
+type ModelInfo struct {
+	Channel      string `json:"channel"`
+	Name         string `json:"name"`
+	ID           string `json:"id"`
+	Version      string `json:"version"`
+	SizeBytes    int64  `json:"sizeBytes"`
+	Description  string `json:"description"`
+	State        string `json:"state"`
+	Selected     bool   `json:"selected"`
+	Downloadable bool   `json:"downloadable"`
+	CanRemove    bool   `json:"canRemove"`
 }
 
 type Host struct {
@@ -184,11 +202,93 @@ func (h *Host) Handle(ctx context.Context, message Message) Response {
 	switch message.Type {
 	case "health", "CHECK_LOCAL_TRANSLATOR":
 		return Response{ID: message.ID, Type: message.Type + ".result", OK: true, Payload: h.translator.Health(ctx)}
+	case "select_model":
+		return h.handleSelectModel(message)
+	case "list_models":
+		return h.handleListModels(message)
+	case "download_model":
+		return h.handleDownloadModel(message)
+	case "remove_model":
+		return h.handleRemoveModel(message)
 	case "translate", "TRANSLATE_SUBTITLE":
 		return h.handleTranslate(ctx, message)
 	default:
 		return errorResponse(message.ID, message.Type, "unsupported_message", "Unsupported native message type.")
 	}
+}
+
+func (h *Host) handleSelectModel(message Message) Response {
+	if h.config.SelectModel == nil {
+		return errorResponse(message.ID, message.Type, "model_selection_unavailable", "Model selection is unavailable.")
+	}
+	var payload struct {
+		Channel string `json:"channel"`
+	}
+	if len(message.Payload) == 0 || json.Unmarshal(message.Payload, &payload) != nil {
+		return errorResponse(message.ID, message.Type, "invalid_request", "A model channel is required.")
+	}
+	changed, err := h.config.SelectModel(payload.Channel)
+	if err != nil {
+		return errorResponse(message.ID, message.Type, "invalid_model", err.Error())
+	}
+	restartRequired := changed || h.config.ModelChannel != "" && h.config.ModelChannel != payload.Channel
+	return Response{
+		ID: message.ID, Type: message.Type + ".result", OK: true,
+		Payload: map[string]any{
+			"channel":         payload.Channel,
+			"restartRequired": restartRequired,
+		},
+	}
+}
+
+func (h *Host) handleListModels(message Message) Response {
+	if h.config.ListModels == nil {
+		return errorResponse(message.ID, message.Type, "model_management_unavailable", "Model management is unavailable.")
+	}
+	models, err := h.config.ListModels()
+	if err != nil {
+		return errorResponse(message.ID, message.Type, "model_list_failed", err.Error())
+	}
+	return Response{ID: message.ID, Type: message.Type + ".result", OK: true, Payload: map[string]any{"models": models}}
+}
+
+func (h *Host) handleDownloadModel(message Message) Response {
+	if h.config.DownloadModel == nil {
+		return errorResponse(message.ID, message.Type, "model_management_unavailable", "Model downloads are unavailable.")
+	}
+	channel, err := modelChannelFromMessage(message)
+	if err != nil {
+		return errorResponse(message.ID, message.Type, "invalid_request", err.Error())
+	}
+	restartRequired, err := h.config.DownloadModel(channel)
+	if err != nil {
+		return errorResponse(message.ID, message.Type, "model_download_failed", err.Error())
+	}
+	return Response{ID: message.ID, Type: message.Type + ".result", OK: true, Payload: map[string]any{"channel": channel, "restartRequired": restartRequired}}
+}
+
+func (h *Host) handleRemoveModel(message Message) Response {
+	if h.config.RemoveModel == nil {
+		return errorResponse(message.ID, message.Type, "model_management_unavailable", "Model removal is unavailable.")
+	}
+	channel, err := modelChannelFromMessage(message)
+	if err != nil {
+		return errorResponse(message.ID, message.Type, "invalid_request", err.Error())
+	}
+	if err := h.config.RemoveModel(channel); err != nil {
+		return errorResponse(message.ID, message.Type, "model_remove_failed", err.Error())
+	}
+	return Response{ID: message.ID, Type: message.Type + ".result", OK: true, Payload: map[string]any{"channel": channel}}
+}
+
+func modelChannelFromMessage(message Message) (string, error) {
+	var payload struct {
+		Channel string `json:"channel"`
+	}
+	if len(message.Payload) == 0 || json.Unmarshal(message.Payload, &payload) != nil || payload.Channel == "" {
+		return "", fmt.Errorf("a model channel is required")
+	}
+	return payload.Channel, nil
 }
 
 func (h *Host) handleTranslate(parent context.Context, message Message) Response {

@@ -66,7 +66,8 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "sync" && changes.inferenceBackend) {
+  if (areaName !== "sync") return;
+  if (changes.inferenceBackend) {
     selectInferenceBackend(changes.inferenceBackend.newValue);
   }
 });
@@ -100,9 +101,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "SET_INFERENCE_BACKEND") {
-    selectInferenceBackend(message.backend);
-    sendResponse({ ok: true, backend: inferenceBackend });
-    return false;
+    backendReady.then(async () => {
+      selectInferenceBackend(message.backend);
+      sendResponse({ ok: true, backend: inferenceBackend });
+    }).catch((error) => sendResponse({ ok: false, error: errorPayload(error, "model_selection_failed") }));
+    return true;
+  }
+
+  if (message?.type === "LIST_HELPER_MODELS") {
+    respondAsync(nativeTranslator.listModels().then((models) => ({ ok: true, models })), sendResponse, "model_list_failed");
+    return true;
+  }
+
+  if (message?.type === "DOWNLOAD_HELPER_MODEL") {
+    respondAsync(nativeTranslator.downloadModel(message.channel), sendResponse, "model_download_failed");
+    return true;
+  }
+
+  if (message?.type === "REMOVE_HELPER_MODEL") {
+    respondAsync(nativeTranslator.removeModel(message.channel), sendResponse, "model_remove_failed");
+    return true;
+  }
+
+  if (message?.type === "SELECT_HELPER_MODEL") {
+    respondAsync(nativeTranslator.selectModel(message.channel), sendResponse, "model_selection_failed");
+    return true;
   }
 
   if (message?.type === "TRANSLATE_SUBTITLE") {

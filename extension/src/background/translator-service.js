@@ -62,6 +62,33 @@ export function createTranslatorService(nativeClient, now = () => performance.no
     };
   }
 
+  async function selectModel(channel) {
+    const result = await nativeClient.send("select_model", { channel });
+    if (result.restartRequired) {
+      resetCompatibility();
+      nativeClient.reset();
+    }
+    return result;
+  }
+
+  async function listModels() {
+    const result = await nativeClient.send("list_models", {});
+    return Array.isArray(result.models) ? result.models : [];
+  }
+
+  async function downloadModel(channel) {
+    const result = await nativeClient.send("download_model", { channel }, 15 * 60 * 1000);
+    if (result.restartRequired) {
+      resetCompatibility();
+      nativeClient.reset();
+    }
+    return result;
+  }
+
+  async function removeModel(channel) {
+    return nativeClient.send("remove_model", { channel });
+  }
+
   async function checkLocalTranslator(warmup = false) {
     const startedAt = now();
     const health = await nativeClient.send("health", {});
@@ -121,6 +148,10 @@ export function createTranslatorService(nativeClient, now = () => performance.no
   return {
     checkLocalTranslator,
     checkTranslator: checkLocalTranslator,
+    downloadModel,
+    listModels,
+    removeModel,
+    selectModel,
     translateSubtitle
   };
 }

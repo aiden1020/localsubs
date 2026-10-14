@@ -1,5 +1,6 @@
 export const DEFAULT_SETTINGS = Object.freeze({
   inferenceBackend: "webllm",
+  helperModelChannel: "stable",
   translationEnabled: true,
   hideNativeSubtitles: true,
   showPendingOriginalText: true,
@@ -18,9 +19,16 @@ export function clampNumber(value, min, max, fallback) {
   return Math.min(Math.max(nextValue, min), max);
 }
 
+export function normalizeHelperModelChannel(value) {
+  return typeof value === "string" && /^[a-z0-9][a-z0-9-]{0,63}$/.test(value)
+    ? value
+    : "stable";
+}
+
 export function sanitizeSettings(rawSettings = {}) {
   return {
     inferenceBackend: rawSettings.inferenceBackend === "native" ? "native" : "webllm",
+    helperModelChannel: normalizeHelperModelChannel(rawSettings.helperModelChannel),
     translationEnabled: rawSettings.translationEnabled !== false,
     hideNativeSubtitles: rawSettings.hideNativeSubtitles !== false,
     showPendingOriginalText: rawSettings.showPendingOriginalText !== false,
