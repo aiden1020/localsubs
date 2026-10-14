@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"sort"
 	"strings"
 	"time"
@@ -90,7 +91,7 @@ type benchmarkReport struct {
 
 func benchmarkCommand(args []string) error {
 	flags := flag.NewFlagSet("benchmark", flag.ContinueOnError)
-	backendValue := flags.String("backend", "auto", "inference backend: auto, cpu, or cuda")
+	backendValue := flags.String("backend", "auto", "inference backend: auto, cpu, cuda, or metal")
 	runtimePath := flags.String("runtime", "", "explicit llama-server executable")
 	modelPath := flags.String("model", localruntime.DefaultModelFilename, "GGUF model path")
 	datasetPath := flags.String("dataset", "", "custom JSONL benchmark dataset (default: built-in 100-case workload)")
@@ -106,7 +107,7 @@ func benchmarkCommand(args []string) error {
 	if *warmup < 0 || *limit < 0 || *startupTimeout <= 0 || *requestTimeout <= 0 {
 		return fmt.Errorf("warmup and limit must be non-negative; timeouts must be positive")
 	}
-	mode, err := localruntime.ParseBackendMode(*backendValue)
+	mode, err := parseBenchmarkBackendMode(*backendValue)
 	if err != nil {
 		return err
 	}
@@ -138,22 +139,58 @@ func benchmarkCommand(args []string) error {
 	return nil
 }
 
+func parseBenchmarkBackendMode(value string) (localruntime.BackendMode, error) {
+	if strings.EqualFold(strings.TrimSpace(value), string(localruntime.BackendMetal)) {
+		return localruntime.BackendMetal, nil
+	}
+	mode, err := localruntime.ParseBackendMode(value)
+	if err != nil {
+		return "", fmt.Errorf("unsupported benchmark backend %q; use auto, cpu, cuda, or metal", value)
+	}
+	return mode, nil
+}
+
 func selectBenchmarkRuntime(mode localruntime.BackendMode, explicitPath string) (localruntime.RuntimeCandidate, error) {
+	if mode == localruntime.BackendMetal && goruntime.GOOS != "darwin" {
+		return localruntime.RuntimeCandidate{}, fmt.Errorf("Metal benchmark backend is supported on macOS only")
+	}
 	if strings.TrimSpace(explicitPath) != "" {
 		if mode == localruntime.BackendAuto {
-			return localruntime.RuntimeCandidate{}, fmt.Errorf("--runtime requires an explicit --backend cpu or cuda")
+			return localruntime.RuntimeCandidate{}, fmt.Errorf("--runtime requires an explicit --backend cpu, cuda, or metal")
 		}
 		absolute, err := filepath.Abs(explicitPath)
 		if err != nil {
 			return localruntime.RuntimeCandidate{}, err
 		}
-		return localruntime.RuntimeCandidate{Backend: mode, Path: absolute}, nil
+		candidate := localruntime.RuntimeCandidate{Backend: mode, Path: absolute}
+		if err := validateMetalBenchmarkRuntime(candidate); err != nil {
+			return localruntime.RuntimeCandidate{}, err
+		}
+		return candidate, nil
 	}
 	candidates, err := localruntime.DiscoverRuntimeCandidates(mode)
 	if err != nil {
 		return localruntime.RuntimeCandidate{}, err
 	}
+	if err := validateMetalBenchmarkRuntime(candidates[0]); err != nil {
+		return localruntime.RuntimeCandidate{}, err
+	}
 	return candidates[0], nil
+}
+
+func validateMetalBenchmarkRuntime(candidate localruntime.RuntimeCandidate) error {
+	if candidate.Backend != localruntime.BackendMetal {
+		return nil
+	}
+	output, err := exec.Command(candidate.Path, "--list-devices").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("probe Metal runtime: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	devices := strings.ToUpper(string(output))
+	if !strings.Contains(devices, "MTL") && !strings.Contains(devices, "METAL") {
+		return fmt.Errorf("llama-server does not expose a Metal device; `llama-server --list-devices` reported: %s", strings.TrimSpace(string(output)))
+	}
+	return nil
 }
 
 func executeBenchmark(
@@ -176,11 +213,7 @@ func executeBenchmark(
 	report.RuntimeVersion = executableVersion(candidate.Path)
 	report.ModelSHA256, _ = fileSHA256(modelPath)
 
-	profile := localruntime.DefaultProfile()
-	profile.ModelPath = modelPath
-	if candidate.Backend == localruntime.BackendCPU {
-		profile.GPULayers = 0
-	}
+	profile := benchmarkProfile(candidate.Backend, modelPath)
 	report.GPUOffloadLayers = profile.GPULayers
 	port, err := localruntime.AllocateLocalPort()
 	if err != nil {
@@ -243,6 +276,15 @@ func executeBenchmark(
 		return report, fmt.Errorf("benchmark completed with %d failed requests", len(benchmarkErrors))
 	}
 	return report, nil
+}
+
+func benchmarkProfile(backend localruntime.BackendMode, modelPath string) localruntime.Profile {
+	profile := localruntime.DefaultProfile()
+	profile.ModelPath = modelPath
+	if backend == localruntime.BackendCPU {
+		profile.GPULayers = 0
+	}
+	return profile
 }
 
 func loadBenchmarkDataset(path string, limit int) ([]benchmarkCase, string, string, error) {
