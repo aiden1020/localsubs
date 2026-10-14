@@ -3,6 +3,7 @@ export function createTranslationRequest({
   cueId,
   currentText,
   contextLines = [],
+  contextLimit,
   sourceLanguage = "en",
   targetLanguage = "zh-Hant"
 }) {
@@ -13,6 +14,7 @@ export function createTranslationRequest({
     cueSequence: Number.isSafeInteger(numericCue) && numericCue >= 0 ? numericCue : 0,
     currentText,
     contextLines,
+    ...(Number.isInteger(contextLimit) ? { contextLimit } : {}),
     sourceLanguage,
     targetLanguage
   };
