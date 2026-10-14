@@ -3,6 +3,13 @@
 All notable user-facing changes are documented in this file. LocalSubs uses
 semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- Support `localsubs benchmark --backend metal` on macOS to benchmark
+  llama.cpp with GPU layer offload.
+
 ## [0.5.0] - 2026-08-11
 
 ### Added

@@ -4,7 +4,10 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"testing"
+
+	localruntime "localsubs/internal/runtime"
 )
 
 func TestLoadMiniBenchmarkSetAndParsePrompts(t *testing.T) {
@@ -113,5 +116,52 @@ func TestSummarizeBenchmarkUsesNearestRankPercentiles(t *testing.T) {
 	}
 	if summary.ExactMatchPercent != 40 {
 		t.Fatalf("exact match = %f, want 40", summary.ExactMatchPercent)
+	}
+}
+
+func TestBenchmarkProfileConfiguresBackendOffload(t *testing.T) {
+	for _, test := range []struct {
+		backend localruntime.BackendMode
+		wantNGL int
+	}{
+		{backend: localruntime.BackendCPU, wantNGL: 0},
+		{backend: localruntime.BackendCUDA, wantNGL: localruntime.DefaultProfile().GPULayers},
+		{backend: localruntime.BackendMetal, wantNGL: localruntime.DefaultProfile().GPULayers},
+	} {
+		profile := benchmarkProfile(test.backend, "model.gguf")
+		if profile.GPULayers != test.wantNGL || profile.ModelPath != "model.gguf" {
+			t.Fatalf("benchmarkProfile(%s) = %#v, want GPU layers %d", test.backend, profile, test.wantNGL)
+		}
+	}
+}
+
+func TestParseBenchmarkBackendModeAcceptsMetal(t *testing.T) {
+	mode, err := parseBenchmarkBackendMode(" METAL ")
+	if err != nil || mode != localruntime.BackendMetal {
+		t.Fatalf("parseBenchmarkBackendMode(METAL) = %q, %v", mode, err)
+	}
+	if _, err := parseBenchmarkBackendMode("rocm"); err == nil {
+		t.Fatal("unsupported benchmark backend must fail")
+	}
+}
+
+func TestSelectBenchmarkRuntimeValidatesMetalDevice(t *testing.T) {
+	if goruntime.GOOS != "darwin" {
+		t.Skip("Metal runtime is macOS-only")
+	}
+	runtimePath := filepath.Join(t.TempDir(), "llama-server")
+	if err := os.WriteFile(runtimePath, []byte("#!/bin/sh\necho 'MTL0: Test GPU'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	candidate, err := selectBenchmarkRuntime(localruntime.BackendMetal, runtimePath)
+	if err != nil || candidate.Backend != localruntime.BackendMetal || candidate.Path != runtimePath {
+		t.Fatalf("selectBenchmarkRuntime(metal) = %#v, %v", candidate, err)
+	}
+
+	if err := os.WriteFile(runtimePath, []byte("#!/bin/sh\necho 'BLAS: Accelerate'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := selectBenchmarkRuntime(localruntime.BackendMetal, runtimePath); err == nil {
+		t.Fatal("Metal runtime without a Metal device must fail")
 	}
 }

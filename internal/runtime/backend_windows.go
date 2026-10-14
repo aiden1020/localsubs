@@ -13,6 +13,9 @@ import (
 )
 
 func platformRuntimeCandidates(mode BackendMode) ([]RuntimeCandidate, error) {
+	if mode == BackendMetal {
+		return nil, fmt.Errorf("Metal runtime is supported on macOS only")
+	}
 	backends := []BackendMode{mode}
 	if mode == BackendAuto {
 		backends = []BackendMode{BackendCUDA, BackendCPU}

@@ -49,7 +49,8 @@ Testing when regular Chrome is not installed.
 
 For runtime or inference changes, download both backends and run the full
 100-case benchmark described in `README.md`. CPU runs must report zero GPU
-offload layers; CUDA runs must report the configured GPU offload layers.
+offload layers; Metal and CUDA runs must report the configured GPU offload
+layers.
 
 The source extension is under `extension/src`. Generated bundles and the Chrome
 extension ZIP are written to `dist/` and are not committed. To test an unpacked

@@ -189,7 +189,7 @@ npm run test:wllama:standalone -- --headed
 | `localsubs doctor` | Diagnose the manifest, launcher, helper, runtime, and model |
 | `localsubs logs` | Print log file paths |
 | `localsubs version` | Print version |
-| `localsubs benchmark --backend cpu\|cuda` | Benchmark llama.cpp with a subtitle JSONL set |
+| `localsubs benchmark --backend cpu\|cuda\|metal` | Benchmark llama.cpp with a subtitle JSONL set |
 
 The native helper starts on demand when Chrome connects to it; it is not a
 persistent background service. Use `localsubs status` to validate the installed
@@ -240,9 +240,14 @@ On Windows, models are stored in `%LOCALAPPDATA%\LocalSubs\models`.
 ## Latency benchmark
 
 The CLI includes a built-in 100-case subtitle workload, so installed releases
-do not need a separate dataset file. Run the CPU and NVIDIA CUDA paths
-independently so the report records startup time, per-case latency,
+do not need a separate dataset file. Run the CPU, macOS Metal, and NVIDIA CUDA
+paths independently so the report records startup time, per-case latency,
 P50/P90/P95/P99, throughput, output, and exact match:
+
+```bash
+localsubs benchmark --backend cpu --output benchmark-results/macos-cpu.json
+localsubs benchmark --backend metal --output benchmark-results/macos-metal.json
+```
 
 ```powershell
 localsubs benchmark --backend cpu --output benchmark-results\windows-cpu.json

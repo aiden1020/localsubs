@@ -8,9 +8,10 @@ import (
 type BackendMode string
 
 const (
-	BackendAuto BackendMode = "auto"
-	BackendCPU  BackendMode = "cpu"
-	BackendCUDA BackendMode = "cuda"
+	BackendAuto  BackendMode = "auto"
+	BackendCPU   BackendMode = "cpu"
+	BackendCUDA  BackendMode = "cuda"
+	BackendMetal BackendMode = "metal"
 
 	RuntimeReleaseVersion = "b10240"
 )
@@ -47,9 +48,13 @@ func ParseBackendMode(value string) (BackendMode, error) {
 }
 
 func DiscoverRuntimeCandidates(mode BackendMode) ([]RuntimeCandidate, error) {
-	parsed, err := ParseBackendMode(string(mode))
-	if err != nil {
-		return nil, err
+	parsed := mode
+	if mode != BackendMetal {
+		var err error
+		parsed, err = ParseBackendMode(string(mode))
+		if err != nil {
+			return nil, err
+		}
 	}
 	return platformRuntimeCandidates(parsed)
 }
