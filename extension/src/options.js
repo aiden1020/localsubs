@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, migrateStoredSettings } from "./core/settings.js";
+import { DEFAULT_SETTINGS, migrateStoredSettings, normalizeHelperModelChannel } from "./core/settings.js";
 import {
   detectSetupBrowser,
   detectSetupPlatform,
@@ -15,7 +15,25 @@ const I18N = {
     webllmOption: "瀏覽器模式（僅 GPU，免安裝）",
     nativeOption: "桌面模式（CPU／GPU，需安裝）",
     webllmDescription: "直接使用瀏覽器可用的 GPU 完成翻譯，不限定 GPU 品牌；沒有相容 GPU 時無法使用。首次使用會下載約 272 MB 的模型，之後可離線使用。",
-    nativeDescription: "透過另行安裝的 LocalSubs 桌面元件完成翻譯，可使用 CPU 或相容的 GPU。安裝流程會自動準備可用的執行方式與模型。",
+    nativeDescription: "透過另行安裝的 LocalSubs 桌面元件完成翻譯，可使用 CPU 或相容的 GPU。你可以在下方管理官方模型。",
+    localModelDetail: "從官方模型目錄選擇要下載的模型；模型只會儲存在這台裝置。",
+    helperModelsLoading: "正在載入官方模型清單...",
+    helperModelsUnavailable: "無法連接桌面元件。請先完成安裝，或稍後重試。",
+    helperModelsEmpty: "目前沒有可管理的模型。",
+    helperModelStateMissing: "尚未下載",
+    helperModelStateDownloaded: "已下載",
+    helperModelStatePartial: "下載未完成",
+    helperModelStateCorrupt: "檔案不完整或不相符",
+    helperModelStateUnavailable: "目前不提供下載",
+    helperModelSelected: "使用中",
+    helperModelDownload: "下載",
+    helperModelDownloading: "下載中…請保持此頁開啟",
+    helperModelUse: "使用此模型",
+    helperModelRemove: "移除",
+    helperModelRemoveActive: "切換至其他已下載模型後才能移除",
+    helperModelOperationFailed: "模型操作失敗",
+    helperModelRemoveConfirm: "移除此模型檔案？之後仍可重新下載。",
+    helperModelSelectionRestart: "已切換模型，正在重新啟動桌面元件。",
     modelDownloadTitle: "離線翻譯模型",
     modelDownloadSize: "約 272 MB",
     modelPrivacy: "模型只會儲存在這台裝置，字幕不會上傳。",
@@ -42,8 +60,8 @@ const I18N = {
     installRuntimeTextWindows: "透過 WinGet 安裝。字幕文字不會送到雲端。",
     installRuntimeTextMacOS: "透過 Homebrew 安裝。字幕文字不會送到雲端。",
     oneTimeSetupTitle: "設定桌面模式",
-    oneTimeSetupTextWindows: "自動選擇最適合這台電腦的加速方式、下載模型並連接目前的瀏覽器。只需要執行一次。",
-    oneTimeSetupTextMacOS: "下載翻譯模型並連接目前的瀏覽器。只需要執行一次。",
+    oneTimeSetupTextWindows: "自動選擇可用的加速方式並連接目前的瀏覽器。模型可在設定頁選擇下載。",
+    oneTimeSetupTextMacOS: "連接目前的瀏覽器。模型可在設定頁選擇下載。",
     checkAndWatchTitle: "檢查並開始使用",
     checkAndWatchText: "確認本機模型可用，然後開啟支援的串流頁面並啟用英文字幕。",
     copy: "Copy",
@@ -93,7 +111,25 @@ const I18N = {
     webllmOption: "Browser mode (GPU only, no install)",
     nativeOption: "Desktop mode (CPU/GPU, install required)",
     webllmDescription: "Uses any compatible GPU exposed by the browser, regardless of brand, and cannot run without one. The first use downloads an approximately 272 MB model for offline use.",
-    nativeDescription: "Translates through the separately installed LocalSubs desktop component using a CPU or compatible GPU. Setup automatically prepares an available runtime and model.",
+    nativeDescription: "Translates through the separately installed LocalSubs desktop component using a CPU or compatible GPU. Manage official models below.",
+    localModelDetail: "Choose models from the official catalog to download. Models stay on this device.",
+    helperModelsLoading: "Loading the official model catalog...",
+    helperModelsUnavailable: "Unable to connect to the desktop component. Finish setup or try again later.",
+    helperModelsEmpty: "There are no models to manage right now.",
+    helperModelStateMissing: "Not downloaded",
+    helperModelStateDownloaded: "Downloaded",
+    helperModelStatePartial: "Incomplete download",
+    helperModelStateCorrupt: "File is incomplete or invalid",
+    helperModelStateUnavailable: "Download unavailable",
+    helperModelSelected: "In use",
+    helperModelDownload: "Download",
+    helperModelDownloading: "Downloading… keep this page open",
+    helperModelUse: "Use this model",
+    helperModelRemove: "Remove",
+    helperModelRemoveActive: "Switch to another downloaded model before removing",
+    helperModelOperationFailed: "Model operation failed",
+    helperModelRemoveConfirm: "Remove this model file? You can download it again later.",
+    helperModelSelectionRestart: "Model changed. Restarting the desktop component.",
     modelDownloadTitle: "Offline translation model",
     modelDownloadSize: "About 272 MB",
     modelPrivacy: "The model stays on this device and subtitles are never uploaded.",
@@ -120,8 +156,8 @@ const I18N = {
     installRuntimeTextWindows: "Install with WinGet. Subtitle text is never sent to the cloud.",
     installRuntimeTextMacOS: "Install with Homebrew. Subtitle text is never sent to the cloud.",
     oneTimeSetupTitle: "Set up desktop mode",
-    oneTimeSetupTextWindows: "Choose the best acceleration available on this computer, download the model, and connect this browser. Run this once.",
-    oneTimeSetupTextMacOS: "Download the translation model and connect this browser. Run this once.",
+    oneTimeSetupTextWindows: "Choose the best available acceleration and connect this browser. Choose models to download in Options.",
+    oneTimeSetupTextMacOS: "Connect this browser. Choose models to download in Options.",
     checkAndWatchTitle: "Check and start watching",
     checkAndWatchText: "Confirm the local model is available, then open a supported streaming page with English subtitles enabled.",
     copy: "Copy",
@@ -187,6 +223,9 @@ const modelDownloadDetail = document.getElementById("model-download-detail");
 const modelDownloadState = document.getElementById("model-download-state");
 const modelDownloadProgress = document.getElementById("model-download-progress");
 const modelDownloadPercent = document.getElementById("model-download-percent");
+const helperModelSetting = document.getElementById("helper-model-setting");
+const helperModelDetail = document.getElementById("helper-model-detail");
+const helperModelList = document.getElementById("helper-model-list");
 
 const fields = {
   inferenceBackend: document.getElementById("inference-backend"),
@@ -214,6 +253,10 @@ let currentLanguage = DEFAULT_SETTINGS.optionsLanguage;
 let currentSettings = { ...DEFAULT_SETTINGS };
 let setupEnvironment = null;
 let modelDownloadView = { kind: "checking", progress: null };
+let helperModels = [];
+let helperModelsLoaded = false;
+let helperModelsError = false;
+let helperModelOperation = null;
 let warmupActionKey = "warmupService";
 
 function t(key) {
@@ -298,6 +341,7 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-language]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.language === currentLanguage);
   });
+  renderHelperModels();
   renderModelDownload();
 }
 
@@ -326,6 +370,8 @@ function applyPlatform({ platform, browser }) {
 function applyBackendUI() {
   const nativeSelected = currentSettings.inferenceBackend === "native";
   platformStatus.hidden = !nativeSelected;
+  helperModelSetting.hidden = !nativeSelected;
+  helperModelDetail.hidden = false;
   document.getElementById("backend-description").textContent = nativeSelected
     ? t("nativeDescription")
     : t("webllmDescription");
@@ -337,6 +383,158 @@ function applyBackendUI() {
   }
   if (setupEnvironment) {
     applyPlatform(setupEnvironment);
+  }
+}
+
+function formatModelSize(sizeBytes) {
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return "";
+  if (sizeBytes >= 1024 ** 3) return `${(sizeBytes / 1024 ** 3).toFixed(1)} GB`;
+  return `${Math.round(sizeBytes / 1024 ** 2)} MB`;
+}
+
+function renderHelperModels() {
+  helperModelList.replaceChildren();
+  if (!helperModelsLoaded) {
+    const state = document.createElement("p");
+    state.className = "backend-description";
+    state.textContent = t(helperModelsError ? "helperModelsUnavailable" : "helperModelsLoading");
+    helperModelList.append(state);
+    return;
+  }
+  if (helperModels.length === 0) {
+    const state = document.createElement("p");
+    state.className = "backend-description";
+    state.textContent = t("helperModelsEmpty");
+    helperModelList.append(state);
+    return;
+  }
+
+  for (const model of helperModels) {
+    const card = document.createElement("article");
+    card.className = "helper-model-card";
+    card.dataset.channel = model.channel;
+    const content = document.createElement("div");
+    content.className = "helper-model-content";
+    const title = document.createElement("h3");
+    title.textContent = model.name || model.id || model.channel;
+    const description = document.createElement("p");
+    description.textContent = model.description || "";
+    const metadata = document.createElement("p");
+    metadata.className = "helper-model-meta";
+    const stateKey = model.state === "downloaded"
+      ? "helperModelStateDownloaded"
+      : model.state === "corrupt"
+        ? "helperModelStateCorrupt"
+        : model.state === "partial"
+          ? "helperModelStatePartial"
+        : model.downloadable
+          ? "helperModelStateMissing"
+          : "helperModelStateUnavailable";
+    metadata.textContent = [formatModelSize(model.sizeBytes), t(stateKey), model.selected ? t("helperModelSelected") : ""]
+      .filter(Boolean)
+      .join(" · ");
+    content.append(title, description, metadata);
+
+    const actions = document.createElement("div");
+    actions.className = "helper-model-actions";
+    const operation = helperModelOperation?.channel === model.channel ? helperModelOperation.action : "";
+    if (model.state === "downloaded") {
+      if (model.selected) {
+        const selected = document.createElement("span");
+        selected.className = "helper-model-selected";
+        selected.textContent = t("helperModelSelected");
+        actions.append(selected);
+      } else {
+        actions.append(makeModelAction(model, "use", t("helperModelUse"), operation !== ""));
+      }
+      if (!model.canRemove && model.selected) {
+        const locked = document.createElement("span");
+        locked.className = "helper-model-action-hint";
+        locked.textContent = t("helperModelRemoveActive");
+        actions.append(locked);
+      }
+    } else if (model.downloadable) {
+      const label = operation === "download" ? t("helperModelDownloading") : t("helperModelDownload");
+      actions.append(makeModelAction(model, "download", label, Boolean(operation)));
+    } else if (model.state === "missing") {
+      const unavailable = document.createElement("span");
+      unavailable.className = "helper-model-action-hint";
+      unavailable.textContent = t("helperModelStateUnavailable");
+      actions.append(unavailable);
+    }
+    if (model.canRemove) actions.append(makeModelAction(model, "remove", t("helperModelRemove"), Boolean(operation)));
+
+    card.append(content, actions);
+    helperModelList.append(card);
+  }
+}
+
+function makeModelAction(model, action, label, disabled) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = action === "use" ? "secondary-button" : "model-action-button";
+  button.dataset.modelAction = action;
+  button.dataset.modelChannel = model.channel;
+  button.textContent = label;
+  button.disabled = disabled;
+  return button;
+}
+
+async function refreshHelperModels() {
+  if (currentSettings.inferenceBackend !== "native") return;
+  helperModelsLoaded = false;
+  helperModelsError = false;
+  renderHelperModels();
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "LIST_HELPER_MODELS" });
+    if (!result?.ok || !Array.isArray(result.models)) {
+      throw new Error(result?.error?.message || t("helperModelsUnavailable"));
+    }
+    helperModels = result.models;
+    helperModelsLoaded = true;
+    const selected = helperModels.find((model) => model.selected);
+    if (selected) {
+      currentSettings.helperModelChannel = normalizeHelperModelChannel(selected.channel);
+      await chrome.storage.local.set({ helperModelChannel: currentSettings.helperModelChannel });
+    }
+  } catch (error) {
+    helperModels = [];
+    helperModelsError = true;
+    helperModelsLoaded = true;
+    setServiceStatus("error", t("helperModelOperationFailed"), error instanceof Error ? error.message : t("helperModelsUnavailable"));
+  }
+  renderHelperModels();
+}
+
+async function handleHelperModelAction(action, channel) {
+  if (action === "remove" && !window.confirm(t("helperModelRemoveConfirm"))) return;
+  helperModelOperation = { action, channel };
+  renderHelperModels();
+  try {
+    let result;
+    if (action === "use") {
+      result = await chrome.runtime.sendMessage({ type: "SELECT_HELPER_MODEL", channel });
+    } else if (action === "download") {
+      result = await chrome.runtime.sendMessage({ type: "DOWNLOAD_HELPER_MODEL", channel });
+    } else {
+      result = await chrome.runtime.sendMessage({ type: "REMOVE_HELPER_MODEL", channel });
+    }
+    if (!result?.ok) throw new Error(result?.error?.message || t("helperModelOperationFailed"));
+    if (action === "use") {
+      currentSettings.helperModelChannel = normalizeHelperModelChannel(channel);
+      await chrome.storage.local.set({ helperModelChannel: currentSettings.helperModelChannel });
+      if (result.restartRequired) {
+        setServiceStatus("checking", t("modelStateChecking"), t("helperModelSelectionRestart"));
+      }
+    }
+    await refreshHelperModels();
+    flashSavedStatus();
+    if (action === "use" || result.restartRequired) void checkService();
+  } catch (error) {
+    setServiceStatus("error", t("helperModelOperationFailed"), error instanceof Error ? error.message : t("helperModelOperationFailed"));
+  } finally {
+    helperModelOperation = null;
+    renderHelperModels();
   }
 }
 
@@ -410,18 +608,24 @@ function flashSavedStatus(message = t("saved")) {
 }
 
 async function loadSettings() {
-  const stored = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
-  currentSettings = migrateStoredSettings(stored);
+  const syncKeys = Object.keys(DEFAULT_SETTINGS).filter((key) => key !== "helperModelChannel");
+  const [stored, localSettings] = await Promise.all([
+    chrome.storage.sync.get(syncKeys),
+    chrome.storage.local.get({ helperModelChannel: "stable" })
+  ]);
+  currentSettings = migrateStoredSettings({ ...stored, ...localSettings });
   applyLanguage(currentSettings.optionsLanguage);
   applySettingsToForm(currentSettings);
   await chrome.storage.sync.set({ targetLanguage: DEFAULT_SETTINGS.targetLanguage });
+  if (currentSettings.inferenceBackend === "native") await refreshHelperModels();
 }
 
 async function saveSettings() {
   const settings = readFormSettings();
   currentSettings = { ...currentSettings, ...settings };
   updateOutputs(currentSettings);
-  await chrome.storage.sync.set(settings);
+  const { helperModelChannel, ...syncSettings } = settings;
+  await chrome.storage.sync.set(syncSettings);
   flashSavedStatus();
 }
 
@@ -550,8 +754,15 @@ fields.inferenceBackend.addEventListener("change", async () => {
     backend: currentSettings.inferenceBackend
   });
   applyBackendUI();
+  if (currentSettings.inferenceBackend === "native") await refreshHelperModels();
   flashSavedStatus();
   void checkService();
+});
+
+helperModelList.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-model-action]");
+  if (!button || button.disabled) return;
+  void handleHelperModelAction(button.dataset.modelAction, button.dataset.modelChannel);
 });
 
 document.querySelectorAll("[data-copy-target]").forEach((button) => {

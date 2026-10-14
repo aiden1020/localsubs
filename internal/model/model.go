@@ -17,6 +17,7 @@ type Manifest struct {
 
 type Entry struct {
 	Channel     string  `json:"channel"`
+	Name        string  `json:"name"`
 	ID          string  `json:"id"`
 	Version     string  `json:"version"`
 	Runtime     string  `json:"runtime"`

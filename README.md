@@ -87,7 +87,7 @@ brew tap aiden1020/localsubs
 brew trust aiden1020/localsubs
 brew install localsubs
 
-localsubs setup            # download the model and install Chrome integration
+localsubs setup            # install Chrome integration; choose models in Options
 ```
 
 > `brew trust` is required because LocalSubs is distributed via a third-party tap.
@@ -116,8 +116,9 @@ a stable directory such as `%LOCALAPPDATA%\Programs\LocalSubs`, and run:
 
 `auto` downloads the pinned CUDA 12.4 runtime when an NVIDIA GPU is available,
 and otherwise downloads the pure CPU runtime. You can force either path with
-`--backend cuda` or `--backend cpu`. The downloaded llama.cpp runtime and model
-are checksum-verified and stored under `%LOCALAPPDATA%\LocalSubs`.
+`--backend cuda` or `--backend cpu`. The downloaded llama.cpp runtime and any
+models you choose in Options are checksum-verified and stored under
+`%LOCALAPPDATA%\LocalSubs`.
 
 For a manually extracted ZIP, do not move `localsubs.exe` after setup. The
 Chrome/Edge Native Messaging registration points to its absolute path. Re-run
@@ -177,10 +178,10 @@ npm run test:wllama:standalone -- --headed
 
 | Command | Description |
 |---------|-------------|
-| `localsubs setup` | Download the model and install the browser integration |
+| `localsubs setup` | Install the runtime and browser integration; choose models in Options |
 | `localsubs runtime download --backend cpu\|cuda` | Download a checksum-verified Windows llama.cpp runtime |
 | `localsubs runtime status [--json]` | Inspect the installed CPU and CUDA runtimes |
-| `localsubs model download` | Download the translation model |
+| `localsubs model download [--channel ID]` | Download an official catalog model |
 | `localsubs install` | Install the Chrome Native Messaging integration |
 | `localsubs uninstall [--browser all]` | Remove browser integrations but preserve downloaded data |
 | `localsubs uninstall --purge --yes` | Remove integrations, models, runtimes, logs, and settings |
@@ -216,18 +217,19 @@ winget uninstall --id Aiden1020.LocalSubs --exact
 LocalSubs uses [LocalSubs-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B), a fine-tuned model optimized for subtitle-length English → Traditional Chinese translation.
 
 WebLLM uses the browser-optimized `q4f16_1` MLC artifacts. The optional native
-helper downloads the default GGUF runtime artifact:
+helper offers official GGUF models that can be downloaded, selected, and
+removed from Options:
 
 ```text
 LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf
 ```
 
-If you previously installed an older model, upgrade the helper, download the current LocalSubs model, and refresh the Native Messaging registration:
+If you previously installed an older helper, upgrade it and refresh the Native
+Messaging registration. Choose a model to download from Options:
 
 ```bash
 brew update
 brew upgrade localsubs
-localsubs model download
 localsubs install
 ```
 
