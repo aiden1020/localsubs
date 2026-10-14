@@ -22,6 +22,7 @@ const (
 	DefaultModelVersion     = "2026.07"
 	DefaultModelFilename    = "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf"
 	DefaultManifestFilename = "model_manifest.json"
+	PromptSuffix            = "<|im_end|>\n<|im_start|>assistant\n"
 )
 
 // HelperVersion is a variable so GoReleaser can inject the release tag with
@@ -64,6 +65,7 @@ type TranslateRequest struct {
 	CueSequence    int
 	CurrentText    string
 	ContextLines   []string
+	ContextLimit   int
 	SourceLanguage string
 	TargetLanguage string
 }
@@ -153,8 +155,16 @@ func DecodeTranslate(raw map[string]any, options DecodeOptions) (TranslateReques
 			CueSequence:    cueSequence,
 			CurrentText:    strings.TrimSpace(currentText),
 			ContextLines:   stringSliceField(raw, "contextLines"),
+			ContextLimit:   defaultContextLines,
 			SourceLanguage: sourceLanguage,
 			TargetLanguage: targetLanguage,
+		}
+		if _, exists := raw["contextLimit"]; exists {
+			contextLimit, err := intField(raw, "contextLimit", defaultContextLines)
+			if err != nil || contextLimit < 0 || contextLimit > 8 {
+				return TranslateRequest{}, false, CodedError{Code: "invalid_context_size", Message: "contextLimit must be between 0 and 8.", HTTPStatus: http.StatusBadRequest}
+			}
+			req.ContextLimit = contextLimit
 		}
 		return req, req.CurrentText == "" && len(req.ContextLines) == 0, nil
 	}
@@ -186,6 +196,7 @@ func DecodeTranslate(raw map[string]any, options DecodeOptions) (TranslateReques
 	return TranslateRequest{
 		CurrentText:    current,
 		ContextLines:   contextLines,
+		ContextLimit:   ctxSize,
 		SourceLanguage: sourceLanguage,
 		TargetLanguage: targetLanguage,
 	}, false, nil
@@ -275,7 +286,13 @@ func BuildPrompt(current string, contextLines []string) string {
 	current = strings.TrimSpace(current)
 	contextText := strings.Join(cleanContext, "\n")
 	userContent := fmt.Sprintf("CTX:\n%s\n\nCUR:\n%s", contextText, current)
-	return "<|im_start|>user\n" + userContent + "<|im_end|>\n<|im_start|>assistant\n"
+	return "<|im_start|>user\n" + userContent + PromptSuffix
+}
+
+// BuildPromptPrefix returns the full known prefix for the next subtitle, with
+// the assistant-generation suffix removed so llama-server only prefills KV.
+func BuildPromptPrefix(contextLines []string) string {
+	return strings.TrimSuffix(BuildPrompt("", contextLines), PromptSuffix)
 }
 
 var translationCleaner = strings.NewReplacer("<|im_start|>", "", "<|im_end|>", "", "assistant", "")
@@ -295,14 +312,17 @@ func CleanTranslation(text string) string {
 }
 
 type LlamaClient struct {
-	mu          sync.RWMutex
-	BaseURL     string
-	HTTPClient  *http.Client
-	Profile     Profile
-	ModelReady  bool
-	Owned       bool
-	BackendKind string
-	LastError   string
+	mu             sync.RWMutex
+	prefillMu      sync.Mutex
+	prefillRunning bool
+	prefillPending string
+	BaseURL        string
+	HTTPClient     *http.Client
+	Profile        Profile
+	ModelReady     bool
+	Owned          bool
+	BackendKind    string
+	LastError      string
 }
 
 func (c *LlamaClient) setLastError(message string) {
@@ -383,6 +403,83 @@ func (c *LlamaClient) Translate(ctx context.Context, req TranslateRequest) (Tran
 		Superseded:  false,
 		Model:       c.Profile.ModelID,
 	}, nil
+}
+
+// PrefillNext asynchronously primes llama-server's prompt cache with the
+// portion of the next subtitle request that is already known.
+func (c *LlamaClient) PrefillNext(req TranslateRequest) {
+	if !c.Profile.CachePrompt || strings.TrimSpace(req.CurrentText) == "" {
+		return
+	}
+	contextLines := append([]string(nil), req.ContextLines...)
+	contextLines = append(contextLines, strings.TrimSpace(req.CurrentText))
+	limit := req.ContextLimit
+	if limit < 0 {
+		limit = 0
+	}
+	if limit == 0 {
+		contextLines = nil
+	} else if len(contextLines) > limit {
+		contextLines = contextLines[len(contextLines)-limit:]
+	}
+	prompt := BuildPromptPrefix(contextLines)
+
+	c.prefillMu.Lock()
+	c.prefillPending = prompt
+	if c.prefillRunning {
+		c.prefillMu.Unlock()
+		return
+	}
+	c.prefillRunning = true
+	c.prefillMu.Unlock()
+	go c.runPrefills()
+}
+
+func (c *LlamaClient) runPrefills() {
+	for {
+		c.prefillMu.Lock()
+		prompt := c.prefillPending
+		c.prefillPending = ""
+		c.prefillMu.Unlock()
+
+		c.prefill(prompt)
+
+		c.prefillMu.Lock()
+		if c.prefillPending == "" {
+			c.prefillRunning = false
+			c.prefillMu.Unlock()
+			return
+		}
+		c.prefillMu.Unlock()
+	}
+}
+
+func (c *LlamaClient) prefill(prompt string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	payload := map[string]any{
+		"prompt":       prompt,
+		"n_predict":    0,
+		"temperature":  0,
+		"cache_prompt": true,
+		"stream":       false,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/completion", bytes.NewReader(body))
+	if err != nil {
+		return
+	}
+	request.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 2 * time.Minute}
+	resp, err := client.Do(request)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 }
 
 func (c *LlamaClient) Health(ctx context.Context) Health {
@@ -522,4 +619,13 @@ func (t *LoadingTranslator) Translate(ctx context.Context, req TranslateRequest)
 		return TranslateResult{}, CodedError{Code: "init_failed", Message: t.errInit.Error(), HTTPStatus: http.StatusServiceUnavailable}
 	}
 	return t.inner.Translate(ctx, req)
+}
+
+func (t *LoadingTranslator) PrefillNext(req TranslateRequest) {
+	if !t.isReady() || t.errInit != nil {
+		return
+	}
+	if prefiller, ok := t.inner.(interface{ PrefillNext(TranslateRequest) }); ok {
+		prefiller.PrefillNext(req)
+	}
 }

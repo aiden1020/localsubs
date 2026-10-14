@@ -31,6 +31,10 @@ type latestCue struct {
 	sequence int
 }
 
+type nextPrefiller interface {
+	PrefillNext(runtime.TranslateRequest)
+}
+
 func NewService(backend runtime.Translator, profile runtime.Profile) *Service {
 	return &Service{
 		backend:  backend,
@@ -54,7 +58,9 @@ func (s *Service) Translate(ctx context.Context, req runtime.TranslateRequest) (
 	if cached, ok := s.cache[key]; ok {
 		cached.Cache = "hit"
 		s.mu.Unlock()
-		return s.applySuperseded(req, cached), nil
+		result := s.applySuperseded(req, cached)
+		s.prefillNext(req, result, nil)
+		return result, nil
 	}
 	if call, ok := s.inflight[key]; ok {
 		s.mu.Unlock()
@@ -62,7 +68,9 @@ func (s *Service) Translate(ctx context.Context, req runtime.TranslateRequest) (
 		case <-call.done:
 			result := call.result
 			result.Cache = "hit"
-			return s.applySuperseded(req, result), call.err
+			result = s.applySuperseded(req, result)
+			s.prefillNext(req, result, call.err)
+			return result, call.err
 		case <-ctx.Done():
 			return runtime.TranslateResult{}, ctx.Err()
 		}
@@ -87,7 +95,19 @@ func (s *Service) Translate(ctx context.Context, req runtime.TranslateRequest) (
 	delete(s.inflight, key)
 	s.mu.Unlock()
 
-	return s.applySuperseded(req, result), err
+	result = s.applySuperseded(req, result)
+	s.prefillNext(req, result, err)
+	return result, err
+}
+
+func (s *Service) prefillNext(req runtime.TranslateRequest, result runtime.TranslateResult, err error) {
+	if err != nil || result.Superseded {
+		return
+	}
+	prefiller, ok := s.backend.(nextPrefiller)
+	if ok {
+		prefiller.PrefillNext(req)
+	}
 }
 
 func (s *Service) Health(ctx context.Context) runtime.Health {
