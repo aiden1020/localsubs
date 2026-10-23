@@ -445,3 +445,32 @@ func mustRawMessage(t *testing.T, value any) json.RawMessage {
 	}
 	return body
 }
+
+func TestHostPrunesLegacyModelsAndReportsThemInTheList(t *testing.T) {
+	pruned := false
+	host := New(Config{
+		ListModels: func() ([]ModelInfo, error) { return []ModelInfo{{Channel: "stable"}}, nil },
+		LegacyModels: func() (LegacyInfo, error) {
+			return LegacyInfo{Files: 1, SizeBytes: 42}, nil
+		},
+		PruneLegacyModels: func() (LegacyInfo, error) {
+			pruned = true
+			return LegacyInfo{Files: 1, SizeBytes: 42}, nil
+		},
+	}, nil)
+
+	list := host.Handle(context.Background(), Message{ID: "1", Type: "list_models"})
+	payload, ok := list.Payload.(map[string]any)
+	if !list.OK || !ok || payload["legacy"] != (LegacyInfo{Files: 1, SizeBytes: 42}) {
+		t.Fatalf("list response = %#v", list)
+	}
+	prune := host.Handle(context.Background(), Message{ID: "2", Type: "prune_legacy_models"})
+	if !prune.OK || !pruned {
+		t.Fatalf("prune response = %#v, pruned = %v", prune, pruned)
+	}
+
+	unsupported := New(Config{}, nil).Handle(context.Background(), Message{ID: "3", Type: "prune_legacy_models"})
+	if unsupported.OK {
+		t.Fatal("prune must fail when cleanup is not configured")
+	}
+}

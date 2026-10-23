@@ -1,4 +1,5 @@
-import { CreateMLCEngine, hasModelInCache } from "@mlc-ai/web-llm";
+import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from "@mlc-ai/web-llm";
+import { LEGACY_WEBLLM_MODELS, MODEL_CATALOG } from "../core/model-catalog.js";
 import {
   WEBLLM_CONTEXT_WINDOW_SIZE,
   WEBLLM_MAX_TOKENS,
@@ -6,8 +7,25 @@ import {
 } from "../core/webllm-config.js";
 
 export const WEBLLM_MODEL_URL = globalThis.__LOCALSUBS_WEBLLM_MODEL_URL__ ||
-  "https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B/resolve/main/webllm-64k-q4f16_1-v1/";
+  MODEL_CATALOG.fast.webllm.modelURL;
 export { WEBLLM_CONTEXT_WINDOW_SIZE, WEBLLM_MAX_TOKENS, WEBLLM_MODEL_ID };
+
+// WebGPU and the TVM runtime can reject with strings or plain objects. Keep
+// whatever detail they carry instead of collapsing it into a generic message.
+export function describeError(error, fallback = "WebLLM is unavailable") {
+  if (error instanceof Error) return error.message || error.name || fallback;
+  if (typeof error === "string") return error || fallback;
+  if (error && typeof error === "object") {
+    if (typeof error.message === "string" && error.message) return error.message;
+    try {
+      const json = JSON.stringify(error);
+      if (json && json !== "{}") return json;
+    } catch {
+      // fall through to the generic message
+    }
+  }
+  return fallback;
+}
 
 function codedError(code, message) {
   const error = new Error(message);
@@ -44,6 +62,9 @@ export function createWebLLMTranslator({
   modelId = WEBLLM_MODEL_ID,
   modelURL = WEBLLM_MODEL_URL,
   modelLibURL = globalThis.chrome?.runtime?.getURL?.("model-lib.wasm") || "model-lib.wasm",
+  vramMB = 550,
+  legacyModels = LEGACY_WEBLLM_MODELS,
+  deleteModelCache = deleteModelAllInfoInCache,
   now = () => performance.now()
 } = {}) {
   let engine = null;
@@ -60,7 +81,7 @@ export function createWebLLMTranslator({
       model: modelURL,
       model_id: modelId,
       model_lib: modelLibURL,
-      vram_required_MB: 550,
+      vram_required_MB: vramMB,
       low_resource_required: true,
       required_features: ["shader-f16"]
     }],
@@ -69,6 +90,41 @@ export function createWebLLMTranslator({
     // the remote Hugging Face model shards.
     cacheBackend: "indexeddb"
   };
+
+  const legacyAppConfig = {
+    model_list: legacyModels.map((legacy) => ({
+      model: legacy.modelURL,
+      model_id: legacy.modelId,
+      model_lib: modelLibURL,
+      vram_required_MB: legacy.vramMB,
+      low_resource_required: true,
+      required_features: ["shader-f16"]
+    })),
+    cacheBackend: "indexeddb"
+  };
+
+  async function hasLegacyCache() {
+    for (const legacy of legacyModels) {
+      if (await hasModelCached(legacy.modelId, legacyAppConfig).catch(() => false)) return true;
+    }
+    return false;
+  }
+
+  // Superseded weights are only deleted after a current model has loaded, so a
+  // failed or interrupted upgrade never leaves the browser without a model.
+  async function removeLegacyModels() {
+    let removed = 0;
+    for (const legacy of legacyModels) {
+      if (!await hasModelCached(legacy.modelId, legacyAppConfig).catch(() => false)) continue;
+      await deleteModelCache(legacy.modelId, legacyAppConfig);
+      removed += 1;
+    }
+    return removed;
+  }
+
+  async function isCached() {
+    return engine ? true : Boolean(await hasModelCached(modelId, appConfig).catch(() => false));
+  }
 
   async function inspectCapability() {
     if (capability) return capability;
@@ -118,10 +174,12 @@ export function createWebLLMTranslator({
       }
       engine = nextEngine;
       progress = { progress: 1, text: "Model ready" };
+      removeLegacyModels().catch(() => {});
       return engine;
     })()
       .catch((error) => {
-        lastError = error instanceof Error ? error.message : String(error);
+        lastError = describeError(error);
+        console.error("[LocalSubs] WebLLM initialization failed", error);
         throw codedError("webllm_init_failed", lastError);
       })
       .finally(() => {
@@ -212,6 +270,7 @@ export function createWebLLMTranslator({
     try {
       const gpuInfo = await inspectCapability();
       const cached = engine ? true : await hasModelCached(modelId, appConfig);
+      const legacyCached = cached ? false : await hasLegacyCache();
       if (enginePromise && !engine) {
         return {
           ok: false,
@@ -231,6 +290,7 @@ export function createWebLLMTranslator({
           needsDownload: !cached,
           needsInitialization: cached,
           cached,
+          legacyCached,
           transport: "webllm",
           backend: gpuInfo.vendor,
           model: modelId
@@ -263,13 +323,14 @@ export function createWebLLMTranslator({
         model: modelId
       };
     } catch (error) {
+      console.error("[LocalSubs] WebLLM check failed", error);
       return {
         ok: false,
         loading: false,
         transport: "webllm",
         error: {
           code: typeof error?.code === "string" ? error.code : "webllm_unavailable",
-          message: error instanceof Error ? error.message : "WebLLM is unavailable"
+          message: describeError(error)
         },
         lastError
       };
@@ -289,5 +350,5 @@ export function createWebLLMTranslator({
     }
   }
 
-  return { checkTranslator, translateSubtitle, unload };
+  return { checkTranslator, isCached, translateSubtitle, unload };
 }

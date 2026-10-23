@@ -12,6 +12,7 @@ const expected = [
   "icons/icon-32.png",
   "icons/icon-48.png",
   "manifest.json",
+  "model-lib-quality.wasm",
   "model-lib.wasm",
   "options.css",
   "options.html",

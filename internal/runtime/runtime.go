@@ -18,9 +18,9 @@ const (
 	APIVersion              = "1"
 	DefaultProfileName      = "default"
 	PromptTemplateVersion   = "subtitle-v1"
-	DefaultModelID          = "localsubs-en-zh-tw-0.6b"
-	DefaultModelVersion     = "2026.07"
-	DefaultModelFilename    = "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf"
+	DefaultModelID          = "sotto-en-zh-tw-0.6b"
+	DefaultModelVersion     = "2026.10"
+	DefaultModelFilename    = "Sotto-EN-ZH-TW-0.6B-Q5_K_M.gguf"
 	DefaultManifestFilename = "model_manifest.json"
 	PromptSuffix            = "<|im_end|>\n<|im_start|>assistant\n"
 )

@@ -32,6 +32,14 @@ type Config struct {
 	ListModels            func() ([]ModelInfo, error)
 	DownloadModel         func(string) (bool, error)
 	RemoveModel           func(string) error
+	LegacyModels          func() (LegacyInfo, error)
+	PruneLegacyModels     func() (LegacyInfo, error)
+}
+
+// LegacyInfo summarizes superseded model files found in the model directory.
+type LegacyInfo struct {
+	Files     int   `json:"files"`
+	SizeBytes int64 `json:"sizeBytes"`
 }
 
 type ModelInfo struct {
@@ -210,6 +218,8 @@ func (h *Host) Handle(ctx context.Context, message Message) Response {
 		return h.handleDownloadModel(message)
 	case "remove_model":
 		return h.handleRemoveModel(message)
+	case "prune_legacy_models":
+		return h.handlePruneLegacyModels(message)
 	case "translate", "TRANSLATE_SUBTITLE":
 		return h.handleTranslate(ctx, message)
 	default:
@@ -249,7 +259,24 @@ func (h *Host) handleListModels(message Message) Response {
 	if err != nil {
 		return errorResponse(message.ID, message.Type, "model_list_failed", err.Error())
 	}
-	return Response{ID: message.ID, Type: message.Type + ".result", OK: true, Payload: map[string]any{"models": models}}
+	payload := map[string]any{"models": models}
+	if h.config.LegacyModels != nil {
+		if legacy, err := h.config.LegacyModels(); err == nil {
+			payload["legacy"] = legacy
+		}
+	}
+	return Response{ID: message.ID, Type: message.Type + ".result", OK: true, Payload: payload}
+}
+
+func (h *Host) handlePruneLegacyModels(message Message) Response {
+	if h.config.PruneLegacyModels == nil {
+		return errorResponse(message.ID, message.Type, "model_management_unavailable", "Model cleanup is unavailable.")
+	}
+	removed, err := h.config.PruneLegacyModels()
+	if err != nil {
+		return errorResponse(message.ID, message.Type, "model_prune_failed", err.Error())
+	}
+	return Response{ID: message.ID, Type: message.Type + ".result", OK: true, Payload: map[string]any{"removed": removed}}
 }
 
 func (h *Host) handleDownloadModel(message Message) Response {

@@ -1,5 +1,8 @@
+import { DEFAULT_MODEL_TIER, normalizeModelTier, tierForHelperChannel } from "./model-catalog.js";
+
 export const DEFAULT_SETTINGS = Object.freeze({
   inferenceBackend: "webllm",
+  modelTier: DEFAULT_MODEL_TIER,
   helperModelChannel: "stable",
   translationEnabled: true,
   hideNativeSubtitles: true,
@@ -28,6 +31,7 @@ export function normalizeHelperModelChannel(value) {
 export function sanitizeSettings(rawSettings = {}) {
   return {
     inferenceBackend: rawSettings.inferenceBackend === "native" ? "native" : "webllm",
+    modelTier: normalizeModelTier(rawSettings.modelTier),
     helperModelChannel: normalizeHelperModelChannel(rawSettings.helperModelChannel),
     translationEnabled: rawSettings.translationEnabled !== false,
     hideNativeSubtitles: rawSettings.hideNativeSubtitles !== false,
@@ -78,5 +82,9 @@ export function inferenceBackendForInstall(reason, storedBackend) {
 }
 
 export function migrateStoredSettings(stored = {}) {
-  return sanitizeSettings({ ...DEFAULT_SETTINGS, ...stored });
+  const migrated = { ...DEFAULT_SETTINGS, ...stored };
+  if (!stored.modelTier && stored.helperModelChannel) {
+    migrated.modelTier = tierForHelperChannel(stored.helperModelChannel);
+  }
+  return sanitizeSettings(migrated);
 }

@@ -3,6 +3,7 @@ import {
   buildWebLLMPrompt,
   cleanWebLLMTranslation,
   createWebLLMTranslator,
+  describeError,
   WEBLLM_CONTEXT_WINDOW_SIZE,
   WEBLLM_MAX_TOKENS
 } from "../src/background/webllm-translator.js";
@@ -157,5 +158,97 @@ describe("WebLLM translator", () => {
       ok: false,
       error: { code: "webgpu_feature_missing" }
     });
+  });
+
+  it("reports a retired cached model so settings can offer an upgrade", async () => {
+    const hasModelCached = vi.fn(async (id) => id === "legacy-model");
+    const translator = createWebLLMTranslator({
+      createEngine: vi.fn(),
+      hasModelCached,
+      gpu: testGPU(),
+      modelId: "current-model",
+      legacyModels: [{ modelId: "legacy-model", modelURL: "https://example.invalid/legacy/", vramMB: 1 }],
+      modelLibURL: "chrome-extension://test/model-lib.wasm"
+    });
+    await expect(translator.checkTranslator()).resolves.toMatchObject({
+      needsDownload: true,
+      legacyCached: true
+    });
+  });
+
+  it("removes retired cached models only after the current model loads", async () => {
+    const deleteModelCache = vi.fn().mockResolvedValue(undefined);
+    const hasModelCached = vi.fn(async () => true);
+    let finishLoad;
+    const createEngine = vi.fn(() => new Promise((resolve) => {
+      finishLoad = () => resolve({
+        unload: vi.fn().mockResolvedValue(undefined),
+        interruptGenerate: vi.fn().mockResolvedValue(undefined),
+        completions: { create: vi.fn().mockResolvedValue({ choices: [{ text: "好" }] }) }
+      });
+    }));
+    const translator = createWebLLMTranslator({
+      createEngine,
+      hasModelCached,
+      deleteModelCache,
+      gpu: testGPU(),
+      modelId: "current-model",
+      legacyModels: [{ modelId: "legacy-model", modelURL: "https://example.invalid/legacy/", vramMB: 1 }],
+      modelLibURL: "chrome-extension://test/model-lib.wasm"
+    });
+
+    const pending = translator.translateSubtitle({ currentText: "Hi" });
+    await vi.waitFor(() => expect(createEngine).toHaveBeenCalled());
+    expect(deleteModelCache).not.toHaveBeenCalled();
+    finishLoad();
+    await pending;
+    await vi.waitFor(() => {
+      expect(deleteModelCache).toHaveBeenCalledWith("legacy-model", expect.any(Object));
+    });
+    expect(deleteModelCache).not.toHaveBeenCalledWith("current-model", expect.anything());
+  });
+
+  it("keeps retired models when the current model fails to load", async () => {
+    const deleteModelCache = vi.fn().mockResolvedValue(undefined);
+    const translator = createWebLLMTranslator({
+      createEngine: vi.fn().mockRejectedValue(new Error("download failed")),
+      hasModelCached: vi.fn(async () => true),
+      deleteModelCache,
+      gpu: testGPU(),
+      modelId: "current-model",
+      legacyModels: [{ modelId: "legacy-model", modelURL: "https://example.invalid/legacy/", vramMB: 1 }],
+      modelLibURL: "chrome-extension://test/model-lib.wasm"
+    });
+    await expect(translator.translateSubtitle({ currentText: "Hi" })).rejects.toThrow();
+    expect(deleteModelCache).not.toHaveBeenCalled();
+  });
+
+  it("keeps the detail of non-Error failures during the warmup completion", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const translator = createWebLLMTranslator({
+      createEngine: vi.fn().mockResolvedValue({
+        unload: vi.fn().mockResolvedValue(undefined),
+        interruptGenerate: vi.fn().mockResolvedValue(undefined),
+        completions: { create: vi.fn().mockRejectedValue({ reason: "device lost" }) }
+      }),
+      hasModelCached: vi.fn().mockResolvedValue(true),
+      gpu: testGPU(),
+      modelLibURL: "chrome-extension://test/model-lib.wasm"
+    });
+    await expect(translator.checkTranslator(true)).resolves.toMatchObject({
+      ok: false,
+      error: { code: "webllm_unavailable", message: '{"reason":"device lost"}' }
+    });
+  });
+});
+
+describe("describeError", () => {
+  it("returns the most specific message available", () => {
+    expect(describeError(new Error("boom"))).toBe("boom");
+    expect(describeError("plain string")).toBe("plain string");
+    expect(describeError({ message: "from object" })).toBe("from object");
+    expect(describeError({ code: 7 })).toBe('{"code":7}');
+    expect(describeError(undefined)).toBe("WebLLM is unavailable");
+    expect(describeError({})).toBe("WebLLM is unavailable");
   });
 });

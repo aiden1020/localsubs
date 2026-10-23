@@ -6,14 +6,18 @@ import path from "node:path";
 import process from "node:process";
 
 import puppeteer from "puppeteer-core";
-import { WEBLLM_MODEL_ID } from "../extension/src/core/webllm-config.js";
+import { MODEL_CATALOG, normalizeModelTier } from "../extension/src/core/model-catalog.js";
 
 const extensionDir = path.resolve("dist/extension");
 const modelDir = path.resolve("dist/LocalSubs-EN-ZH-TW-0.6B-q4f16_1-current-MLC");
 const extensionID = "dpacileladlkfgdjbdjdjhgnepicejjb";
 const warmup = process.argv.includes("--warmup");
 const remoteModel = process.argv.includes("--remote");
-const expectedTranslation = "我馬上回來";
+const tierIndex = process.argv.lastIndexOf("--tier");
+const tier = normalizeModelTier(tierIndex >= 0 ? process.argv[tierIndex + 1] : "fast");
+const WEBLLM_MODEL_ID = MODEL_CATALOG[tier].webllm.modelId;
+// The fast model's output is pinned; other tiers only need to produce text.
+const expectedTranslation = tier === "fast" ? "我馬上回來" : "";
 
 async function exists(filePath) {
   try {
@@ -124,6 +128,12 @@ try {
       || document.querySelector("#service-status")?.classList.contains("is-error"),
     { timeout: 30000 }
   );
+  if (tier !== "fast") {
+    await page.evaluate(async (nextTier) => {
+      await chrome.storage.sync.set({ modelTier: nextTier });
+      await chrome.runtime.sendMessage({ type: "SET_MODEL_TIER", tier: nextTier });
+    }, tier);
+  }
   const result = await page.evaluate(async () => ({
     backend: (await chrome.storage.sync.get("inferenceBackend")).inferenceBackend,
     health: await chrome.runtime.sendMessage({ type: "CHECK_TRANSLATOR", warmup: false }),
@@ -167,7 +177,9 @@ try {
         && translation?.ok === true
         && warmupResult?.model === WEBLLM_MODEL_ID
         && translation?.model === WEBLLM_MODEL_ID
-        && translation.translation?.trim() === expectedTranslation))
+        && (expectedTranslation
+          ? translation.translation?.trim() === expectedTranslation
+          : Boolean(translation.translation?.trim()))))
       && errors.length === 0
   };
   console.log(JSON.stringify(report, null, 2));

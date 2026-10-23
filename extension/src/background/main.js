@@ -3,7 +3,9 @@ import { inferenceBackendForInstall } from "../core/settings.js";
 import { createInferenceRouter } from "./inference-router.js";
 import { NativeClient } from "./native-client.js";
 import { createTranslatorService } from "./translator-service.js";
-import { createWebLLMTranslator } from "./webllm-translator.js";
+import { createWebLLMManager } from "./webllm-manager.js";
+import { WEBLLM_MODEL_URL, createWebLLMTranslator } from "./webllm-translator.js";
+import { normalizeModelTier, tierForHelperChannel } from "../core/model-catalog.js";
 
 const NATIVE_HOST_NAME = "localsubs_helper";
 const NATIVE_REQUEST_TIMEOUT_MS = 10000;
@@ -15,10 +17,27 @@ const nativeClient = new NativeClient({
   getLastError: () => chrome.runtime.lastError
 });
 const nativeTranslator = createTranslatorService(nativeClient);
-const webllmTranslator = createWebLLMTranslator();
 let inferenceBackend = "webllm";
-const backendReady = chrome.storage.sync.get({ inferenceBackend: "webllm" }).then((stored) => {
+let modelTier = "fast";
+const backendReady = chrome.storage.sync.get({ inferenceBackend: "webllm", modelTier: "fast" }).then((stored) => {
   inferenceBackend = stored.inferenceBackend === "native" ? "native" : "webllm";
+  modelTier = normalizeModelTier(stored.modelTier);
+});
+const webllmTranslator = createWebLLMManager({
+  createTranslator(entry) {
+    const { webllm } = entry;
+    return createWebLLMTranslator({
+      modelId: webllm.modelId,
+      // The build-time override (used by end-to-end tests) targets the default model.
+      modelURL: entry.tier === "fast" ? WEBLLM_MODEL_URL : webllm.modelURL,
+      modelLibURL: chrome.runtime.getURL(webllm.libFile),
+      vramMB: webllm.vramMB
+    });
+  },
+  async getTier() {
+    await backendReady;
+    return modelTier;
+  }
 });
 const { checkTranslator, translateSubtitle } = createInferenceRouter({
   nativeTranslator,
@@ -40,6 +59,15 @@ function selectInferenceBackend(value) {
   }
 }
 
+function selectModelTier(value) {
+  const nextTier = normalizeModelTier(value);
+  if (nextTier === modelTier) return;
+  modelTier = nextTier;
+  if (inferenceBackend === "webllm") {
+    webllmTranslator.unload().catch(() => {});
+  }
+}
+
 function respondAsync(promise, sendResponse, fallbackCode) {
   promise
     .then((result) => sendResponse(result))
@@ -52,10 +80,16 @@ function respondAsync(promise, sendResponse, fallbackCode) {
 }
 
 chrome.runtime.onInstalled.addListener((details) => {
-  chrome.storage.sync.get("inferenceBackend").then((stored) => {
+  Promise.all([
+    chrome.storage.sync.get(["inferenceBackend", "modelTier"]),
+    chrome.storage.local.get({ helperModelChannel: "stable" })
+  ]).then(([stored, local]) => {
     const backend = inferenceBackendForInstall(details.reason, stored.inferenceBackend);
     selectInferenceBackend(backend);
-    return chrome.storage.sync.set({ inferenceBackend: backend });
+    // Installs from before model tiers stored the helper channel instead.
+    const tier = stored.modelTier ? normalizeModelTier(stored.modelTier) : tierForHelperChannel(local.helperModelChannel);
+    selectModelTier(tier);
+    return chrome.storage.sync.set({ inferenceBackend: backend, modelTier: tier });
   }).finally(() => {
     if (details.reason === "install") {
       chrome.tabs.create({
@@ -69,6 +103,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "sync") return;
   if (changes.inferenceBackend) {
     selectInferenceBackend(changes.inferenceBackend.newValue);
+  }
+  if (changes.modelTier) {
+    selectModelTier(changes.modelTier.newValue);
   }
 });
 
@@ -108,8 +145,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "SET_MODEL_TIER") {
+    backendReady.then(() => {
+      selectModelTier(message.tier);
+      sendResponse({ ok: true, tier: modelTier });
+    }).catch((error) => sendResponse({ ok: false, error: errorPayload(error, "model_selection_failed") }));
+    return true;
+  }
+
+  if (message?.type === "LIST_WEBLLM_MODELS") {
+    respondAsync(webllmTranslator.listModels().then((models) => ({ ok: true, models })), sendResponse, "model_list_failed");
+    return true;
+  }
+
+  if (message?.type === "PRUNE_LEGACY_HELPER_MODELS") {
+    respondAsync(nativeTranslator.pruneLegacyModels().then((removed) => ({ ok: true, removed })), sendResponse, "model_prune_failed");
+    return true;
+  }
+
   if (message?.type === "LIST_HELPER_MODELS") {
-    respondAsync(nativeTranslator.listModels().then((models) => ({ ok: true, models })), sendResponse, "model_list_failed");
+    respondAsync(nativeTranslator.listModels(), sendResponse, "model_list_failed");
     return true;
   }
 

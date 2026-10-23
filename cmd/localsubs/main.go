@@ -282,6 +282,8 @@ func nativeHost(args []string) error {
 		ListModels:          models.list,
 		DownloadModel:       models.downloadModel,
 		RemoveModel:         models.removeModel,
+		LegacyModels:        models.legacy,
+		PruneLegacyModels:   models.pruneLegacy,
 	}, service)
 	serveErr := host.Serve(ctx, os.Stdin, os.Stdout)
 	cancel()  // signal goroutine to proceed with cleanup

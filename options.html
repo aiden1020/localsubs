@@ -32,93 +32,94 @@
         </div>
       </section>
 
-      <section class="panel backend-panel">
+      <section id="upgrade-banner" class="upgrade-banner" aria-live="polite" hidden>
+        <div class="upgrade-banner-body">
+          <strong id="upgrade-title"></strong>
+          <p id="upgrade-detail"></p>
+          <div id="upgrade-command-block" class="code-block" hidden>
+            <div class="code-toolbar">
+              <span id="upgrade-shell-label">Shell</span>
+              <button class="copy-button" type="button" data-copy-target="upgrade-command" data-i18n="copy">Copy</button>
+            </div>
+            <pre><code id="upgrade-command"></code></pre>
+          </div>
+        </div>
+        <button id="upgrade-action" class="primary-button" type="button"></button>
+      </section>
+
+      <section class="panel model-panel" aria-labelledby="model-title">
         <div class="panel-header">
-          <p class="eyebrow" data-i18n="inferenceEyebrow">翻譯模式</p>
-          <h2 data-i18n="inferenceTitle">選擇適合你的翻譯方式</h2>
+          <p class="eyebrow" data-i18n="modelEyebrow">翻譯模型</p>
+          <h2 id="model-title" data-i18n="modelTitle">選擇翻譯取向</h2>
         </div>
-        <label class="field">
-          <span data-i18n="inferenceBackend">翻譯方式</span>
-          <select id="inference-backend" name="inferenceBackend">
-            <option value="webllm" data-i18n="webllmOption">瀏覽器模式（僅 GPU，免安裝）</option>
-            <option value="native" data-i18n="nativeOption">桌面模式（CPU／GPU，需安裝）</option>
-          </select>
-        </label>
-        <p id="backend-description" class="backend-description"></p>
-        <div id="helper-model-setting" class="helper-model-setting" hidden>
-          <p id="helper-model-detail" class="backend-description" data-i18n="localModelDetail">
-            可從官方模型目錄下載、選用或移除桌面模式模型。模型只儲存在這台裝置。
-          </p>
-          <div id="helper-model-list" class="helper-model-list" aria-live="polite">
-            <p id="helper-model-list-state" class="backend-description" data-i18n="helperModelsLoading">正在載入模型清單...</p>
-          </div>
+        <div id="tier-list" class="tier-list" aria-live="polite"></div>
+        <p class="model-privacy" data-i18n="modelPrivacy">模型只會儲存在這台裝置，字幕不會上傳。</p>
+      </section>
+
+      <section class="panel engine-panel" aria-labelledby="engine-title">
+        <div class="panel-header">
+          <p class="eyebrow" data-i18n="engineEyebrow">執行位置</p>
+          <h2 id="engine-title" data-i18n="engineTitle">在哪裡執行翻譯</h2>
         </div>
-        <section id="model-download" class="model-download is-checking" aria-live="polite">
-          <div class="model-download-header">
-            <div>
-              <strong data-i18n="modelDownloadTitle">離線翻譯模型</strong>
-              <p id="model-download-detail" data-i18n="modelCheckingDetail">正在確認下載狀態...</p>
-            </div>
-            <div class="model-download-meta">
-              <span data-i18n="modelDownloadSize">約 272 MB</span>
-              <span id="model-download-state" class="model-download-state">檢查中</span>
-            </div>
-          </div>
-          <div class="model-progress-row">
-            <progress id="model-download-progress" max="100"></progress>
-            <output id="model-download-percent" for="model-download-progress">—</output>
-          </div>
-          <p class="model-privacy" data-i18n="modelPrivacy">模型只會儲存在這台裝置，字幕不會上傳。</p>
+        <div id="engine-switch" class="engine-switch" role="radiogroup" aria-labelledby="engine-title">
+          <button id="engine-webllm" class="engine-option" type="button" role="radio" data-engine="webllm" aria-checked="true">
+            <strong data-i18n="engineBrowser">瀏覽器</strong>
+            <span data-i18n="engineBrowserDetail">免安裝，需要支援 WebGPU 的 GPU</span>
+          </button>
+          <button id="engine-native" class="engine-option" type="button" role="radio" data-engine="native" aria-checked="false">
+            <strong data-i18n="engineDesktop">桌面元件</strong>
+            <span data-i18n="engineDesktopDetail">CPU 或 GPU 皆可，需另外安裝</span>
+          </button>
+        </div>
+        <p id="engine-hint" class="backend-description"></p>
+
+        <div id="platform-status" class="platform-status" aria-live="polite" hidden>
+          <span class="platform-status-dot" aria-hidden="true"></span>
+          <p id="platform-status-text" data-i18n="detectingPlatform">正在偵測作業系統...</p>
+        </div>
+
+        <section id="unsupported-platform" class="unsupported-platform" hidden>
+          <a class="secondary-button install-guide-link" href="https://github.com/aiden1020/localsubs#installation" target="_blank" rel="noopener" data-i18n="viewInstallGuide">查看安裝說明</a>
         </section>
-        <div class="button-row backend-actions">
-          <button id="check-service" class="primary-button" type="button" data-i18n="checkService">檢查是否可用</button>
-          <button id="warmup-service" class="secondary-button" type="button" data-i18n="warmupService">預先載入</button>
-          <button id="open-supported-site" class="primary-button" type="button" data-i18n="openSupportedSite">開啟支援網站</button>
-        </div>
-      </section>
 
-      <div id="platform-status" class="platform-status" aria-live="polite" hidden>
-        <span class="platform-status-dot" aria-hidden="true"></span>
-        <p id="platform-status-text" data-i18n="detectingPlatform">正在偵測作業系統...</p>
-      </div>
-
-      <section id="unsupported-platform" class="unsupported-platform" hidden>
-        <a class="secondary-button install-guide-link" href="https://github.com/aiden1020/localsubs#installation" target="_blank" rel="noopener" data-i18n="viewInstallGuide">查看安裝說明</a>
-      </section>
-
-      <section id="setup-grid" class="setup-grid" aria-label="Setup steps" hidden>
-        <article class="setup-card">
-          <div class="step-marker">1</div>
-          <div class="step-body">
-            <h2 data-i18n="installRuntimeTitle">安裝 LocalSubs 桌面元件</h2>
-            <p id="install-runtime-text">安裝 LocalSubs。字幕文字不會送到雲端。</p>
-            <div class="code-block">
-              <div class="code-toolbar">
-                <span id="install-shell-label">Shell</span>
-                <button class="copy-button" type="button" data-copy-target="install-command" data-i18n="copy">Copy</button>
-              </div>
-              <pre><code id="install-command">brew tap aiden1020/localsubs
+        <section id="setup-grid" class="setup-grid" aria-label="Setup steps" hidden>
+          <article class="setup-card">
+            <div class="step-marker">1</div>
+            <div class="step-body">
+              <h2 data-i18n="installRuntimeTitle">安裝 LocalSubs 桌面元件</h2>
+              <p id="install-runtime-text">安裝 LocalSubs。字幕文字不會送到雲端。</p>
+              <div class="code-block">
+                <div class="code-toolbar">
+                  <span id="install-shell-label">Shell</span>
+                  <button class="copy-button" type="button" data-copy-target="install-command" data-i18n="copy">Copy</button>
+                </div>
+                <pre><code id="install-command">brew tap aiden1020/localsubs
 brew trust aiden1020/localsubs
 brew install localsubs</code></pre>
-            </div>
-          </div>
-        </article>
-
-        <article class="setup-card">
-          <div class="step-marker">2</div>
-          <div class="step-body">
-            <h2 data-i18n="oneTimeSetupTitle">設定桌面模式</h2>
-            <p id="one-time-setup-text">連接 Chrome，然後在設定頁選擇要下載的模型。</p>
-            <div class="code-block">
-              <div class="code-toolbar">
-                <span id="setup-shell-label">Shell</span>
-                <button class="copy-button" type="button" data-copy-target="setup-command" data-i18n="copy">Copy</button>
               </div>
-              <pre><code id="setup-command">localsubs setup</code></pre>
             </div>
-          </div>
-        </article>
+          </article>
 
+          <article class="setup-card">
+            <div class="step-marker">2</div>
+            <div class="step-body">
+              <h2 data-i18n="oneTimeSetupTitle">設定桌面模式</h2>
+              <p id="one-time-setup-text">連接 Chrome，然後在上方選擇要下載的模型。</p>
+              <div class="code-block">
+                <div class="code-toolbar">
+                  <span id="setup-shell-label">Shell</span>
+                  <button class="copy-button" type="button" data-copy-target="setup-command" data-i18n="copy">Copy</button>
+                </div>
+                <pre><code id="setup-command">localsubs setup</code></pre>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <div class="button-row backend-actions">
+          <button id="check-service" class="secondary-button" type="button" data-i18n="checkService">檢查是否可用</button>
+          <button id="open-supported-site" class="primary-button" type="button" data-i18n="openSupportedSite">開啟支援網站</button>
+        </div>
       </section>
 
       <section class="panel">
