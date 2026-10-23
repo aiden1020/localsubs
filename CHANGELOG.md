@@ -3,12 +3,14 @@
 All notable user-facing changes are documented in this file. LocalSubs uses
 semantic versioning.
 
-## [Unreleased]
+## [0.6.0] - 2026-10-23
 
 ### Added
 
 - Offer Sotto-EN-ZH-TW-1.7B as the quality-first model for both browser
   inference and the native helper. Sotto 0.6B stays the speed-first default.
+- Download, verify, switch, and remove official native helper models from
+  extension settings or with `localsubs model download --channel <id>`.
 - Support `localsubs benchmark --backend metal` on macOS to benchmark
   llama.cpp with GPU layer offload.
 
@@ -24,6 +26,13 @@ semantic versioning.
   model loads. Desktop users see a prompt when the desktop component needs an
   update, and superseded GGUF files in the LocalSubs model folder are removed
   only after the selected Sotto model is verified and responding.
+- The native helper prefills the next subtitle's known prompt prefix while
+  idle, so the following translation starts sooner.
+
+### Fixed
+
+- Show the underlying cause when browser translation fails instead of a
+  generic "WebLLM is unavailable" message.
 
 ## [0.5.0] - 2026-08-11
 
@@ -87,6 +96,7 @@ semantic versioning.
   Windows implementation.
 - Setup selects the best available Windows backend with `--backend auto`.
 
+[0.6.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.6.0
 [0.5.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.5.0
 [0.4.1]: https://github.com/aiden1020/localsubs/releases/tag/v0.4.1
 [0.4.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.4.0
