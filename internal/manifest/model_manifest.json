@@ -40,7 +40,6 @@
     }
   ],
   "legacyFiles": [
-    "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
-    "SubtitleEN2TW-0.6B-Q5_K_M.gguf"
+    "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf"
   ]
 }

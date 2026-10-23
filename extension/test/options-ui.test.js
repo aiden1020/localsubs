@@ -176,6 +176,9 @@ it("downloads and selects the quality model through the desktop component", asyn
     expect(tierCard("quality").textContent).toContain("1.1 GB");
     expect(cardButton("quality").textContent).toBe("下載並啟用");
   });
+  // Setup steps stay hidden while the helper works, but their commands are filled in.
+  expect(document.getElementById("setup-grid").hidden).toBe(true);
+  expect(document.getElementById("setup-command").textContent).toBe("localsubs setup");
 
   cardButton("quality").click();
   await vi.waitFor(() => {
@@ -239,5 +242,19 @@ it("offers the native upgrade when the new model is missing but legacy files exi
   document.getElementById("upgrade-action").click();
   await vi.waitFor(() => {
     expect(sendMessage).toHaveBeenCalledWith({ type: "DOWNLOAD_HELPER_MODEL", channel: "stable" });
+  });
+});
+
+it("shows the desktop setup steps only when the helper cannot be reached", async () => {
+  const sendMessage = vi.fn(async (message) => {
+    if (message.type === "LIST_HELPER_MODELS") throw new Error("native host not found");
+    return { ok: false, error: { message: "not installed" } };
+  });
+  await mountOptions({ settings: { inferenceBackend: "native" }, sendMessage });
+
+  await vi.waitFor(() => {
+    expect(document.getElementById("setup-grid").hidden).toBe(false);
+    expect(document.getElementById("platform-status").hidden).toBe(false);
+    expect(document.getElementById("install-command").textContent).toContain("brew install localsubs");
   });
 });

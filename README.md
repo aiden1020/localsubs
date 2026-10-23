@@ -243,8 +243,8 @@ localsubs install
 ```
 
 After the selected Sotto model is verified and responding, the helper removes
-the superseded `LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf` and
-`SubtitleEN2TW-0.6B-Q5_K_M.gguf` files it downloaded earlier. Other files in
+the superseded `LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf` file it downloaded
+earlier. Other files in
 `~/Library/Application Support/LocalSubs/models/` are never touched.
 
 On Windows, models are stored in `%LOCALAPPDATA%\LocalSubs\models`.

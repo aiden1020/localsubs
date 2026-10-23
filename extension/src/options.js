@@ -424,14 +424,13 @@ function renderEngine() {
   } else {
     engineHint.textContent = "";
   }
+  // Setup commands are always filled in; they are only shown when the helper
+  // cannot be reached.
   const needsSetup = native && helperInfo.loaded && helperInfo.error;
+  const supported = native && setupEnvironment ? applyPlatform(setupEnvironment) : false;
   platformStatus.hidden = !needsSetup;
-  if (!needsSetup) {
-    setupGrid.hidden = true;
-    unsupportedPlatform.hidden = true;
-  } else if (setupEnvironment) {
-    applyPlatform(setupEnvironment);
-  }
+  setupGrid.hidden = !(needsSetup && supported);
+  unsupportedPlatform.hidden = !(needsSetup && setupEnvironment && !supported);
 }
 
 function currentUpgrade() {
@@ -500,10 +499,8 @@ function applyPlatform({ platform, browser }) {
   const setup = getPlatformSetup(platform, browser);
   if (!setup) {
     platformStatusText.dataset.i18n = "platformUnsupported";
-    setupGrid.hidden = true;
-    unsupportedPlatform.hidden = false;
     platformStatusText.textContent = t("platformUnsupported");
-    return;
+    return false;
   }
 
   platformStatusText.dataset.i18n = setup.platformTextKey;
@@ -516,8 +513,7 @@ function applyPlatform({ platform, browser }) {
   setupShellLabel.textContent = setup.shellLabel;
   installCommand.textContent = setup.installCommand;
   setupCommand.textContent = setup.setupCommand;
-  unsupportedPlatform.hidden = true;
-  setupGrid.hidden = false;
+  return true;
 }
 
 async function resolveSetupEnvironment() {
