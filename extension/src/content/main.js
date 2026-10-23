@@ -416,7 +416,12 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
         showStatusMessage("LocalSubs: Loading model...", true);
         modelPollTimer = window.setTimeout(() => pollUntilModelReady(generation), 4000);
       } else if (result?.needsDownload) {
-        showStatusMessage("LocalSubs: WebLLM model will download with the first subtitle. Click for settings.", true);
+        showStatusMessage(
+          result.legacyCached
+            ? "LocalSubs: A new translation model is available. Click to upgrade in settings."
+            : "LocalSubs: WebLLM model will download with the first subtitle. Click for settings.",
+          true
+        );
       } else if (result?.needsInitialization) {
         showStatusMessage("LocalSubs: WebLLM model is cached and ready to load.");
       } else if (result?.error?.code === "incompatible_api") {

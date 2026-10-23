@@ -51,7 +51,9 @@ if (includeExperiments) {
 for (const file of staticFiles) {
   await cp(file, path.join(outputDir, file));
 }
-await cp("extension/vendor/model-lib.wasm", path.join(outputDir, "model-lib.wasm"));
+for (const lib of ["model-lib.wasm", "model-lib-quality.wasm"]) {
+  await cp(path.join("extension/vendor", lib), path.join(outputDir, lib));
+}
 if (includeExperiments) {
   await cp("mini_test_set.jsonl", path.join(outputDir, "wllama-mini-test-set.jsonl"));
   await cp("mini_test_set.jsonl", path.join(outputDir, "webllm-mini-test-set.jsonl"));

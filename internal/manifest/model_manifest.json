@@ -38,5 +38,9 @@
       "url": "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-1.7B/resolve/main/Sotto-EN-ZH-TW-1.7B-Q5_K_M.gguf",
       "sha256": "f7e5c35d2dbb8674badd3321545bc21bb99a3f3443c49ae68a06dde0fe8762e6"
     }
+  ],
+  "legacyFiles": [
+    "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
+    "SubtitleEN2TW-0.6B-Q5_K_M.gguf"
   ]
 }

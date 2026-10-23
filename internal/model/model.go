@@ -13,6 +13,9 @@ type Manifest struct {
 	SchemaVersion  int     `json:"schemaVersion"`
 	DefaultChannel string  `json:"defaultChannel"`
 	Models         []Entry `json:"models"`
+	// LegacyFiles names superseded model files that LocalSubs downloaded in
+	// earlier releases. They may be removed once the current model is verified.
+	LegacyFiles []string `json:"legacyFiles,omitempty"`
 }
 
 type Entry struct {

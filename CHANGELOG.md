@@ -7,17 +7,23 @@ semantic versioning.
 
 ### Added
 
-- Offer the official Sotto-EN-ZH-TW-1.7B model as the optional `1.7b` native
-  helper model channel.
+- Offer Sotto-EN-ZH-TW-1.7B as the quality-first model for both browser
+  inference and the native helper. Sotto 0.6B stays the speed-first default.
 - Support `localsubs benchmark --backend metal` on macOS to benchmark
   llama.cpp with GPU layer offload.
 
 ### Changed
 
+- Redesign the settings page around two choices: speed-first or quality-first
+  translation, and whether it runs in the browser or in the desktop component.
+  Model download, switching, and status now live on the model cards.
 - Replace the default LocalSubs 0.6B model with Sotto-EN-ZH-TW-0.6B for both
   the native helper and WebLLM, and remove the internal alpha model channels.
-  Existing users download the new model from Options; browser inference
-  re-downloads its model cache under the new model ID.
+- Upgrade existing installs from settings in one step. Browser users download
+  the new model once; the retired browser model cache is removed after the new
+  model loads. Desktop users see a prompt when the desktop component needs an
+  update, and superseded GGUF files in the LocalSubs model folder are removed
+  only after the selected Sotto model is verified and responding.
 
 ## [0.5.0] - 2026-08-11
 

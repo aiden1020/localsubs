@@ -214,15 +214,23 @@ winget uninstall --id Aiden1020.LocalSubs --exact
 
 ## Model
 
-LocalSubs uses [Sotto-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B), a fine-tuned model optimized for subtitle-length English → Traditional Chinese translation. The higher-quality [Sotto-EN-ZH-TW-1.7B](https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-1.7B) is available as an optional native helper model for GPUs.
+LocalSubs uses [Sotto-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B), a fine-tuned model optimized for subtitle-length English → Traditional Chinese translation. Choose between two models in Options:
+
+| Choice | Model | Best for |
+| --- | --- | --- |
+| Speed first (default) | [Sotto-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B) | Quick responses on most devices |
+| Quality first | [Sotto-EN-ZH-TW-1.7B](https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-1.7B) | More natural translations on a capable GPU or Apple Silicon Mac |
+
+Either model runs in the browser through WebGPU or in the optional desktop
+component.
 
 WebLLM uses the browser-optimized `q4f16_1` MLC artifacts. The optional native
 helper offers official GGUF models that can be downloaded, selected, and
 removed from Options:
 
 ```text
-Sotto-EN-ZH-TW-0.6B-Q5_K_M.gguf   (default, about 381 MB)
-Sotto-EN-ZH-TW-1.7B-Q5_K_M.gguf   (optional `1.7b` channel, about 1.13 GB)
+Sotto-EN-ZH-TW-0.6B-Q5_K_M.gguf   (speed first, default, about 381 MB)
+Sotto-EN-ZH-TW-1.7B-Q5_K_M.gguf   (quality first, `1.7b` channel, about 1.13 GB)
 ```
 
 If you previously installed an older helper, upgrade it and refresh the Native
@@ -234,7 +242,10 @@ brew upgrade localsubs
 localsubs install
 ```
 
-The previous GGUF file is not removed automatically. After verifying that the new model works, you may delete the old model from `~/Library/Application Support/LocalSubs/models/`.
+After the selected Sotto model is verified and responding, the helper removes
+the superseded `LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf` and
+`SubtitleEN2TW-0.6B-Q5_K_M.gguf` files it downloaded earlier. Other files in
+`~/Library/Application Support/LocalSubs/models/` are never touched.
 
 On Windows, models are stored in `%LOCALAPPDATA%\LocalSubs\models`.
 

@@ -140,3 +140,90 @@ func (m *modelManager) removeModel(channel string) error {
 	}
 	return nil
 }
+
+// legacyFiles returns regular files from the manifest's legacy list that still
+// exist. Current catalog files are never treated as legacy.
+func (m *modelManager) legacyFiles() ([]string, []int64, error) {
+	current := map[string]bool{}
+	for _, entry := range m.manifest.Models {
+		current[entry.Path] = true
+	}
+	var paths []string
+	var sizes []int64
+	for _, name := range m.manifest.LegacyFiles {
+		if current[name] {
+			continue
+		}
+		path, err := managedModelPath(name)
+		if err != nil {
+			return nil, nil, err
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			continue
+		}
+		paths = append(paths, path)
+		sizes = append(sizes, info.Size())
+	}
+	return paths, sizes, nil
+}
+
+func (m *modelManager) legacy() (nativehost.LegacyInfo, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	paths, sizes, err := m.legacyFiles()
+	if err != nil {
+		return nativehost.LegacyInfo{}, err
+	}
+	info := nativehost.LegacyInfo{Files: len(paths)}
+	for _, size := range sizes {
+		info.SizeBytes += size
+	}
+	return info, nil
+}
+
+// pruneLegacy deletes superseded model files, but only while the selected
+// catalog model is present and verified so a failed upgrade never leaves the
+// user without a working model.
+func (m *modelManager) pruneLegacy() (nativehost.LegacyInfo, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	selected, ok := m.manifest.Entry(selectedModelChannel(m.manifest))
+	if !ok {
+		return nativehost.LegacyInfo{}, fmt.Errorf("selected model is not in the catalog")
+	}
+	path, err := managedModelPath(selected.Path)
+	if err != nil {
+		return nativehost.LegacyInfo{}, err
+	}
+	selected.Path = path
+	if status := checkManagedModel(selected); status.State != "verified" {
+		return nativehost.LegacyInfo{}, fmt.Errorf("selected model %q is not verified; keeping legacy models", selected.Name)
+	}
+	paths, sizes, err := m.legacyFiles()
+	if err != nil {
+		return nativehost.LegacyInfo{}, err
+	}
+	var removed nativehost.LegacyInfo
+	var firstErr error
+	for i, target := range paths {
+		for _, file := range []string{target, target + ".part"} {
+			if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
+				if firstErr == nil {
+					firstErr = err
+				}
+			}
+		}
+		if _, statErr := os.Lstat(target); os.IsNotExist(statErr) {
+			removed.Files++
+			removed.SizeBytes += sizes[i]
+		}
+	}
+	return removed, firstErr
+}

@@ -5,6 +5,7 @@ const EXPECTED_API_VERSION = "1";
 export function createTranslatorService(nativeClient, now = () => performance.now()) {
   let compatibilityPromise = null;
   let compatibilityGeneration = -1;
+  let legacyPruneStarted = false;
 
   function connectionGeneration() {
     return Number.isSafeInteger(nativeClient.connectionGeneration)
@@ -73,7 +74,21 @@ export function createTranslatorService(nativeClient, now = () => performance.no
 
   async function listModels() {
     const result = await nativeClient.send("list_models", {});
-    return Array.isArray(result.models) ? result.models : [];
+    return {
+      ok: true,
+      models: Array.isArray(result.models) ? result.models : [],
+      legacy: result.legacy && Number(result.legacy.files) > 0 ? result.legacy : null
+    };
+  }
+
+  // Older helpers do not know this message; treat that as "nothing to prune".
+  async function pruneLegacyModels() {
+    try {
+      const result = await nativeClient.send("prune_legacy_models", {});
+      return result.removed || { files: 0, sizeBytes: 0 };
+    } catch {
+      return { files: 0, sizeBytes: 0 };
+    }
   }
 
   async function downloadModel(channel) {
@@ -109,6 +124,11 @@ export function createTranslatorService(nativeClient, now = () => performance.no
     }
     compatibilityPromise = Promise.resolve(health);
     compatibilityGeneration = connectionGeneration();
+    // The selected model answered, so superseded model files are safe to drop.
+    if (health.ok && !health.loading && !legacyPruneStarted) {
+      legacyPruneStarted = true;
+      pruneLegacyModels().catch(() => {});
+    }
     if (health.loading) {
       return {
         ok: false,
@@ -150,6 +170,7 @@ export function createTranslatorService(nativeClient, now = () => performance.no
     checkTranslator: checkLocalTranslator,
     downloadModel,
     listModels,
+    pruneLegacyModels,
     removeModel,
     selectModel,
     translateSubtitle

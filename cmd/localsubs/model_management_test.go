@@ -151,3 +151,87 @@ func TestManagedModelPathRejectsPathTraversal(t *testing.T) {
 		}
 	}
 }
+
+func TestModelManagerPrunesOnlyListedLegacyFilesAfterVerification(t *testing.T) {
+	modelDir := useTempModelDirectory(t)
+	current := writeTestModel(t, modelDir, "current.gguf", []byte("current"))
+	current.Channel = "stable"
+	writeTestModel(t, modelDir, "old.gguf", []byte("old model"))
+	writeTestModel(t, modelDir, "unrelated.gguf", []byte("user file"))
+	manifest := model.Manifest{
+		SchemaVersion:  1,
+		DefaultChannel: "stable",
+		Models:         []model.Entry{current},
+		LegacyFiles:    []string{"old.gguf", "current.gguf", "missing.gguf"},
+	}
+	manager := newModelManager(manifest)
+
+	info, err := manager.legacy()
+	if err != nil || info.Files != 1 || info.SizeBytes != int64(len("old model")) {
+		t.Fatalf("legacy = %#v, %v", info, err)
+	}
+	removed, err := manager.pruneLegacy()
+	if err != nil || removed.Files != 1 {
+		t.Fatalf("prune = %#v, %v", removed, err)
+	}
+	if _, err := os.Stat(filepath.Join(modelDir, "old.gguf")); !os.IsNotExist(err) {
+		t.Fatalf("legacy file still exists: %v", err)
+	}
+	for _, name := range []string{"current.gguf", "unrelated.gguf"} {
+		if _, err := os.Stat(filepath.Join(modelDir, name)); err != nil {
+			t.Fatalf("%s must be kept: %v", name, err)
+		}
+	}
+}
+
+func TestModelManagerKeepsLegacyFilesWhenCurrentModelIsNotVerified(t *testing.T) {
+	modelDir := useTempModelDirectory(t)
+	current := writeTestModel(t, modelDir, "current.gguf", []byte("current"))
+	current.Channel = "stable"
+	current.SHA256 = strings.Repeat("0", 64)
+	writeTestModel(t, modelDir, "old.gguf", []byte("old model"))
+	manager := newModelManager(model.Manifest{
+		SchemaVersion:  1,
+		DefaultChannel: "stable",
+		Models:         []model.Entry{current},
+		LegacyFiles:    []string{"old.gguf"},
+	})
+
+	if _, err := manager.pruneLegacy(); err == nil {
+		t.Fatal("prune succeeded with an unverified current model")
+	}
+	if _, err := os.Stat(filepath.Join(modelDir, "old.gguf")); err != nil {
+		t.Fatalf("legacy file was removed: %v", err)
+	}
+}
+
+func TestModelManagerPruneSkipsSymlinksAndInvalidNames(t *testing.T) {
+	modelDir := useTempModelDirectory(t)
+	current := writeTestModel(t, modelDir, "current.gguf", []byte("current"))
+	current.Channel = "stable"
+	outside := filepath.Join(t.TempDir(), "outside.gguf")
+	if err := os.WriteFile(outside, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(modelDir, "link.gguf")); err != nil {
+		t.Skip("symlinks unavailable")
+	}
+	manager := newModelManager(model.Manifest{
+		SchemaVersion: 1, DefaultChannel: "stable", Models: []model.Entry{current},
+		LegacyFiles: []string{"link.gguf"},
+	})
+	removed, err := manager.pruneLegacy()
+	if err != nil || removed.Files != 0 {
+		t.Fatalf("prune = %#v, %v", removed, err)
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Fatalf("symlink target was removed: %v", err)
+	}
+	bad := newModelManager(model.Manifest{
+		SchemaVersion: 1, DefaultChannel: "stable", Models: []model.Entry{current},
+		LegacyFiles: []string{"../escape.gguf"},
+	})
+	if _, err := bad.pruneLegacy(); err == nil {
+		t.Fatal("path traversal in legacy list was accepted")
+	}
+}

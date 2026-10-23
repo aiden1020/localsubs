@@ -1,4 +1,5 @@
-import { CreateMLCEngine, hasModelInCache } from "@mlc-ai/web-llm";
+import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from "@mlc-ai/web-llm";
+import { LEGACY_WEBLLM_MODELS, MODEL_CATALOG } from "../core/model-catalog.js";
 import {
   WEBLLM_CONTEXT_WINDOW_SIZE,
   WEBLLM_MAX_TOKENS,
@@ -6,7 +7,7 @@ import {
 } from "../core/webllm-config.js";
 
 export const WEBLLM_MODEL_URL = globalThis.__LOCALSUBS_WEBLLM_MODEL_URL__ ||
-  "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B/resolve/main/mlc-q4f16_1/";
+  MODEL_CATALOG.fast.webllm.modelURL;
 export { WEBLLM_CONTEXT_WINDOW_SIZE, WEBLLM_MAX_TOKENS, WEBLLM_MODEL_ID };
 
 function codedError(code, message) {
@@ -44,6 +45,9 @@ export function createWebLLMTranslator({
   modelId = WEBLLM_MODEL_ID,
   modelURL = WEBLLM_MODEL_URL,
   modelLibURL = globalThis.chrome?.runtime?.getURL?.("model-lib.wasm") || "model-lib.wasm",
+  vramMB = 550,
+  legacyModels = LEGACY_WEBLLM_MODELS,
+  deleteModelCache = deleteModelAllInfoInCache,
   now = () => performance.now()
 } = {}) {
   let engine = null;
@@ -60,7 +64,7 @@ export function createWebLLMTranslator({
       model: modelURL,
       model_id: modelId,
       model_lib: modelLibURL,
-      vram_required_MB: 550,
+      vram_required_MB: vramMB,
       low_resource_required: true,
       required_features: ["shader-f16"]
     }],
@@ -69,6 +73,41 @@ export function createWebLLMTranslator({
     // the remote Hugging Face model shards.
     cacheBackend: "indexeddb"
   };
+
+  const legacyAppConfig = {
+    model_list: legacyModels.map((legacy) => ({
+      model: legacy.modelURL,
+      model_id: legacy.modelId,
+      model_lib: modelLibURL,
+      vram_required_MB: legacy.vramMB,
+      low_resource_required: true,
+      required_features: ["shader-f16"]
+    })),
+    cacheBackend: "indexeddb"
+  };
+
+  async function hasLegacyCache() {
+    for (const legacy of legacyModels) {
+      if (await hasModelCached(legacy.modelId, legacyAppConfig).catch(() => false)) return true;
+    }
+    return false;
+  }
+
+  // Superseded weights are only deleted after a current model has loaded, so a
+  // failed or interrupted upgrade never leaves the browser without a model.
+  async function removeLegacyModels() {
+    let removed = 0;
+    for (const legacy of legacyModels) {
+      if (!await hasModelCached(legacy.modelId, legacyAppConfig).catch(() => false)) continue;
+      await deleteModelCache(legacy.modelId, legacyAppConfig);
+      removed += 1;
+    }
+    return removed;
+  }
+
+  async function isCached() {
+    return engine ? true : Boolean(await hasModelCached(modelId, appConfig).catch(() => false));
+  }
 
   async function inspectCapability() {
     if (capability) return capability;
@@ -118,6 +157,7 @@ export function createWebLLMTranslator({
       }
       engine = nextEngine;
       progress = { progress: 1, text: "Model ready" };
+      removeLegacyModels().catch(() => {});
       return engine;
     })()
       .catch((error) => {
@@ -212,6 +252,7 @@ export function createWebLLMTranslator({
     try {
       const gpuInfo = await inspectCapability();
       const cached = engine ? true : await hasModelCached(modelId, appConfig);
+      const legacyCached = cached ? false : await hasLegacyCache();
       if (enginePromise && !engine) {
         return {
           ok: false,
@@ -231,6 +272,7 @@ export function createWebLLMTranslator({
           needsDownload: !cached,
           needsInitialization: cached,
           cached,
+          legacyCached,
           transport: "webllm",
           backend: gpuInfo.vendor,
           model: modelId
@@ -289,5 +331,5 @@ export function createWebLLMTranslator({
     }
   }
 
-  return { checkTranslator, translateSubtitle, unload };
+  return { checkTranslator, isCached, translateSubtitle, unload };
 }

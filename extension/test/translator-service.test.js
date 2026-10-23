@@ -80,4 +80,43 @@ describe("translator service", () => {
       "health", "translate", "health", "translate"
     ]);
   });
+
+  it("prunes legacy models once, only after the helper reports ready", async () => {
+    const client = {
+      send: vi.fn(async (type) => {
+        if (type === "health") return { apiVersion: "1", helperVersion: "test", ok: true };
+        if (type === "prune_legacy_models") return { removed: { files: 1, sizeBytes: 10 } };
+        return {};
+      })
+    };
+    const service = createTranslatorService(client, () => 0);
+    await service.checkLocalTranslator();
+    await service.checkLocalTranslator();
+    const prunes = client.send.mock.calls.filter(([type]) => type === "prune_legacy_models");
+    expect(prunes).toHaveLength(1);
+
+    const loadingClient = {
+      send: vi.fn().mockResolvedValue({ apiVersion: "1", helperVersion: "test", loading: true, ok: false })
+    };
+    await createTranslatorService(loadingClient, () => 0).checkLocalTranslator();
+    expect(loadingClient.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats a helper without legacy cleanup as having nothing to prune", async () => {
+    const client = { send: vi.fn().mockRejectedValue(new Error("unsupported_message")) };
+    const service = createTranslatorService(client, () => 0);
+    await expect(service.pruneLegacyModels()).resolves.toEqual({ files: 0, sizeBytes: 0 });
+  });
+
+  it("returns legacy file totals with the model list", async () => {
+    const client = {
+      send: vi.fn().mockResolvedValue({ models: [{ channel: "stable" }], legacy: { files: 2, sizeBytes: 5 } })
+    };
+    const service = createTranslatorService(client, () => 0);
+    await expect(service.listModels()).resolves.toEqual({
+      ok: true,
+      models: [{ channel: "stable" }],
+      legacy: { files: 2, sizeBytes: 5 }
+    });
+  });
 });
