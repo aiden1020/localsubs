@@ -4,57 +4,39 @@
   "models": [
     {
       "channel": "stable",
-      "name": "LocalSubs Standard 0.6B",
-      "id": "localsubs-en-zh-tw-0.6b",
-      "version": "2026.07",
+      "name": "Sotto 0.6B",
+      "id": "sotto-en-zh-tw-0.6b",
+      "version": "2026.10",
       "runtime": "llama.cpp",
-      "path": "LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
-      "sizeBytes": 367318176,
-      "description": "LocalSubs English to Traditional Chinese subtitle translation model.",
+      "path": "Sotto-EN-ZH-TW-0.6B-Q5_K_M.gguf",
+      "sizeBytes": 381332736,
+      "description": "Sotto English to Traditional Chinese subtitle translation model, designed for CPU inference.",
       "profile": {
         "nPredict": 24,
         "ctxSize": 1,
         "cachePrompt": true,
         "cacheReuse": -1
       },
-      "url": "https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B/resolve/main/LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf",
-      "sha256": "525351104440c210f235721d9290b459dac00392331c93008cac401c055c9a76"
+      "url": "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B/resolve/main/Sotto-EN-ZH-TW-0.6B-Q5_K_M.gguf",
+      "sha256": "4c4fc4dc1eb08ddf1e2c27b329c48882071dfd53150bba04846fdc4e17bc671a"
     },
     {
-      "channel": "rowtune-dev",
-      "name": "80k2 Rowtune 0.6B (Alpha)",
-      "id": "localsubs-en-zh-tw-0.6b-80k2-rowtune",
-      "version": "dev",
+      "channel": "1.7b",
+      "name": "Sotto 1.7B",
+      "id": "sotto-en-zh-tw-1.7b",
+      "version": "2026.10",
       "runtime": "llama.cpp",
-      "path": "0.6B-80k2-cpt-sft70-rowtune.Q4_K_M.gguf",
-      "sizeBytes": 333621664,
-      "description": "Local development model for subtitle translation experiments.",
+      "path": "Sotto-EN-ZH-TW-1.7B-Q5_K_M.gguf",
+      "sizeBytes": 1134373600,
+      "description": "Sotto higher-quality English to Traditional Chinese subtitle translation model, recommended for GPUs.",
       "profile": {
         "nPredict": 24,
         "ctxSize": 1,
         "cachePrompt": true,
         "cacheReuse": -1
       },
-      "url": "",
-      "sha256": "1c67b79cef1157b563a84d96fb6b7c89d9dccd09db76c26ff4ce552396e75051"
-    },
-    {
-      "channel": "1.7b-dev",
-      "name": "80k3 CPT-SFT70 1.7B (Alpha)",
-      "id": "localsubs-en-zh-tw-1.7b-80k3-cpt-sft70",
-      "version": "dev",
-      "runtime": "llama.cpp",
-      "path": "1.7B-80k3-cpt-sft70.Q4_K_M.gguf",
-      "sizeBytes": 983902976,
-      "description": "Local development 1.7B model for subtitle translation experiments.",
-      "profile": {
-        "nPredict": 24,
-        "ctxSize": 1,
-        "cachePrompt": true,
-        "cacheReuse": -1
-      },
-      "url": "",
-      "sha256": "484139083ada9474fa66e00b9199a2236a01a27fffa02b9f21cf0cd08ff8c46d"
+      "url": "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-1.7B/resolve/main/Sotto-EN-ZH-TW-1.7B-Q5_K_M.gguf",
+      "sha256": "f7e5c35d2dbb8674badd3321545bc21bb99a3f3443c49ae68a06dde0fe8762e6"
     }
   ]
 }

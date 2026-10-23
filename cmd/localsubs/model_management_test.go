@@ -20,6 +20,44 @@ func useTempModelDirectory(t *testing.T) string {
 	return filepath.Join(config.AppDataDir(), "models")
 }
 
+func TestEmbeddedManifestIncludesOfficialSottoModels(t *testing.T) {
+	manifest, err := loadManifest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.DefaultChannel != "stable" {
+		t.Errorf("default channel = %q", manifest.DefaultChannel)
+	}
+	cases := []struct {
+		channel string
+		path    string
+		size    int64
+		sha256  string
+	}{
+		{"stable", "Sotto-EN-ZH-TW-0.6B-Q5_K_M.gguf", 381332736, "4c4fc4dc1eb08ddf1e2c27b329c48882071dfd53150bba04846fdc4e17bc671a"},
+		{"1.7b", "Sotto-EN-ZH-TW-1.7B-Q5_K_M.gguf", 1134373600, "f7e5c35d2dbb8674badd3321545bc21bb99a3f3443c49ae68a06dde0fe8762e6"},
+	}
+	for _, tc := range cases {
+		entry, ok := manifest.Entry(tc.channel)
+		if !ok {
+			t.Fatalf("channel %q is missing from embedded manifest", tc.channel)
+		}
+		if entry.Path != tc.path {
+			t.Errorf("%s path = %q", tc.channel, entry.Path)
+		}
+		if entry.SizeBytes != tc.size {
+			t.Errorf("%s size = %d", tc.channel, entry.SizeBytes)
+		}
+		if entry.SHA256 != tc.sha256 {
+			t.Errorf("%s checksum = %q", tc.channel, entry.SHA256)
+		}
+		wantURL := "https://huggingface.co/Aiden1020/" + strings.TrimSuffix(tc.path, "-Q5_K_M.gguf") + "/resolve/main/" + tc.path
+		if entry.URL != wantURL {
+			t.Errorf("%s url = %q", tc.channel, entry.URL)
+		}
+	}
+}
+
 func writeTestModel(t *testing.T, modelDir, filename string, body []byte) model.Entry {
 	t.Helper()
 	if err := os.MkdirAll(modelDir, 0o755); err != nil {

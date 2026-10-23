@@ -7,8 +7,17 @@ semantic versioning.
 
 ### Added
 
+- Offer the official Sotto-EN-ZH-TW-1.7B model as the optional `1.7b` native
+  helper model channel.
 - Support `localsubs benchmark --backend metal` on macOS to benchmark
   llama.cpp with GPU layer offload.
+
+### Changed
+
+- Replace the default LocalSubs 0.6B model with Sotto-EN-ZH-TW-0.6B for both
+  the native helper and WebLLM, and remove the internal alpha model channels.
+  Existing users download the new model from Options; browser inference
+  re-downloads its model cache under the new model ID.
 
 ## [0.5.0] - 2026-08-11
 

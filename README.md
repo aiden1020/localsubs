@@ -15,7 +15,7 @@ Keep the original dialogue on screen while Taiwan-optimized Traditional Chinese 
 <a href="https://arxiv.org/abs/2607.09957">
   <img src="https://img.shields.io/badge/arXiv-2607.09957-b31b1b.svg" alt="arXiv:2607.09957">
 </a>
-<a href="https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B">
+<a href="https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B">
   <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-FFD21E.svg" alt="Hugging Face model">
 </a>
 <a href="https://huggingface.co/spaces/Aiden1020/localsubs-en-zh-tw-translation">
@@ -55,10 +55,10 @@ unloads the inactive WebLLM engine or resets the native connection without a
 browser restart.
 
 Production uses WebLLM 0.2.84 with model ID
-`LocalSubs-EN-ZH-TW-0.6B-64k-q4f16_1-MLC-v1`, a 256-token context window, and a
-16-token output limit. The approximately 272 MB `q4f16_1` weights are loaded
-from `webllm-64k-q4f16_1-v1/` in the Hugging Face model repository. The matching
-no-subgroup WebGPU model library is bundled as `model-lib.wasm`.
+`Sotto-EN-ZH-TW-0.6B-q4f16_1-MLC`, a 256-token context window, and a
+16-token output limit. The approximately 290 MB `q4f16_1` weights are loaded
+from `mlc-q4f16_1/` in the Hugging Face model repository. The matching WebGPU
+model library is bundled as `model-lib.wasm`.
 
 WebLLM artifacts use IndexedDB rather than CacheStorage. The latter cannot
 reliably cache the bundled `chrome-extension://` WASM resource. The content
@@ -214,14 +214,15 @@ winget uninstall --id Aiden1020.LocalSubs --exact
 
 ## Model
 
-LocalSubs uses [LocalSubs-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B), a fine-tuned model optimized for subtitle-length English → Traditional Chinese translation.
+LocalSubs uses [Sotto-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B), a fine-tuned model optimized for subtitle-length English → Traditional Chinese translation. The higher-quality [Sotto-EN-ZH-TW-1.7B](https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-1.7B) is available as an optional native helper model for GPUs.
 
 WebLLM uses the browser-optimized `q4f16_1` MLC artifacts. The optional native
 helper offers official GGUF models that can be downloaded, selected, and
 removed from Options:
 
 ```text
-LocalSubs-EN-ZH-TW-0.6B-Q5_K_M.gguf
+Sotto-EN-ZH-TW-0.6B-Q5_K_M.gguf   (default, about 381 MB)
+Sotto-EN-ZH-TW-1.7B-Q5_K_M.gguf   (optional `1.7b` channel, about 1.13 GB)
 ```
 
 If you previously installed an older helper, upgrade it and refresh the Native

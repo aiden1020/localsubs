@@ -6,7 +6,7 @@ import {
 } from "../core/webllm-config.js";
 
 export const WEBLLM_MODEL_URL = globalThis.__LOCALSUBS_WEBLLM_MODEL_URL__ ||
-  "https://huggingface.co/Aiden1020/LocalSubs-EN-ZH-TW-0.6B/resolve/main/webllm-64k-q4f16_1-v1/";
+  "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B/resolve/main/mlc-q4f16_1/";
 export { WEBLLM_CONTEXT_WINDOW_SIZE, WEBLLM_MAX_TOKENS, WEBLLM_MODEL_ID };
 
 function codedError(code, message) {
