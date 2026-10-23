@@ -10,6 +10,23 @@ export const WEBLLM_MODEL_URL = globalThis.__LOCALSUBS_WEBLLM_MODEL_URL__ ||
   MODEL_CATALOG.fast.webllm.modelURL;
 export { WEBLLM_CONTEXT_WINDOW_SIZE, WEBLLM_MAX_TOKENS, WEBLLM_MODEL_ID };
 
+// WebGPU and the TVM runtime can reject with strings or plain objects. Keep
+// whatever detail they carry instead of collapsing it into a generic message.
+export function describeError(error, fallback = "WebLLM is unavailable") {
+  if (error instanceof Error) return error.message || error.name || fallback;
+  if (typeof error === "string") return error || fallback;
+  if (error && typeof error === "object") {
+    if (typeof error.message === "string" && error.message) return error.message;
+    try {
+      const json = JSON.stringify(error);
+      if (json && json !== "{}") return json;
+    } catch {
+      // fall through to the generic message
+    }
+  }
+  return fallback;
+}
+
 function codedError(code, message) {
   const error = new Error(message);
   error.code = code;
@@ -161,7 +178,8 @@ export function createWebLLMTranslator({
       return engine;
     })()
       .catch((error) => {
-        lastError = error instanceof Error ? error.message : String(error);
+        lastError = describeError(error);
+        console.error("[LocalSubs] WebLLM initialization failed", error);
         throw codedError("webllm_init_failed", lastError);
       })
       .finally(() => {
@@ -305,13 +323,14 @@ export function createWebLLMTranslator({
         model: modelId
       };
     } catch (error) {
+      console.error("[LocalSubs] WebLLM check failed", error);
       return {
         ok: false,
         loading: false,
         transport: "webllm",
         error: {
           code: typeof error?.code === "string" ? error.code : "webllm_unavailable",
-          message: error instanceof Error ? error.message : "WebLLM is unavailable"
+          message: describeError(error)
         },
         lastError
       };

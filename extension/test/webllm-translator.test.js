@@ -3,6 +3,7 @@ import {
   buildWebLLMPrompt,
   cleanWebLLMTranslation,
   createWebLLMTranslator,
+  describeError,
   WEBLLM_CONTEXT_WINDOW_SIZE,
   WEBLLM_MAX_TOKENS
 } from "../src/background/webllm-translator.js";
@@ -220,5 +221,34 @@ describe("WebLLM translator", () => {
     });
     await expect(translator.translateSubtitle({ currentText: "Hi" })).rejects.toThrow();
     expect(deleteModelCache).not.toHaveBeenCalled();
+  });
+
+  it("keeps the detail of non-Error failures during the warmup completion", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const translator = createWebLLMTranslator({
+      createEngine: vi.fn().mockResolvedValue({
+        unload: vi.fn().mockResolvedValue(undefined),
+        interruptGenerate: vi.fn().mockResolvedValue(undefined),
+        completions: { create: vi.fn().mockRejectedValue({ reason: "device lost" }) }
+      }),
+      hasModelCached: vi.fn().mockResolvedValue(true),
+      gpu: testGPU(),
+      modelLibURL: "chrome-extension://test/model-lib.wasm"
+    });
+    await expect(translator.checkTranslator(true)).resolves.toMatchObject({
+      ok: false,
+      error: { code: "webllm_unavailable", message: '{"reason":"device lost"}' }
+    });
+  });
+});
+
+describe("describeError", () => {
+  it("returns the most specific message available", () => {
+    expect(describeError(new Error("boom"))).toBe("boom");
+    expect(describeError("plain string")).toBe("plain string");
+    expect(describeError({ message: "from object" })).toBe("from object");
+    expect(describeError({ code: 7 })).toBe('{"code":7}');
+    expect(describeError(undefined)).toBe("WebLLM is unavailable");
+    expect(describeError({})).toBe("WebLLM is unavailable");
   });
 });
