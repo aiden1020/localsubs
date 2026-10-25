@@ -47,6 +47,46 @@ describe("PlayerPanel", () => {
     expect($(".wrap").classList.contains("visible")).toBe(false);
   });
 
+  it("still hides after the button was clicked and gives focus back to the page", () => {
+    document.dispatchEvent(new Event("pointermove"));
+    $(".toggle").focus();
+    $(".toggle").click();
+    $(".close").click();
+    expect(panel.isOpen()).toBe(false);
+    expect(panel.shadow.activeElement).toBe(null);
+
+    $(".toggle").focus();
+    vi.advanceTimersByTime(3000);
+    expect($(".wrap").classList.contains("visible")).toBe(false);
+    expect(panel.shadow.activeElement).toBe(null);
+  });
+
+  it("stays while hovered and closes an open panel once the pointer rests elsewhere", () => {
+    document.dispatchEvent(new Event("pointermove"));
+    $(".toggle").click();
+    panel.root.dispatchEvent(new Event("pointerenter"));
+    vi.advanceTimersByTime(5000);
+    expect(panel.isOpen()).toBe(true);
+
+    panel.root.dispatchEvent(new Event("pointerleave"));
+    vi.advanceTimersByTime(3000);
+    expect(panel.isOpen()).toBe(false);
+    expect($(".wrap").classList.contains("visible")).toBe(false);
+  });
+
+  it("hides as soon as the pointer leaves the page", () => {
+    document.dispatchEvent(new Event("pointermove"));
+    document.dispatchEvent(new MouseEvent("mouseout", { relatedTarget: null }));
+    expect($(".wrap").classList.contains("visible")).toBe(false);
+  });
+
+  it("closes the panel when the player is clicked", () => {
+    document.dispatchEvent(new Event("pointermove"));
+    $(".toggle").click();
+    player.querySelector("video").dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    expect(panel.isOpen()).toBe(false);
+  });
+
   it("opens the panel and writes the translation switch to storage", () => {
     $(".toggle").click();
     expect(panel.isOpen()).toBe(true);

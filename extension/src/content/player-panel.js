@@ -91,7 +91,10 @@ export class PlayerPanel {
     this.hideTimer = null;
     this.rangeTimers = new Map();
     this.switching = false;
+    this.hovering = false;
     this.handleActivity = this.handleActivity.bind(this);
+    this.handlePointerOut = this.handlePointerOut.bind(this);
+    this.handleOutsidePointer = this.handleOutsidePointer.bind(this);
   }
 
   t(key) {
@@ -107,6 +110,8 @@ export class PlayerPanel {
     if (!this.root) this.build();
     this.updateHost();
     this.document.addEventListener("pointermove", this.handleActivity, { passive: true });
+    this.document.addEventListener("mouseout", this.handlePointerOut, { passive: true });
+    this.document.addEventListener("pointerdown", this.handleOutsidePointer, true);
     return this.root;
   }
 
@@ -171,7 +176,6 @@ export class PlayerPanel {
       this.root.addEventListener(type, (event) => {
         if (type === "keydown" && event.key === "Escape" && !this.panel.hidden) {
           this.setOpen(false);
-          this.toggleButton.focus();
         }
         event.stopPropagation();
       });
@@ -179,6 +183,11 @@ export class PlayerPanel {
     for (const type of ["click", "dblclick", "pointerdown", "pointerup", "mousedown", "mouseup", "wheel"]) {
       this.root.addEventListener(type, (event) => event.stopPropagation());
     }
+    this.root.addEventListener("pointerenter", () => { this.hovering = true; });
+    this.root.addEventListener("pointerleave", () => {
+      this.hovering = false;
+      this.handleActivity();
+    });
 
     this.applySettings();
   }
@@ -225,19 +234,41 @@ export class PlayerPanel {
     output.textContent = key === "overlayBackgroundOpacity" ? `${Math.round(value * 100)}%` : `${value}px`;
   }
 
+  // Fade with the player controls: show on pointer movement, hide after the
+  // pointer rests or leaves the page. Hovering the button or panel keeps it.
   handleActivity() {
     if (!this.wrap) return;
     this.updateHost();
     this.wrap.classList.add("visible");
     this.window.clearTimeout(this.hideTimer);
     this.hideTimer = this.window.setTimeout(() => {
-      if (this.panel.hidden && !this.root.matches(":focus-within")) {
-        this.wrap.classList.remove("visible");
-      }
+      if (!this.hovering) this.hide();
     }, IDLE_HIDE_MS);
   }
 
-  setOpen(open) {
+  handlePointerOut(event) {
+    if (event.relatedTarget === null && !this.isOpen()) this.hide();
+  }
+
+  handleOutsidePointer(event) {
+    if (this.isOpen() && !event.composedPath().includes(this.root)) this.setOpen(false);
+  }
+
+  hide() {
+    if (!this.wrap) return;
+    this.window.clearTimeout(this.hideTimer);
+    if (this.isOpen()) this.setOpen(false, { restartTimer: false });
+    this.releaseFocus();
+    this.wrap.classList.remove("visible");
+  }
+
+  // Give the keyboard back to the player so its shortcuts keep working.
+  releaseFocus() {
+    const focused = this.shadow?.activeElement;
+    if (focused instanceof HTMLElement) focused.blur();
+  }
+
+  setOpen(open, { restartTimer = true } = {}) {
     if (!this.panel) return;
     this.panel.hidden = !open;
     this.wrap.classList.toggle("open", open);
@@ -245,9 +276,10 @@ export class PlayerPanel {
     if (open) {
       this.applySettings();
       this.showNote("");
-    } else {
-      this.handleActivity();
+      return;
     }
+    this.releaseFocus();
+    if (restartTimer) this.handleActivity();
   }
 
   isOpen() {
