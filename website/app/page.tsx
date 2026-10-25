@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
-import { SceneArt } from "./scene";
+import { PlayerDemo } from "./player-demo";
 import { siteDescription, siteUrl, storeUrl } from "./site";
 
 const reportUrl = "https://arxiv.org/abs/2607.09957";
 const fastModelUrl = "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B";
 const qualityModelUrl = "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-1.7B";
 const repoUrl = "https://github.com/aiden1020/localsubs";
+const windowsSetupVideoUrl = "https://www.youtube.com/watch?v=GbVWTxgqePA";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -43,24 +44,6 @@ const structuredData = {
     },
   ],
 };
-
-// Translations below are real Sotto output for these lines.
-const heroCues = [
-  { en: "Let's call it a day.", zh: "今天就到此為止吧" },
-  { en: "Are you out of your mind?", zh: "你瘋啦？" },
-  { en: "We're not out of the woods yet.", zh: "我們還沒脫離險境" },
-  { en: "Cut me some slack.", zh: "饒了我吧" },
-];
-
-const tickerCues = [
-  { en: "You've got to be kidding me.", zh: "開什麼玩笑" },
-  { en: "I'll pick you up after work.", zh: "我下班去接你" },
-  { en: "Cut me some slack.", zh: "饒了我吧" },
-  { en: "We need to talk.", zh: "我們得談談" },
-  { en: "It's a piece of cake.", zh: "這很簡單" },
-  { en: "Are you out of your mind?", zh: "你瘋啦？" },
-  { en: "Let's call it a day.", zh: "今天就到此為止吧" },
-];
 
 const phrasing = [
   { en: "That video went viral overnight.", before: "那", term: "影片", after: "一夜之間爆紅" },
@@ -115,7 +98,6 @@ export default function Home() {
             <span>LocalSubs</span>
           </a>
           <div className="navLinks">
-            <a href="#experience">雙字幕</a>
             <a href="#how">怎麼用</a>
             <a href="#quality">翻譯品質</a>
             <a href="#faq">常見問題</a>
@@ -127,83 +109,20 @@ export default function Home() {
       </header>
 
       <section className="hero shell" id="top">
-        <div className="heroCopy">
-          <div className="eyebrow"><span /> HBO Max 中英雙字幕・免費 Chrome 擴充功能</div>
-          <h1><span>英文字幕下面，</span><em>多一行台灣中文。</em></h1>
-          <p className="lede">
-            在 HBO Max 開著英文字幕看劇，看不懂的那句，往下瞄一眼就有中文。英文和中文會同時出現，不用等。免費，不用註冊，看幾集都可以。
-          </p>
-          <div className="heroActions">
-            <a className="button buttonAccent" href={storeUrl} target="_blank" rel="noreferrer">
-              <ChromeIcon /> 免費加到 Chrome <Arrow />
-            </a>
-            <a className="textLink" href="#experience">看看長什麼樣子 <span aria-hidden="true">↓</span></a>
-          </div>
-          <div className="trustLine"><span>永遠免費</span><span>不限集數</span><span>不用註冊</span></div>
+        <div className="heroHead">
+          <p className="eyebrow"><span /> HBO Max 中英雙字幕・免費 Chrome 擴充功能</p>
+          <h1><span>英文字幕上面，</span><em>多一行台灣中文。</em></h1>
         </div>
 
-        <div className="playerWrap" aria-label="LocalSubs 雙字幕效果示意">
-          <div className="player">
-            <div className="playerTop"><span className="live"><i /> 雙字幕</span><span className="episode">S2 · E4</span></div>
-            <div className="scene" aria-hidden="true">
-              <SceneArt />
-            </div>
-            <div className="cueStack">
-              {heroCues.map((cue, index) => (
-                <div className="cue" key={cue.en} style={{ "--i": index } as CSSProperties} aria-hidden={index > 0}>
-                  <p className="cueEn">{cue.en}</p>
-                  <p className="cueZh">{cue.zh}</p>
-                </div>
-              ))}
-            </div>
-            <div className="playerControls" aria-hidden="true"><span>▶</span><div><i /></div><time>18:24 / 42:08</time><b>CC</b></div>
-          </div>
-          <div className="heroChip">
-            <img src="/localsubs-logo.png" alt="" width="36" height="36" />
-            <div><strong>中英字幕同時出現</strong><span>不用暫停，也不用切字幕</span></div>
-          </div>
+        <div className="playerStage">
+          <PlayerDemo />
         </div>
-      </section>
 
-      <div className="ticker" aria-hidden="true">
-        <div className="tickerTrack">
-          {[...tickerCues, ...tickerCues].map((cue, index) => (
-            <span key={index}><i>{cue.en}</i><b>{cue.zh}</b></span>
-          ))}
-        </div>
-      </div>
-
-      <section className="experience shell" id="experience">
-        <div className="sectionHeading">
-          <p className="kicker">HBO Max 已經有字幕了，為什麼還要裝？</p>
-          <h2>HBO Max 的字幕，<br />一次只能選一種。</h2>
-          <p>同一句台詞，用三種方式看看。</p>
-        </div>
-        <div className="threeWays">
-          <article className="way">
-            <span className="wayLabel">HBO Max・英文字幕</span>
-            <div className="wayScreen">
-              <span className="thought">out of the woods……森林？</span>
-              <div className="wayCue"><p>We&apos;re not out of the woods yet.</p></div>
-            </div>
-            <p className="wayVerdict"><b aria-hidden="true">✕</b>卡住了，只好倒回去再聽一次。</p>
-          </article>
-          <article className="way">
-            <span className="wayLabel">HBO Max・中文字幕</span>
-            <div className="wayScreen">
-              <span className="thought">他剛剛英文是怎麼講的？</span>
-              <div className="wayCue"><p>我們還沒脫離險境</p></div>
-            </div>
-            <p className="wayVerdict"><b aria-hidden="true">✕</b>劇情懂了，英文卻從耳邊溜走。</p>
-          </article>
-          <article className="way wayBest">
-            <span className="wayLabel">LocalSubs 雙字幕</span>
-            <div className="wayScreen">
-              <span className="thought">喔，原來是這個意思。</span>
-              <div className="wayCue"><p>We&apos;re not out of the woods yet.</p><p className="wayZh">我們還沒脫離險境</p></div>
-            </div>
-            <p className="wayVerdict"><b aria-hidden="true">✓</b>英文照看，卡住時往下瞄一眼就好。</p>
-          </article>
+        <div className="heroActions">
+          <a className="button buttonAccent" href={storeUrl} target="_blank" rel="noreferrer">
+            <ChromeIcon /> 免費加到 Chrome <Arrow />
+          </a>
+          <p className="trustLine"><span>永遠免費</span><span>不限集數</span><span>不用註冊</span></p>
         </div>
       </section>
 
@@ -226,8 +145,8 @@ export default function Home() {
           </li>
           <li>
             <span>03</span>
-            <div><h3>打開 HBO Max</h3><p>開英文字幕，按下播放，中文就會出現在英文下面。</p></div>
-            <div className="stepVisual stepCue" aria-hidden="true"><b>Cut me some slack.</b><span>饒了我吧</span></div>
+            <div><h3>打開 HBO Max</h3><p>開英文字幕，按下播放，中文就會出現在英文上面。</p></div>
+            <div className="stepVisual stepCue" aria-hidden="true"><span>饒了我吧</span><b>Cut me some slack.</b></div>
           </li>
         </ol>
       </section>
@@ -315,11 +234,11 @@ export default function Home() {
         <div className="freeCopy">
           <p className="kicker">為什麼可以免費？</p>
           <h2>翻譯是你的電腦在做，<br />我們沒有伺服器要養。</h2>
-          <p>一般翻譯服務每翻一個字都要付雲端的錢，所以會有月費、免費額度或字數上限。LocalSubs 直接用你電腦的顯示晶片來翻譯，我們這邊沒有成本，也就不用跟你收錢，更不用限制你一天看幾集。</p>
-          <div className="freePoints"><span>沒有付費版</span><span>不限集數</span><span>不用註冊</span></div>
+          <p>一般翻譯服務每翻一個字都要付雲端的錢，所以會有月費、免費額度或字數上限。LocalSubs 直接用你的電腦來翻譯，我們這邊沒有成本，也就不用跟你收錢，更不用限制你一天看幾集。</p>
+          <ul className="freePoints"><li>沒有付費版</li><li>不限集數</li><li>不用註冊</li></ul>
         </div>
-        <div className="receipt" aria-label="示意：LocalSubs 的月帳單是 0 元">
-          <div className="receiptHead"><img src="/localsubs-logo.png" alt="" width="34" height="34" /><div><strong>LocalSubs</strong><span>本月帳單（示意）</span></div></div>
+        <div className="receipt" aria-label="LocalSubs 的月帳單是 0 元">
+          <div className="receiptHead"><img src="/localsubs-logo.png" alt="" width="34" height="34" /><div><strong>LocalSubs</strong><span>本月帳單</span></div></div>
           <dl>
             <div><dt>看了幾集</dt><dd>不限</dd></div>
             <div><dt>翻了幾句</dt><dd>不限</dd></div>
@@ -341,21 +260,21 @@ export default function Home() {
             <span className="audienceTag">想聽原音的人</span>
             <div className="voiceDemo" aria-hidden="true">
               <div className="wave">{Array.from({ length: 28 }, (_, index) => <i key={index} style={{ "--i": index, height: 12 + ((index * 37) % 40) } as CSSProperties} />)}</div>
-              <b>You&apos;ve got to be kidding me.</b>
               <span>開什麼玩笑</span>
+              <b>You&apos;ve got to be kidding me.</b>
             </div>
             <h3>聽演員本人怎麼說</h3>
-            <p>喜歡原音的語氣，但英文還沒好到可以只看英文字幕。英文照看，卡住的時候往下看一眼就好。</p>
+            <p>喜歡原音的語氣，但英文還沒好到可以只看英文字幕。英文照看，卡住的時候往上看一眼就好。</p>
           </article>
           <article className="audienceHabit">
             <span className="audienceTag">想維持英文的人</span>
             <ol className="episodeTrail" aria-label="同一句話在不同集數的示意">
-              <li><small>第 1 集</small><b>Let&apos;s call it a day.</b><span style={{ opacity: 1 }}>今天就到此為止吧</span><em>要看中文</em></li>
-              <li><small>第 4 集</small><b>Let&apos;s call it a day.</b><span style={{ opacity: .45 }}>今天就到此為止吧</span><em>瞄一眼確認</em></li>
-              <li><small>第 9 集</small><b>Let&apos;s call it a day.</b><span style={{ opacity: .12 }}>今天就到此為止吧</span><em>不用看了</em></li>
+              <li><small>第 1 集</small><span style={{ opacity: 1 }}>今天就到此為止吧</span><b>Let&apos;s call it a day.</b><em>要看中文</em></li>
+              <li><small>第 4 集</small><span style={{ opacity: .45 }}>今天就到此為止吧</span><b>Let&apos;s call it a day.</b><em>瞄一眼確認</em></li>
+              <li><small>第 9 集</small><span style={{ opacity: .12 }}>今天就到此為止吧</span><b>Let&apos;s call it a day.</b><em>不用看了</em></li>
             </ol>
             <h3>同一句話，看久了就記住</h3>
-            <p>沒時間上課，但每天都會看一兩集。常出現的說法一再遇到，慢慢就不用往下看了。</p>
+            <p>沒時間上課，但每天都會看一兩集。常出現的說法一再遇到，慢慢就不用看中文了。</p>
           </article>
         </div>
       </section>
@@ -368,7 +287,7 @@ export default function Home() {
         <div className="faqList">
           <details>
             <summary>HBO Max 可以同時開中英字幕嗎？<b>＋</b></summary>
-            <p>原本不行，一次只能選一種。裝了 LocalSubs 之後開英文字幕，中文會自動加在下面。</p>
+            <p>原本不行，一次只能選一種。裝了 LocalSubs 之後開英文字幕，中文會自動加在英文上面。</p>
           </details>
           <details>
             <summary>真的免費嗎？以後會收費嗎？<b>＋</b></summary>
@@ -376,11 +295,18 @@ export default function Home() {
           </details>
           <details>
             <summary>流暢模式和精準模式差在哪？<b>＋</b></summary>
-            <p>流暢模式是預設，模型比較小，下載快，大部分電腦都跑得順。精準模式翻得比較好，但模型比較大（約 900 MB），適合顯示晶片比較好的電腦。在設定頁就能切換。</p>
+            <p>流暢模式是預設，模型比較小，下載快，大部分電腦都跑得順。精準模式翻得比較好，但模型比較大（約 900 MB），適合效能比較好的電腦。在設定頁就能切換。</p>
           </details>
           <details>
             <summary>我的電腦跑得動嗎？<b>＋</b></summary>
             <p>近幾年的 Mac 和大部分 Windows 筆電都可以。如果瀏覽器不支援，設定頁會提示你改裝桌面元件，用 CPU 也能跑。</p>
+          </details>
+          <details>
+            <summary>Windows 電腦沒有獨立顯示卡，要怎麼裝桌面元件？<b>＋</b></summary>
+            <p>
+              沒有獨立顯示卡也能用，桌面元件會改用 CPU 翻譯。安裝步驟比較多，我們錄了一支專門給這種情況的 Windows 安裝教學，照著做就好。
+              <a className="faqLink" href={windowsSetupVideoUrl} target="_blank" rel="noreferrer">看安裝教學影片 <Arrow /></a>
+            </p>
           </details>
           <details>
             <summary>支援哪些瀏覽器？<b>＋</b></summary>
