@@ -3,6 +3,13 @@
 All notable user-facing changes are documented in this file. LocalSubs uses
 semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- Link a Windows setup video from the desktop setup steps in extension
+  settings.
+
 ## [0.6.0] - 2026-10-23
 
 ### Added

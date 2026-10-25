@@ -206,6 +206,21 @@ h2 {
   justify-content: flex-start;
 }
 
+.setup-tutorial {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.setup-tutorial-play {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.setup-tutorial[hidden],
 .setup-grid[hidden],
 .platform-status[hidden],
 .unsupported-platform[hidden] {

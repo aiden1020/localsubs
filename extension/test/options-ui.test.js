@@ -257,4 +257,22 @@ it("shows the desktop setup steps only when the helper cannot be reached", async
     expect(document.getElementById("platform-status").hidden).toBe(false);
     expect(document.getElementById("install-command").textContent).toContain("brew install localsubs");
   });
+  expect(document.getElementById("setup-tutorial").hidden).toBe(true);
+});
+
+it("links the Windows setup video in the desktop setup steps", async () => {
+  const sendMessage = vi.fn(async (message) => {
+    if (message.type === "LIST_HELPER_MODELS") throw new Error("native host not found");
+    return { ok: false, error: { message: "not installed" } };
+  });
+  await mountOptions({ settings: { inferenceBackend: "native" }, sendMessage, os: "win" });
+
+  await vi.waitFor(() => {
+    expect(document.getElementById("setup-grid").hidden).toBe(false);
+    expect(document.getElementById("install-command").textContent).toContain("winget install");
+  });
+  const tutorial = document.getElementById("setup-tutorial");
+  expect(tutorial.hidden).toBe(false);
+  expect(tutorial.href).toBe("https://youtu.be/GbVWTxgqePA");
+  expect(tutorial.target).toBe("_blank");
 });

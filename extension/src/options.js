@@ -64,6 +64,7 @@ const I18N = {
     platformMacOS: "已偵測到 macOS。請在 Terminal 執行以下指令。",
     platformUnsupported: "此平台尚未支援。LocalSubs 桌面元件目前支援 macOS 與 Windows 10/11 x64。",
     viewInstallGuide: "查看安裝說明",
+    watchSetupVideo: "觀看安裝教學影片",
     installRuntimeTitle: "安裝 LocalSubs 桌面元件",
     installRuntimeTextWindows: "透過 WinGet 安裝。字幕文字不會送到雲端。",
     installRuntimeTextMacOS: "透過 Homebrew 安裝。字幕文字不會送到雲端。",
@@ -154,6 +155,7 @@ const I18N = {
     platformMacOS: "macOS detected. Run these commands in Terminal.",
     platformUnsupported: "This platform is not supported yet. The LocalSubs desktop component currently supports macOS and Windows 10/11 x64.",
     viewInstallGuide: "View installation guide",
+    watchSetupVideo: "Watch the setup video",
     installRuntimeTitle: "Install the LocalSubs desktop component",
     installRuntimeTextWindows: "Install with WinGet. Subtitle text is never sent to the cloud.",
     installRuntimeTextMacOS: "Install with Homebrew. Subtitle text is never sent to the cloud.",
@@ -209,6 +211,7 @@ const platformStatus = document.getElementById("platform-status");
 const setupGrid = document.getElementById("setup-grid");
 const unsupportedPlatform = document.getElementById("unsupported-platform");
 const installRuntimeText = document.getElementById("install-runtime-text");
+const setupTutorial = document.getElementById("setup-tutorial");
 const oneTimeSetupText = document.getElementById("one-time-setup-text");
 const installShellLabel = document.getElementById("install-shell-label");
 const setupShellLabel = document.getElementById("setup-shell-label");
@@ -513,6 +516,8 @@ function applyPlatform({ platform, browser }) {
   setupShellLabel.textContent = setup.shellLabel;
   installCommand.textContent = setup.installCommand;
   setupCommand.textContent = setup.setupCommand;
+  setupTutorial.hidden = !setup.tutorialUrl;
+  if (setup.tutorialUrl) setupTutorial.href = setup.tutorialUrl;
   return true;
 }
 

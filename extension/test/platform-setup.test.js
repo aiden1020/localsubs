@@ -17,7 +17,8 @@ describe("platform setup", () => {
     expect(getPlatformSetup(platform)).toMatchObject({
       shellLabel: "PowerShell",
       installCommand: "winget install --id Aiden1020.LocalSubs --exact",
-      setupCommand: "localsubs setup --backend auto"
+      setupCommand: "localsubs setup --backend auto",
+      tutorialUrl: "https://youtu.be/GbVWTxgqePA"
     });
   });
 

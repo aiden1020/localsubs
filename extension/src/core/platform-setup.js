@@ -17,7 +17,8 @@ export const PLATFORM_SETUP = Object.freeze({
     setupTextKey: "oneTimeSetupTextWindows",
     shellLabel: "PowerShell",
     installCommand: "winget install --id Aiden1020.LocalSubs --exact",
-    setupCommand: "localsubs setup --backend auto"
+    setupCommand: "localsubs setup --backend auto",
+    tutorialUrl: "https://youtu.be/GbVWTxgqePA"
   }),
   [SETUP_PLATFORM.MACOS]: Object.freeze({
     platformTextKey: "platformMacOS",
