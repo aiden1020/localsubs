@@ -35,7 +35,7 @@ test("renders an indexable Traditional Chinese landing page", async () => {
   assert.match(html, /<html lang="zh-Hant-TW">/);
   assert.match(html, /<title>LocalSubs｜免費 HBO Max 英文＋繁中雙字幕 Chrome 擴充功能<\/title>/);
   assert.match(html, /<link rel="canonical" href="https:\/\/localsubs\.aidenw\.me"\/>/);
-  assert.match(html, /<h1><span>英文字幕下面，<\/span><em>多一行台灣中文。<\/em><\/h1>/);
+  assert.match(html, /<h1><span>英文字幕上面，<\/span><em>多一行台灣中文。<\/em><\/h1>/);
   assert.match(html, /DeepL 只多贏 6 句。/);
   assert.doesNotMatch(html, /GPT-4o|LocalSubs-EN-ZH-TW-0\.6B/);
   assert.match(html, /type="application\/ld\+json"/);

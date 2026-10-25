@@ -52,41 +52,41 @@ const bokeh = [
   { x: 980, y: 140, r: 28, color: "#ffd9a0", opacity: 0.14 },
 ];
 
-export function SceneArt() {
+export function SceneArt({ idPrefix = "scene" }: { idPrefix?: string }) {
   return (
     <svg className="sceneArt" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${idPrefix}-sky`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#151c33" />
           <stop offset=".3" stopColor="#4b3a5e" />
           <stop offset=".48" stopColor="#c7654a" />
           <stop offset=".64" stopColor="#f2a057" />
         </linearGradient>
-        <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${idPrefix}-sun`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#fff1c9" />
           <stop offset=".18" stopColor="#ffd48a" stopOpacity=".95" />
           <stop offset=".5" stopColor="#ff9e5e" stopOpacity=".35" />
           <stop offset="1" stopColor="#ff9e5e" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${idPrefix}-haze`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#ffb878" stopOpacity="0" />
           <stop offset="1" stopColor="#ffb878" stopOpacity=".35" />
         </linearGradient>
-        <linearGradient id="rim" x1="1" y1="0" x2="0" y2="0">
+        <linearGradient id={`${idPrefix}-rim`} x1="1" y1="0" x2="0" y2="0">
           <stop offset="0" stopColor="#ffb469" />
           <stop offset=".35" stopColor="#ffb469" stopOpacity="0" />
         </linearGradient>
-        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14" /></filter>
-        <filter id="glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="5" /></filter>
+        <filter id={`${idPrefix}-soft`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14" /></filter>
+        <filter id={`${idPrefix}-glow`} x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="5" /></filter>
       </defs>
 
-      <rect width="1600" height="1000" fill="url(#sky)" />
-      <circle className="sceneSun" cx="1290" cy="560" r="300" fill="url(#sun)" />
+      <rect width="1600" height="1000" fill={`url(#${idPrefix}-sky)`} />
+      <circle className="sceneSun" cx="1290" cy="560" r="300" fill={`url(#${idPrefix}-sun)`} />
 
       <g fill="#6a4a63" opacity=".75">
         {farCity.map((b) => <rect key={b.x} x={b.x} y={horizon - b.height} width={b.width} height={b.height + 10} />)}
       </g>
-      <rect y={horizon - 260} width="1600" height="270" fill="url(#haze)" />
+      <rect y={horizon - 260} width="1600" height="270" fill={`url(#${idPrefix}-haze)`} />
 
       <g fill="#2a1f2e">
         {nearCity.map((b) => <rect key={b.x} x={b.x} y={horizon - b.height + 40} width={b.width} height={b.height} />)}
@@ -101,7 +101,7 @@ export function SceneArt() {
       <g>
         {bulbs.map((b) => (
           <g key={b.x}>
-            <circle cx={b.x} cy={b.y + 10} r="16" fill="#ffd28a" opacity=".5" filter="url(#glow)" />
+            <circle cx={b.x} cy={b.y + 10} r="16" fill="#ffd28a" opacity=".5" filter={`url(#${idPrefix}-glow)`} />
             <circle cx={b.x} cy={b.y + 10} r="6" fill="#fff0c4" />
           </g>
         ))}
@@ -115,19 +115,19 @@ export function SceneArt() {
         <g transform="translate(1170 800)">
           <path d="M -92 0 C -96 -110 -70 -180 0 -186 C 70 -180 96 -110 92 0 Z" fill="#0b080c" />
           <circle cx="0" cy="-232" r="52" fill="#0b080c" />
-          <path d="M -92 0 C -96 -110 -70 -180 0 -186 C 70 -180 96 -110 92 0 Z" fill="none" stroke="url(#rim)" strokeWidth="5" opacity=".7" />
-          <circle cx="0" cy="-232" r="52" fill="none" stroke="url(#rim)" strokeWidth="5" opacity=".7" />
+          <path d="M -92 0 C -96 -110 -70 -180 0 -186 C 70 -180 96 -110 92 0 Z" fill="none" stroke={`url(#${idPrefix}-rim)`} strokeWidth="5" opacity=".7" />
+          <circle cx="0" cy="-232" r="52" fill="none" stroke={`url(#${idPrefix}-rim)`} strokeWidth="5" opacity=".7" />
         </g>
         <g transform="translate(1410 800) rotate(-4)">
           <path d="M -80 0 C -84 -96 -60 -160 0 -166 C 60 -160 84 -96 80 0 Z" fill="#0b080c" />
           <circle cx="0" cy="-208" r="46" fill="#0b080c" />
           <circle cx="-8" cy="-256" r="20" fill="#0b080c" />
-          <path d="M -80 0 C -84 -96 -60 -160 0 -166 C 60 -160 84 -96 80 0 Z" fill="none" stroke="url(#rim)" strokeWidth="5" opacity=".7" />
-          <circle cx="0" cy="-208" r="46" fill="none" stroke="url(#rim)" strokeWidth="5" opacity=".7" />
+          <path d="M -80 0 C -84 -96 -60 -160 0 -166 C 60 -160 84 -96 80 0 Z" fill="none" stroke={`url(#${idPrefix}-rim)`} strokeWidth="5" opacity=".7" />
+          <circle cx="0" cy="-208" r="46" fill="none" stroke={`url(#${idPrefix}-rim)`} strokeWidth="5" opacity=".7" />
         </g>
       </g>
 
-      <g filter="url(#soft)">
+      <g filter={`url(#${idPrefix}-soft)`}>
         {bokeh.map((b) => <circle key={b.x} className="sceneBokeh" cx={b.x} cy={b.y} r={b.r} fill={b.color} opacity={b.opacity} />)}
       </g>
     </svg>
