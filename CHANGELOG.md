@@ -9,6 +9,9 @@ semantic versioning.
 
 - Link a Windows setup video from the desktop setup steps in extension
   settings.
+- Adjust translation, original text, subtitle size, background opacity, and
+  fast or quality mode from a LocalSubs panel inside the HBO Max player,
+  including in fullscreen.
 
 ## [0.6.0] - 2026-10-23
 
