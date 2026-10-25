@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS, sanitizeSettings } from "../core/settings.js";
 import { normalizeCaption, normalizeText } from "./captions.js";
 import { OverlayRenderer } from "./overlay-renderer.js";
+import { PlayerPanel } from "./player-panel.js";
 import { SubtitleDetector } from "./subtitle-detector.js";
 import { TranslationController } from "./translation-controller.js";
 import { shouldApplyTranslationResult } from "./translation-request.js";
@@ -33,6 +34,12 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   let modelReadyShown = false;
   let settings = { ...DEFAULT_SETTINGS };
   const overlayRenderer = new OverlayRenderer({ getSettings: () => settings });
+  const playerPanel = new PlayerPanel({
+    getSettings: () => settings,
+    getHost: () => overlayRenderer.getHost(),
+    storage: { set: (values) => chrome.storage.sync.set(values) },
+    sendMessage: (message) => chrome.runtime.sendMessage(message)
+  });
   const subtitleDetector = new SubtitleDetector({
     onNodeChange: (node) => overlayRenderer.setSubtitleNode(node),
     onMutation: () => {
@@ -116,6 +123,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     translationController.handleSettingsChange(previousSettings, settings);
 
     overlayRenderer.applySettings();
+    playerPanel.applySettings();
 
     if (!settings.translationEnabled) {
       modelPollGeneration += 1;
@@ -314,6 +322,8 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
       return;
     }
 
+    playerPanel.ensure();
+
     for (const video of videos) {
       if (video.dataset.openStreamSubtitlesBound === "true") {
         continue;
@@ -368,6 +378,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   document.addEventListener("fullscreenchange", () => {
     clearStatusMessage();
     overlayRenderer.updateHost();
+    playerPanel.updateHost();
     needsReposition = true;
     scheduleDetect();
   });

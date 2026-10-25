@@ -9,6 +9,15 @@ semantic versioning.
 
 - Link a Windows setup video from the desktop setup steps in extension
   settings.
+- Adjust translation, subtitle size, background opacity, and fast or quality
+  mode from a LocalSubs panel inside the HBO Max player, including in
+  fullscreen.
+
+### Removed
+
+- Remove the "Show original text" setting. It had no visible effect: the
+  original line is always shown when LocalSubs replaces the native subtitles,
+  and the native subtitle already shows it otherwise.
 
 ## [0.6.0] - 2026-10-23
 
