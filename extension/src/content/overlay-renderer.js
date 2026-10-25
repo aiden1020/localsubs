@@ -338,7 +338,7 @@ export class OverlayRenderer {
     const settings = this.getSettings();
     if (settings.hideNativeSubtitles && caption) this.suppressNativeSubtitle();
     else this.restoreNativeSubtitle();
-    this.render(caption, translatedText, settings.hideNativeSubtitles || settings.showOriginalText);
+    this.render(caption, translatedText, settings.hideNativeSubtitles);
   }
 
   enterFallback() {

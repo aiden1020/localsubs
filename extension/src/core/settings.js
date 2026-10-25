@@ -7,7 +7,6 @@ export const DEFAULT_SETTINGS = Object.freeze({
   translationEnabled: true,
   hideNativeSubtitles: true,
   showPendingOriginalText: true,
-  showOriginalText: false,
   targetLanguage: "zh-Hant",
   fontSize: 30,
   overlayBackgroundOpacity: 0.22,
@@ -36,7 +35,6 @@ export function sanitizeSettings(rawSettings = {}) {
     translationEnabled: rawSettings.translationEnabled !== false,
     hideNativeSubtitles: rawSettings.hideNativeSubtitles !== false,
     showPendingOriginalText: rawSettings.showPendingOriginalText !== false,
-    showOriginalText: Boolean(rawSettings.showOriginalText),
     targetLanguage: typeof rawSettings.targetLanguage === "string" && rawSettings.targetLanguage
       ? rawSettings.targetLanguage
       : DEFAULT_SETTINGS.targetLanguage,

@@ -47,7 +47,7 @@ describe("PlayerPanel", () => {
     expect($(".wrap").classList.contains("visible")).toBe(false);
   });
 
-  it("opens the panel and writes switches to storage", () => {
+  it("opens the panel and writes the translation switch to storage", () => {
     $(".toggle").click();
     expect(panel.isOpen()).toBe(true);
     expect($(".toggle").getAttribute("aria-expanded")).toBe("true");
@@ -56,9 +56,6 @@ describe("PlayerPanel", () => {
     expect(translation.checked).toBe(true);
     translation.click();
     expect(storage.set).toHaveBeenCalledWith({ translationEnabled: false });
-
-    $("#original").click();
-    expect(storage.set).toHaveBeenCalledWith({ showOriginalText: true });
   });
 
   it("debounces slider writes and keeps the typed value", () => {
@@ -82,9 +79,9 @@ describe("PlayerPanel", () => {
   });
 
   it("reflects settings changed elsewhere", () => {
-    settings = { ...settings, showOriginalText: true, fontSize: 24, modelTier: "quality", optionsLanguage: "en" };
+    settings = { ...settings, translationEnabled: false, fontSize: 24, modelTier: "quality", optionsLanguage: "en" };
     panel.applySettings();
-    expect($("#original").checked).toBe(true);
+    expect($("#translation").checked).toBe(false);
     expect($("#font").value).toBe("24");
     expect($("[data-tier='quality']").getAttribute("aria-checked")).toBe("true");
     expect($("[data-tier='fast']").textContent).toBe("Fast");

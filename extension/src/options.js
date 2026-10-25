@@ -81,7 +81,6 @@ const I18N = {
     replaceNativeSubtitles: "以雙語字幕取代原生字幕",
     fontSize: "字幕大小",
     overlayOpacity: "字幕背景透明度",
-    showOriginalText: "顯示原文",
     advanced: "進階設定",
     showPendingOriginal: "翻譯時先顯示原文",
     translationContextWindow: "字幕上下文視窗",
@@ -172,7 +171,6 @@ const I18N = {
     replaceNativeSubtitles: "Replace native subtitles with bilingual overlay",
     fontSize: "Font size",
     overlayOpacity: "Overlay background opacity",
-    showOriginalText: "Show original text",
     advanced: "Advanced",
     showPendingOriginal: "Show original while translating",
     translationContextWindow: "Translation context window",
@@ -232,7 +230,6 @@ const fields = {
   translationEnabled: document.getElementById("translation-enabled"),
   hideNativeSubtitles: document.getElementById("hide-native-subtitles"),
   showPendingOriginalText: document.getElementById("show-pending-original-text"),
-  showOriginalText: document.getElementById("show-original-text"),
   fontSize: document.getElementById("font-size"),
   overlayBackgroundOpacity: document.getElementById("overlay-background-opacity"),
   translationContextWindow: document.getElementById("translation-context-window"),
@@ -685,7 +682,6 @@ function readFormSettings() {
     translationEnabled: fields.translationEnabled.checked,
     hideNativeSubtitles: fields.hideNativeSubtitles.checked,
     showPendingOriginalText: fields.showPendingOriginalText.checked,
-    showOriginalText: fields.showOriginalText.checked,
     targetLanguage: DEFAULT_SETTINGS.targetLanguage,
     fontSize: Number.parseInt(fields.fontSize.value, 10),
     overlayBackgroundOpacity: Number.parseFloat(fields.overlayBackgroundOpacity.value),
@@ -699,7 +695,6 @@ function applySettingsToForm(settings) {
   fields.translationEnabled.checked = settings.translationEnabled;
   fields.hideNativeSubtitles.checked = settings.hideNativeSubtitles;
   fields.showPendingOriginalText.checked = settings.showPendingOriginalText;
-  fields.showOriginalText.checked = settings.showOriginalText;
   fields.fontSize.value = `${settings.fontSize}`;
   fields.overlayBackgroundOpacity.value = `${settings.overlayBackgroundOpacity}`;
   fields.translationContextWindow.value = `${settings.translationContextWindow}`;

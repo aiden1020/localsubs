@@ -9,7 +9,6 @@ const STRINGS = Object.freeze({
     open: "LocalSubs 設定",
     close: "關閉",
     translation: "翻譯",
-    showOriginal: "顯示原文",
     fontSize: "字幕大小",
     opacity: "字幕背景透明度",
     mode: "翻譯模式",
@@ -26,7 +25,6 @@ const STRINGS = Object.freeze({
     open: "LocalSubs settings",
     close: "Close",
     translation: "Translation",
-    showOriginal: "Show original text",
     fontSize: "Subtitle size",
     opacity: "Subtitle background opacity",
     mode: "Translation mode",
@@ -129,7 +127,6 @@ export class PlayerPanel {
         <div class="panel" id="panel" role="dialog" hidden>
           <div class="head"><strong>LocalSubs</strong><button class="close" type="button">×</button></div>
           <div class="row"><label for="translation" data-text="translation"></label><input class="switch" id="translation" type="checkbox" data-key="translationEnabled"></div>
-          <div class="row"><label for="original" data-text="showOriginal"></label><input class="switch" id="original" type="checkbox" data-key="showOriginalText"></div>
           <div class="row stack"><label for="font" data-text="fontSize"></label><div class="range"><input id="font" type="range" min="16" max="42" step="1" data-key="fontSize"><output data-for="fontSize"></output></div></div>
           <div class="row stack"><label for="opacity" data-text="opacity"></label><div class="range"><input id="opacity" type="range" min="0" max="0.95" step="0.05" data-key="overlayBackgroundOpacity"><output data-for="overlayBackgroundOpacity"></output></div></div>
           <div class="row stack">
