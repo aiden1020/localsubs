@@ -5,8 +5,13 @@ function isVisibleRect(rect) {
 }
 
 export class OverlayRenderer {
-  constructor({ getSettings }) {
+  // getHost comes from the platform adapter: the element the overlay lives in.
+  // nativeSubtitles, when a platform provides it, hides and restores the
+  // site's own caption layer instead of the single subtitle node.
+  constructor({ getSettings, getHost, nativeSubtitles = null }) {
     this.getSettings = getSettings;
+    this.resolveHost = getHost;
+    this.nativeSubtitles = nativeSubtitles;
     this.overlay = null;
     this.card = null;
     this.originalLine = null;
@@ -30,7 +35,7 @@ export class OverlayRenderer {
       this.restoreNativeSubtitle();
       this.subtitleNode = node;
     }
-    if (this.getSettings().hideNativeSubtitles) {
+    if (this.getSettings().hideNativeSubtitles && !this.nativeSubtitles) {
       this.suppressNativeSubtitle();
     }
   }
@@ -125,11 +130,7 @@ export class OverlayRenderer {
   }
 
   getHost() {
-    const overlayRoot = document.getElementById("overlay-root");
-    if (overlayRoot instanceof HTMLElement) return overlayRoot;
-    const video = document.querySelector("video");
-    if (video?.parentElement instanceof HTMLElement) return video.parentElement;
-    return document.body || document.documentElement;
+    return this.resolveHost();
   }
 
   ensureHostPosition(host) {
@@ -162,6 +163,10 @@ export class OverlayRenderer {
   }
 
   restoreNativeSubtitle() {
+    if (this.nativeSubtitles) {
+      this.nativeSubtitles.restore();
+      return;
+    }
     if (this.hiddenSubtitleNode instanceof HTMLElement) {
       this.hiddenSubtitleNode.style.visibility = this.hiddenSubtitleOriginalVisibility;
       this.hiddenSubtitleNode.removeAttribute("data-localsubs-hidden");
@@ -172,6 +177,13 @@ export class OverlayRenderer {
 
   suppressNativeSubtitle() {
     const settings = this.getSettings();
+    if (this.nativeSubtitles) {
+      if (!settings.hideNativeSubtitles) {
+        this.restoreNativeSubtitle();
+        return false;
+      }
+      return this.nativeSubtitles.suppress();
+    }
     if (!settings.hideNativeSubtitles || !(this.subtitleNode instanceof HTMLElement)) {
       this.restoreNativeSubtitle();
       return false;
@@ -251,7 +263,10 @@ export class OverlayRenderer {
       this.clampPosition();
       return;
     }
-    if (!(this.subtitleNode instanceof HTMLElement)) return;
+    if (!(this.subtitleNode instanceof HTMLElement)) {
+      this.positionAtBottom();
+      return;
+    }
     const subtitleRect = this.subtitleNode.getBoundingClientRect();
     const hostRect = this.host.getBoundingClientRect();
     if (!isVisibleRect(subtitleRect)) return;
@@ -277,6 +292,25 @@ export class OverlayRenderer {
     }
     this.overlay.style.left = `${Math.min(Math.max(centeredLeft, minLeft), Math.max(minLeft, maxLeft))}px`;
     this.overlay.style.top = `${Math.min(Math.max(8, top), hostRect.height - overlayRect.height - 8)}px`;
+  }
+
+  // Without a native caption node to follow, sit centred above the player's
+  // control bar.
+  positionAtBottom() {
+    const hostRect = this.host.getBoundingClientRect();
+    Object.assign(this.overlay.style, {
+      width: "auto",
+      left: "0",
+      top: "0",
+      transform: "translate(0, 0)",
+      maxWidth: `${hostRect.width * 0.98}px`
+    });
+    const overlayRect = this.overlay.getBoundingClientRect();
+    const minLeft = hostRect.width * 0.01;
+    const left = (hostRect.width - overlayRect.width) / 2;
+    const bottom = Math.min(hostRect.height * 0.88, hostRect.height - 64);
+    this.overlay.style.left = `${Math.max(minLeft, left)}px`;
+    this.overlay.style.top = `${Math.max(8, bottom - overlayRect.height)}px`;
   }
 
   setVisible(visible) {

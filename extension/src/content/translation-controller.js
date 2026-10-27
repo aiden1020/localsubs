@@ -117,7 +117,7 @@ export class TranslationController {
     const key = this.cacheKey(text, contextLines);
     if (this.cache.has(key)) return this.cache.get(key) || "";
     const translatedText = await this.translateWithLocal(text, signal, contextLines, cueId);
-    if (translatedText === null) return "";
+    if (translatedText === null || translatedText === "") return "";
     const finalText = translatedText === text ? "" : translatedText;
     this.remember(text, contextLines, finalText);
     return finalText;

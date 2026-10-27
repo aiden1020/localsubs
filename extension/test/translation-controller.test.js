@@ -54,6 +54,16 @@ describe("TranslationController", () => {
     });
   });
 
+  it("does not cache an empty translation", async () => {
+    const sendMessage = vi.fn()
+      .mockResolvedValueOnce({ ok: true, translation: "", superseded: false })
+      .mockResolvedValueOnce({ ok: true, translation: "譯文", superseded: false });
+    const { controller } = createController({ sendMessage });
+    await expect(controller.translate("Ready?", undefined, [], "1")).resolves.toBe("");
+    await expect(controller.translate("Ready?", undefined, [], "2")).resolves.toBe("譯文");
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+  });
+
   it("does not cache superseded responses", async () => {
     const sendMessage = vi.fn()
       .mockResolvedValueOnce({ ok: true, translation: "舊譯文", superseded: true })

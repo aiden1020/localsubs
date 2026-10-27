@@ -217,6 +217,12 @@ export function createWebLLMTranslator({
   }
 
   async function trackCompletion(activeEngine, payload) {
+    // MLCEngine resets interruptSignal only inside a generation, and a
+    // non-streaming completion returns "" without generating while the flag is
+    // set. An interrupt that lands after the previous decode loop ended
+    // therefore empties every later translation. Nothing is generating here
+    // (settleActiveCompletion ran), so the flag can only be stale.
+    if (activeEngine.interruptSignal === true) activeEngine.interruptSignal = false;
     const pendingCompletion = runCompletion(activeEngine, payload);
     activeCompletion = pendingCompletion;
     try {

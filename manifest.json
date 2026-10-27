@@ -30,6 +30,7 @@
   "host_permissions": [
     "*://*.max.com/*",
     "*://*.hbomax.com/*",
+    "https://www.youtube.com/*",
     "https://huggingface.co/*",
     "https://*.huggingface.co/*",
     "https://*.hf.co/*"
@@ -43,6 +44,19 @@
       "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["youtube-capture.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ]
 }

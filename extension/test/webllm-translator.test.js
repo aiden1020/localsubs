@@ -114,6 +114,31 @@ describe("WebLLM translator", () => {
     expect(createCompletion).toHaveBeenCalledTimes(2);
   });
 
+  it("clears an interrupt left over from a generation that had already finished", async () => {
+    // Mirrors MLCEngine: a non-streaming completion skips generation and
+    // returns "" while interruptSignal is set, and only generation resets it.
+    const engine = {
+      interruptSignal: true,
+      interruptGenerate: vi.fn(async () => { engine.interruptSignal = true; }),
+      unload: vi.fn(),
+      completions: {
+        create: vi.fn(async () => {
+          if (engine.interruptSignal) return { choices: [{ text: "" }] };
+          return { choices: [{ text: "翻譯" }] };
+        })
+      }
+    };
+    const translator = createWebLLMTranslator({
+      createEngine: vi.fn().mockResolvedValue(engine),
+      hasModelCached: vi.fn().mockResolvedValue(true),
+      gpu: testGPU()
+    });
+    await expect(translator.translateSubtitle({ currentText: "Hello." })).resolves.toMatchObject({
+      translation: "翻譯",
+      superseded: false
+    });
+  });
+
   it("keeps only the latest subtitle while the model is initializing", async () => {
     let resolveEngine;
     const engineReady = new Promise((resolve) => {

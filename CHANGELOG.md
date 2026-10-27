@@ -12,6 +12,19 @@ semantic versioning.
 - Adjust translation, subtitle size, background opacity, and fast or quality
   mode from a LocalSubs panel inside the HBO Max player, including in
   fullscreen.
+- Show LocalSubs dual subtitles on YouTube videos and Shorts with English
+  captions, translated locally like HBO Max. Caption capture comes from the
+  open-source yt-dual-subs project (MIT); LocalSubs never uses YouTube's own
+  machine translation. Auto-generated captions are re-cut at sentence ends
+  and split at clause boundaries to at most two subtitle lines, timed for
+  reading speed, before translation.
+
+### Fixed
+
+- Changing subtitle size or background opacity during playback no longer
+  re-translates the current line. Dragging those sliders could leave the
+  browser model returning empty translations, so LocalSubs fell back to the
+  native subtitles until the page was reloaded.
 
 ### Removed
 
