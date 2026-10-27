@@ -1,26 +1,5 @@
-// Illustrated rooftop-at-dusk frame for the hero player. Building and window
-// layouts come from a fixed seed so server and client render the same SVG.
-
-function random(seed: number) {
-  let state = seed;
-  return () => {
-    state = (state * 1664525 + 1013904223) % 4294967296;
-    return state / 4294967296;
-  };
-}
-
-type Building = { x: number; width: number; height: number };
-
-function skyline(seed: number, minHeight: number, maxHeight: number): Building[] {
-  const next = random(seed);
-  const buildings: Building[] = [];
-  for (let x = -20; x < 1620; ) {
-    const width = 60 + next() * 110;
-    buildings.push({ x, width, height: minHeight + next() * (maxHeight - minHeight) });
-    x += width + next() * 8;
-  }
-  return buildings;
-}
+// Shot 1: rooftop at dusk. Warm orange key light from the setting sun.
+import { random, skyline } from "./random";
 
 const horizon = 720;
 const farCity = skyline(7, 80, 230);
@@ -52,9 +31,9 @@ const bokeh = [
   { x: 980, y: 140, r: 28, color: "#ffd9a0", opacity: 0.14 },
 ];
 
-export function SceneArt({ idPrefix = "scene" }: { idPrefix?: string }) {
+export function DuskShot({ idPrefix = "dusk" }: { idPrefix?: string }) {
   return (
-    <svg className="sceneArt" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <svg className="shotArt" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
         <linearGradient id={`${idPrefix}-sky`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#151c33" />
@@ -78,6 +57,14 @@ export function SceneArt({ idPrefix = "scene" }: { idPrefix?: string }) {
         </linearGradient>
         <filter id={`${idPrefix}-soft`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14" /></filter>
         <filter id={`${idPrefix}-glow`} x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="5" /></filter>
+        <linearGradient id={`${idPrefix}-ray`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#ffe2a8" stopOpacity=".55" />
+          <stop offset="1" stopColor="#ffe2a8" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id={`${idPrefix}-flare`} cx=".5" cy=".5" r=".5">
+          <stop offset="0" stopColor="#fff4d6" stopOpacity=".5" />
+          <stop offset="1" stopColor="#ffb469" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
       <rect width="1600" height="1000" fill={`url(#${idPrefix}-sky)`} />
@@ -110,6 +97,24 @@ export function SceneArt({ idPrefix = "scene" }: { idPrefix?: string }) {
       <rect y="800" width="1600" height="200" fill="#0f0b10" />
       <rect y="792" width="1600" height="12" fill="#2b2026" />
       <rect y="792" width="1600" height="3" fill="#ffb469" opacity=".35" />
+
+      <g className="sunRays" style={{ mixBlendMode: "screen" }}>
+        {[-168, -152, -140, -124, -110, -96, -80].map((angle, i) => (
+          <polygon
+            key={angle}
+            points={`0,0 1500,${-40 - (i % 3) * 18} 1500,${40 + (i % 2) * 22}`}
+            transform={`translate(1290 560) rotate(${angle})`}
+            fill={`url(#${idPrefix}-ray)`}
+            opacity={0.18 + (i % 3) * 0.06}
+          />
+        ))}
+      </g>
+      <g style={{ mixBlendMode: "screen" }}>
+        <circle cx="1290" cy="560" r="120" fill={`url(#${idPrefix}-flare)`} />
+        <circle cx="1030" cy="470" r="34" fill={`url(#${idPrefix}-flare)`} opacity=".7" />
+        <circle cx="880" cy="420" r="16" fill="#ffd8a0" opacity=".18" />
+        <circle cx="660" cy="345" r="58" fill={`url(#${idPrefix}-flare)`} opacity=".35" />
+      </g>
 
       <g className="sceneFigures">
         <g transform="translate(1170 800)">

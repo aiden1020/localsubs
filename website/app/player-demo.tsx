@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type CSSProperties } from "react";
-import { SceneArt } from "./scene";
+import { AmbientLights, Shots } from "./shots";
 
 // Translations below are real Sotto output for these lines.
 const heroCues = [
@@ -15,12 +15,12 @@ const heroCues = [
 const DEFAULT_FONT_SIZE = 30;
 const DEFAULT_OPACITY = 0.22;
 
-function isPhone() {
-  return window.matchMedia("(max-width: 660px)").matches;
+function isCompact() {
+  return window.matchMedia("(max-width: 980px)").matches;
 }
 
 export function PlayerDemo() {
-  // null leaves the default to CSS: open on wide screens, closed on phones,
+  // null leaves the default to CSS: open on wide screens, closed below 980px,
   // where the open panel would cover most of the frame.
   const [panelOpen, setPanelOpen] = useState<boolean | null>(null);
   const [translationEnabled, setTranslationEnabled] = useState(true);
@@ -35,17 +35,14 @@ export function PlayerDemo() {
 
   return (
     <>
-      {/* Ambient light: a blurred copy of the frame spilling around the player. */}
-      <div className="ambient" aria-hidden="true">
-        <SceneArt idPrefix="ambient" />
-      </div>
+      <AmbientLights />
       <div className="player">
         <div className="scene" aria-hidden="true">
-          <SceneArt />
+          <Shots />
         </div>
         <div className="playerTop" aria-hidden="true">
           <span className="playerBack">‹</span>
-          <span className="playerTitle"><b>第 2 季・第 4 集</b>天台</span>
+          <span className="playerTitle"><b>第 2 季・第 4 集</b>脫離險境</span>
         </div>
 
         <div className="cueStack" style={cueStyle} aria-live="off">
@@ -65,7 +62,7 @@ export function PlayerDemo() {
             type="button"
             aria-expanded={panelOpen ?? undefined}
             aria-controls={panelId}
-            onClick={() => setPanelOpen((open) => open === null ? isPhone() : !open)}
+            onClick={() => setPanelOpen((open) => open === null ? isCompact() : !open)}
           >
             <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="1.5" y="3.5" width="17" height="13" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" /><rect x="5" y="9" width="10" height="1.8" rx=".9" fill="currentColor" /><rect x="6.5" y="12" width="7" height="1.8" rx=".9" fill="#d9ff66" /></svg>
             LocalSubs
@@ -73,7 +70,6 @@ export function PlayerDemo() {
           <div className="demoSheet" id={panelId} role="group" aria-label="LocalSubs 快速設定（示範）" hidden={panelOpen === false}>
             <div className="demoHead">
               <strong>LocalSubs</strong>
-              <button type="button" aria-label="關閉" onClick={() => setPanelOpen(false)}>×</button>
             </div>
             <label className="demoRow">
               <span>翻譯</span>
@@ -106,7 +102,7 @@ export function PlayerDemo() {
           <span className="ctrlPlay">❚❚</span>
           <span>↺10</span>
           <span>↻10</span>
-          <div className="progress"><i /></div>
+          <div className="progress"><i /><span className="progressHead" /></div>
           <time>18:24 / 42:08</time>
           <b className="ctrlCc">CC</b>
         </div>

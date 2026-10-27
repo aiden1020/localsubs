@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     siteName: "LocalSubs",
     type: "website",
     locale: "zh_TW",
-    images: [{ url: "/og-warm.png", width: 1727, height: 910, alt: "LocalSubs：完全免費，在 HBO Max 看原文也跟得上劇情。" }],
+    images: [{ url: "/og-warm.png", width: 1727, height: 910, alt: "LocalSubs：英文字幕上面，多一行台灣中文。" }],
   },
   twitter: {
     card: "summary_large_image",
