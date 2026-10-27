@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { PlayerDemo } from "./player-demo";
+import { SiteHeader } from "./site-header";
 import { siteDescription, siteUrl, storeUrl } from "./site";
 
 const reportUrl = "https://arxiv.org/abs/2607.09957";
@@ -77,9 +78,9 @@ const ChromeIcon = () => <img className="chromeIcon" src="/chrome.webp" alt="" w
 function ScoreBar({ win, tie, loss, opponent }: { win: number; tie: number; loss: number; opponent: string }) {
   return (
     <div className="scoreBar" role="img" aria-label={`LocalSubs 贏 ${win} 句，平手 ${tie} 句，${opponent} 贏 ${loss} 句`}>
-      <span className="scoreWin" style={{ flexGrow: win }}><b>{win}</b> 我們贏</span>
-      <span className="scoreTie" style={{ flexGrow: tie }}><b>{tie}</b> 平手</span>
-      <span className="scoreLoss" style={{ flexGrow: loss }}><b>{loss}</b> 對手贏</span>
+      <span className="scoreWin" style={{ flexGrow: win }}><b>{win}</b><i className="scoreLabel"> 我們贏</i></span>
+      <span className="scoreTie" style={{ flexGrow: tie }}><b>{tie}</b><i className="scoreLabel"> 平手</i></span>
+      <span className="scoreLoss" style={{ flexGrow: loss }}><b>{loss}</b><i className="scoreLabel"> 對手贏</i></span>
     </div>
   );
 }
@@ -91,10 +92,10 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <header className="navBar">
+      <SiteHeader>
         <nav className="nav shell" aria-label="主要導覽">
           <a className="brand" href="#top" aria-label="LocalSubs 首頁">
-            <img src="/localsubs-logo.png" alt="" width="42" height="42" />
+            <img src="/localsubs-logo.webp" alt="" width="42" height="42" />
             <span>LocalSubs</span>
           </a>
           <div className="navLinks">
@@ -102,27 +103,29 @@ export default function Home() {
             <a href="#quality">翻譯品質</a>
             <a href="#faq">常見問題</a>
             <a className="button buttonDark buttonSmall" href={storeUrl} target="_blank" rel="noreferrer">
-              <ChromeIcon /> 免費加到 Chrome <Arrow />
+              <ChromeIcon /> 加到 Chrome <Arrow />
             </a>
           </div>
         </nav>
-      </header>
+      </SiteHeader>
 
-      <section className="hero shell" id="top">
-        <div className="heroHead">
-          <p className="eyebrow"><span /> HBO Max 中英雙字幕・免費 Chrome 擴充功能</p>
-          <h1><span>英文字幕上面，</span><em>多一行台灣中文。</em></h1>
-        </div>
+      <section className="theater" id="top" data-nav-dark>
+        <div className="hero shell">
+          <div className="heroHead">
+            <p className="eyebrow"><span /> HBO Max 中英雙字幕・Chrome 擴充功能</p>
+            <h1><span>英文字幕上面，</span><em>多一行台灣中文。</em></h1>
+          </div>
 
-        <div className="playerStage">
-          <PlayerDemo />
-        </div>
+          <div className="playerStage">
+            <PlayerDemo />
+          </div>
 
-        <div className="heroActions">
-          <a className="button buttonAccent" href={storeUrl} target="_blank" rel="noreferrer">
-            <ChromeIcon /> 免費加到 Chrome <Arrow />
-          </a>
-          <p className="trustLine"><span>永遠免費</span><span>不限集數</span><span>不用註冊</span></p>
+          <div className="heroActions">
+            <a className="button buttonAccent" href={storeUrl} target="_blank" rel="noreferrer">
+              <ChromeIcon /> 免費加到 Chrome <Arrow />
+            </a>
+            <p className="trustLine"><span>支援 macOS・Windows</span><span>Chrome・Edge</span></p>
+          </div>
         </div>
       </section>
 
@@ -135,7 +138,7 @@ export default function Home() {
         <ol className="stepList">
           <li>
             <span>01</span>
-            <div><h3>加到 Chrome</h3><p>從 Chrome 線上應用程式商店安裝，免費。</p></div>
+            <div><h3>加到 Chrome</h3><p>從 Chrome 線上應用程式商店安裝。</p></div>
             <div className="stepVisual stepStore" aria-hidden="true"><ChromeIcon /> 加到 Chrome</div>
           </li>
           <li>
@@ -151,7 +154,7 @@ export default function Home() {
         </ol>
       </section>
 
-      <section className="quality" id="quality">
+      <section className="quality" id="quality" data-nav-dark>
         <div className="shell">
           <div className="qualityHead">
             <div>
@@ -170,6 +173,8 @@ export default function Home() {
                 <ScoreBar win={match.win} tie={match.tie} loss={match.loss} opponent={match.name} />
               </article>
             ))}
+            {/* On phones the bars are too narrow for labels, so one legend explains the colours. */}
+            <p className="scoreLegend" aria-hidden="true"><span className="isWin">我們贏</span><span className="isTie">平手</span><span className="isLoss">對手贏</span></p>
           </div>
 
           <div className="phrasing">
@@ -235,10 +240,9 @@ export default function Home() {
           <p className="kicker">為什麼可以免費？</p>
           <h2>翻譯是你的電腦在做，<br />我們沒有伺服器要養。</h2>
           <p>一般翻譯服務每翻一個字都要付雲端的錢，所以會有月費、免費額度或字數上限。LocalSubs 直接用你的電腦來翻譯，我們這邊沒有成本，也就不用跟你收錢，更不用限制你一天看幾集。</p>
-          <ul className="freePoints"><li>沒有付費版</li><li>不限集數</li><li>不用註冊</li></ul>
         </div>
         <div className="receipt" aria-label="LocalSubs 的月帳單是 0 元">
-          <div className="receiptHead"><img src="/localsubs-logo.png" alt="" width="34" height="34" /><div><strong>LocalSubs</strong><span>本月帳單</span></div></div>
+          <div className="receiptHead"><img src="/localsubs-logo.webp" alt="" width="34" height="34" /><div><strong>LocalSubs</strong><span>本月帳單</span></div></div>
           <dl>
             <div><dt>看了幾集</dt><dd>不限</dd></div>
             <div><dt>翻了幾句</dt><dd>不限</dd></div>
@@ -290,8 +294,12 @@ export default function Home() {
             <p>原本不行，一次只能選一種。裝了 LocalSubs 之後開英文字幕，中文會自動加在英文上面。</p>
           </details>
           <details>
-            <summary>真的免費嗎？以後會收費嗎？<b>＋</b></summary>
-            <p>免費，也不用註冊。翻譯是在你的電腦上做的，我們沒有雲端成本，所以沒有收費的理由。</p>
+            <summary>真的免費嗎？<b>＋</b></summary>
+            <p>是。這是研究專案，程式碼與模型都公開，沒有廣告，也不用註冊。</p>
+          </details>
+          <details>
+            <summary>誰做的？<b>＋</b></summary>
+            <p>我是 Aiden，LocalSubs 是我的研究專案，程式碼、模型和技術報告都公開在上面。</p>
           </details>
           <details>
             <summary>流暢模式和精準模式差在哪？<b>＋</b></summary>
@@ -326,16 +334,16 @@ export default function Home() {
       <section className="finalCta shell">
         <div className="ctaMarquee" aria-hidden="true"><span>原文 · 中文 · 原文 · 中文 · 原文 · 中文 · </span><span>原文 · 中文 · 原文 · 中文 · 原文 · 中文 · </span></div>
         <div className="ctaContent">
-          <img src="/localsubs-logo.png" alt="LocalSubs 圖示" width="78" height="78" />
+          <img src="/localsubs-logo.webp" alt="LocalSubs 圖示" width="78" height="78" />
           <h2>下一集，<br />開著雙字幕看。</h2>
-          <p>免費，不用帳號，裝好就能用。</p>
+          <p>裝好就能用，不用帳號。</p>
           <a className="button buttonDark" href={storeUrl} target="_blank" rel="noreferrer"><ChromeIcon /> 免費加到 Chrome <Arrow /></a>
         </div>
       </section>
 
       <footer className="footer shell">
-        <a className="brand footerBrand" href="#top"><img src="/localsubs-logo.png" alt="" width="34" height="34" /><span>LocalSubs</span></a>
-        <p>免費的 HBO Max 中英雙字幕。</p>
+        <a className="brand footerBrand" href="#top"><img src="/localsubs-logo.webp" alt="" width="34" height="34" /><span>LocalSubs</span></a>
+        <p>HBO Max 的中英雙字幕。</p>
         <div>
           <a href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
           <a href={`${repoUrl}/blob/main/PRIVACY.md`} target="_blank" rel="noreferrer">隱私權政策</a>
