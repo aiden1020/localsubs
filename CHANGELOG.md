@@ -3,7 +3,7 @@
 All notable user-facing changes are documented in this file. LocalSubs uses
 semantic versioning.
 
-## [Unreleased]
+## [0.7.0] - 2026-10-28
 
 ### Added
 
@@ -41,6 +41,12 @@ semantic versioning.
 - Remove the "Show original text" setting. It had no visible effect: the
   original line is always shown when LocalSubs replaces the native subtitles,
   and the native subtitle already shows it otherwise.
+
+### Native helper
+
+- No changes. The helper is republished as 0.7.0 only because every LocalSubs
+  component shares one version; updating it is optional. Helpers from 0.6.0
+  keep working with this extension because both use helper API 1.
 
 ## [0.6.0] - 2026-10-23
 
@@ -135,6 +141,7 @@ semantic versioning.
   Windows implementation.
 - Setup selects the best available Windows backend with `--backend auto`.
 
+[0.7.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.7.0
 [0.6.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.6.0
 [0.5.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.5.0
 [0.4.1]: https://github.com/aiden1020/localsubs/releases/tag/v0.4.1
