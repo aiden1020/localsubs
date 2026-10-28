@@ -37,17 +37,20 @@ if (!websiteMatch) {
 sameList(JSON.parse(websiteMatch[1]), "website/app/site.ts supportedSites");
 
 // Store name and description: both name every site, so people searching the
-// store for a platform find LocalSubs. The store allows names up to 75
-// characters.
+// store for a platform find LocalSubs. The store rejects an upload whose name
+// is over 75 characters or whose description is over 132.
 for (const field of ["name", "description"]) {
   const missing = names.filter((name) => !manifest[field].includes(name));
   if (missing.length > 0) {
     throw new Error(`manifest.json ${field} does not mention ${missing.join(", ")}`);
   }
 }
-const MAX_NAME_LENGTH = 75;
-if ([...manifest.name].length > MAX_NAME_LENGTH) {
-  throw new Error(`manifest.json name is ${[...manifest.name].length} characters; the store allows ${MAX_NAME_LENGTH}`);
+const STORE_LIMITS = { name: 75, description: 132 };
+for (const [field, limit] of Object.entries(STORE_LIMITS)) {
+  const length = [...manifest[field]].length;
+  if (length > limit) {
+    throw new Error(`manifest.json ${field} is ${length} characters; the store allows ${limit}`);
+  }
 }
 
 console.log(`Supported sites listed everywhere: ${names.join(", ")}`);

@@ -196,7 +196,8 @@ in-player panel are shared. To add a site:
 
 `npm test` checks that the adapters, the site list and the manifest agree, and
 `npm run check` fails if the README, the website or the manifest name or
-description misses a site.
+description misses a site, or if the name or description is longer than the
+store accepts (75 and 132 characters).
 
 Experiment bundles are built separately and never enter the production ZIP:
 
