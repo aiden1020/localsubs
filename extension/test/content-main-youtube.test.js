@@ -1,14 +1,27 @@
 // @vitest-environment jsdom
 // @vitest-environment-options {"url": "https://www.youtube.com/watch?v=VIDEO_A_123"}
 
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/core/settings.js";
 import { CAPTURE_SOURCE, CONTENT_SOURCE } from "../src/content/youtube-cues.js";
 
-afterEach(() => {
+// The content script keeps polling on timers after a test ends; they must not
+// fire once the page is torn down.
+beforeEach(() => {
+  vi.useFakeTimers({
+    shouldAdvanceTime: true,
+    toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"]
+  });
+});
+
+afterEach(async () => {
   delete globalThis.chrome;
   delete window.__openStreamSubtitlesLoaded;
   document.body.innerHTML = "";
+  // Let the content script see the emptied page, then drop what it scheduled.
+  await Promise.resolve();
+  vi.clearAllTimers();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
