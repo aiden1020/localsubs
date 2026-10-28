@@ -1,8 +1,8 @@
 import { DEFAULT_SETTINGS, sanitizeSettings } from "../core/settings.js";
-import { normalizeCaption, normalizeText } from "./captions.js";
+import { normalizeCaption } from "./captions.js";
 import { OverlayRenderer } from "./overlay-renderer.js";
+import { createPlatformForHost } from "./platforms.js";
 import { PlayerPanel } from "./player-panel.js";
-import { SubtitleDetector } from "./subtitle-detector.js";
 import { TranslationController } from "./translation-controller.js";
 import { shouldApplyTranslationResult } from "./translation-request.js";
 
@@ -10,6 +10,16 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   const BUILD = "0.6.0";
   const STATUS_OVERLAY_ID = "localsubs-status";
   const STATUS_HIDE_AFTER_MS = 6500;
+  const TRANSLATE_AHEAD_CUES = 3;
+  // Settings that only change how the overlay looks. Changing them must not
+  // re-translate: a slider dragged during playback would otherwise send a
+  // request every few hundred milliseconds and interrupt each one.
+  const STYLE_ONLY_SETTINGS = new Set([
+    "fontSize",
+    "overlayBackgroundOpacity",
+    "optionsLanguage",
+    "translationCacheLimit"
+  ]);
   if (window.__openStreamSubtitlesLoaded) {
     return;
   }
@@ -21,6 +31,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   let detectScheduled = false;
   let activeCaptionRequestId = 0;
   let activeTranslationAbortController = null;
+  let aheadAbortController = null;
   let lastTranslation = "";
   let needsReposition = false;
   let captionDetectedAt = 0;
@@ -33,19 +44,20 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   let modelPollGeneration = 0;
   let modelReadyShown = false;
   let settings = { ...DEFAULT_SETTINGS };
-  const overlayRenderer = new OverlayRenderer({ getSettings: () => settings });
+  const platform = createPlatformForHost(window.location.hostname, { getSettings: () => settings });
+  if (!platform) {
+    return;
+  }
+  const overlayRenderer = new OverlayRenderer({
+    getSettings: () => settings,
+    getHost: () => platform.getHost(),
+    nativeSubtitles: platform.nativeSubtitles
+  });
   const playerPanel = new PlayerPanel({
     getSettings: () => settings,
     getHost: () => overlayRenderer.getHost(),
     storage: { set: (values) => chrome.storage.sync.set(values) },
     sendMessage: (message) => chrome.runtime.sendMessage(message)
-  });
-  const subtitleDetector = new SubtitleDetector({
-    onNodeChange: (node) => overlayRenderer.setSubtitleNode(node),
-    onMutation: () => {
-      needsReposition = true;
-      detectCaption();
-    }
   });
   const translationController = new TranslationController({
     getSettings: () => settings,
@@ -121,6 +133,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     settings = sanitizeSettings(nextSettings);
 
     translationController.handleSettingsChange(previousSettings, settings);
+    platform.applySettings?.(previousSettings, settings);
 
     overlayRenderer.applySettings();
     playerPanel.applySettings();
@@ -134,8 +147,15 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
       activeCaptionRequestId += 1;
       activeTranslationAbortController?.abort();
       activeTranslationAbortController = null;
+      cancelTranslateAhead();
       lastTranslation = "";
       overlayRenderer.enterFallback();
+      return;
+    }
+
+    const changedKeys = Object.keys(settings).filter((key) => previousSettings[key] !== settings[key]);
+    if (changedKeys.every((key) => STYLE_ONLY_SETTINGS.has(key))) {
+      if (overlayRenderer.isVisible()) overlayRenderer.position();
       return;
     }
 
@@ -189,6 +209,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     if (activeTranslationAbortController) {
       activeTranslationAbortController.abort();
     }
+    cancelTranslateAhead();
     const controller = new AbortController();
     activeTranslationAbortController = controller;
 
@@ -216,6 +237,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     }
     lastTranslation = translatedText;
     overlayRenderer.enterTranslated(caption, translatedText);
+    translateAhead();
   }
 
   function scheduleDetect() {
@@ -248,11 +270,24 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     }, delayMs);
   }
 
+  function resetCaptionState() {
+    cancelPendingCaptionHide();
+    activeCaptionRequestId += 1;
+    activeTranslationAbortController?.abort();
+    activeTranslationAbortController = null;
+    cancelTranslateAhead();
+    translationController.resetHistory();
+    overlayRenderer.enterFallback();
+    lastCaption = "";
+    lastTranslation = "";
+    lastTranslationLatencyMs = 0;
+  }
+
   function detectCaption() {
-    const caption = normalizeCaption(subtitleDetector.getCaption());
+    const caption = normalizeCaption(platform.getCurrentCue()?.text || "");
 
     if (!caption) {
-      if (subtitleDetector.hasActiveContent()) {
+      if (platform.hasActiveContent()) {
         cancelPendingCaptionHide();
         return;
       }
@@ -272,8 +307,14 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
 
       cancelPendingCaptionHide();
       activeCaptionRequestId += 1;
-      translationController.resetHistory();
-      overlayRenderer.enterFallback();
+      if (platform.keepsNativeHiddenBetweenCues?.() && settings.translationEnabled) {
+        // A captured track keeps its history across gaps: the look-ahead
+        // translated the next line with this context.
+        overlayRenderer.enterIdle();
+      } else {
+        translationController.resetHistory();
+        overlayRenderer.enterFallback();
+      }
       lastCaption = "";
       lastTranslationLatencyMs = 0;
       return;
@@ -311,8 +352,41 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     activeCaptionRequestId += 1;
     translationController.updateHistory(caption);
 
+    // Translated ahead: show both lines in this frame instead of hiding the
+    // overlay for a round trip.
+    const cached = translationController.cachedTranslation(caption);
+    if (cached) {
+      activeTranslationAbortController?.abort();
+      activeTranslationAbortController = null;
+      lastTranslation = cached;
+      overlayRenderer.enterTranslated(caption, cached);
+      translateAhead();
+      return;
+    }
+
     overlayRenderer.enterPending(caption);
     void renderTranslationForCaption(caption, activeCaptionRequestId);
+  }
+
+  // Platforms that hold the whole track translate the next lines while the
+  // current one shows. One request at a time, and only while no line on
+  // screen is waiting: WebLLM interrupts the running request for a new one.
+  function translateAhead() {
+    if (aheadAbortController || activeTranslationAbortController || !settings.translationEnabled) return;
+    const upcoming = (platform.getUpcomingCues?.(TRANSLATE_AHEAD_CUES) || [])
+      .map((cue) => normalizeCaption(cue.text))
+      .filter(Boolean);
+    if (upcoming.length === 0) return;
+    const controller = new AbortController();
+    aheadAbortController = controller;
+    void translationController.translateAhead(upcoming, controller.signal).finally(() => {
+      if (aheadAbortController === controller) aheadAbortController = null;
+    });
+  }
+
+  function cancelTranslateAhead() {
+    aheadAbortController?.abort();
+    aheadAbortController = null;
   }
 
   function bindVideoListeners() {
@@ -338,30 +412,20 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   }
 
   function startDetection() {
+    platform.start({
+      onChange: ({ reposition = false } = {}) => {
+        if (reposition) needsReposition = true;
+        detectCaption();
+      },
+      onReset: resetCaptionState,
+      onSubtitleNode: (node) => overlayRenderer.setSubtitleNode(node),
+      showStatus: (message) => showStatusMessage(message)
+    });
     bindVideoListeners();
     detectCaption();
   }
 
-  function hasPlayableVideo() {
-    return Array.from(document.querySelectorAll("video")).some((video) => {
-      return Boolean(video.currentSrc || video.src);
-    });
-  }
-
-  function shouldRun() {
-    const path = window.location.pathname || "";
-    const isPlaybackPage =
-      path.includes("/video/watch/") ||
-      path.includes("/play") ||
-      path.includes("/watch");
-    const isPlayerLikeFrame =
-      path.includes("/player") ||
-      window.location.hostname.startsWith("play.");
-
-    return isPlaybackPage || isPlayerLikeFrame || hasPlayableVideo();
-  }
-
-  if (!shouldRun()) {
+  if (!platform.shouldRun()) {
     return;
   }
 

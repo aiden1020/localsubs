@@ -1,0 +1,394 @@
+--- upstream/inject.js
++++ localsubs/inject.js
+@@ -1,3 +1,8 @@
++// Vendored from yt-dual-subs (https://github.com/Gythiro/yt-dual-subs)
++// Upstream file: inject.js at commit 5657c8a18ca30c84b5d4662bca58e3e9214ffdff (v3.7.0)
++// Copyright (c) 2026 Gythiro. MIT License; see THIRD_PARTY_NOTICES.md.
++// Modified for LocalSubs; every change is listed in UPSTREAM.md and
++// reproduced in localsubs.patch. Do not edit without updating both.
+ // inject.js — MAIN world, document_start.
+ // Hooks XMLHttpRequest + fetch to capture the YouTube player's OWN
+ // /api/timedtext request URL (which carries a valid "pot"), then reuses that
+@@ -8,8 +13,10 @@
+   "use strict";
+ 
+   // ---- guard against double injection -------------------------------------
+-  if (window.__ytdsInjected) return;
+-  window.__ytdsInjected = true;
++  // LOCALSUBS PATCH: own guard and message tags, so an installed
++  // yt-dual-subs and LocalSubs never answer each other.
++  if (window.__localsubsYtCaptureInjected) return;
++  window.__localsubsYtCaptureInjected = true;
+ 
+   const TIMEDTEXT_MARK = "/api/timedtext";
+ 
+@@ -184,7 +191,7 @@
+     const u = new URL(base, location.href);
+     u.searchParams.delete("tlang");
+     u.searchParams.set("fmt", "json3");
+-    if (tlangTarget) u.searchParams.set("tlang", tlangTarget);
++    void tlangTarget;   // LOCALSUBS PATCH: tlang requests are never built
+     return u.toString();
+   }
+ 
+@@ -199,9 +206,13 @@
+       if (!ev || !Array.isArray(ev.segs)) continue;
+       let text = "";
+       let off = 0;
++      const segOffsets = [];   // LOCALSUBS PATCH: per-segment timing
+       for (const s of ev.segs) {
+         if (s && typeof s.utf8 === "string") {
+           text += s.utf8;
++          if (s.utf8.trim()) {
++            segOffsets.push([typeof s.tOffsetMs === "number" ? s.tOffsetMs : 0, s.utf8]);
++          }
+           // Track the last NON-BLANK word's offset. ASR tracks carry per-word
+           // tOffsetMs; blank segs ("\n") may carry one too and would inflate it.
+           if (s.utf8.trim() && typeof s.tOffsetMs === "number") off = s.tOffsetMs;
+@@ -222,7 +233,10 @@
+       // per-word segs, so lastOff === start — sentence grouping in content.js
+       // reads the pause as (next.start - lastOff), which for manual tracks is
+       // roughly the cue duration and therefore almost always a sentence break.
+-      cues.push({ start, dur, text, lastOff: start + off });
++      // LOCALSUBS PATCH: keep each segment's absolute start ([ms, text]) so
++      // LocalSubs can rebuild auto-generated captions at word level.
++      const words = segOffsets.map(([o, w]) => [start + o, w]);
++      cues.push({ start, dur, text, lastOff: start + off, words });
+     }
+     return cues;
+   }
+@@ -351,7 +365,7 @@
+   function post(type, extra) {
+     try {
+       window.postMessage(Object.assign(
+-        { source: "ytds-inject", type, videoId: currentVideoId, nonce: reqNonce },
++        { source: "localsubs-yt-capture", type, videoId: currentVideoId, nonce: reqNonce },
+         extra || {}
+       ), "*");
+     } catch (_e) { /* never throw */ }
+@@ -437,7 +451,9 @@
+     // back labelled with the new one, and was believed.
+     const forLang = cfg.targetLang;
+     const sameLang = isSameLang(trackLangOf(sourceUrl), forLang);
+-    const wantTlang = !sameLang && cfg.mode !== "gtx";
++    // LOCALSUBS PATCH: never ask YouTube for its machine translation (tlang);
++    // LocalSubs translates the original track on the device.
++    const wantTlang = false;
+     // Pin ONE pot-bearing URL for both legs: sourceUrl is refreshed on every
+     // pot rotation, so reading it twice could pair an original fetched with one
+     // token against a translation fetched with the next.
+@@ -524,54 +540,6 @@
+     }
+   }
+ 
+-  // Produce a COMPLETE bilingual cue set for SRT export, on demand. Unlike
+-  // produceCues (which drives the live overlay and honours the user's backend
+-  // choice), this ALWAYS fetches the whole-track tlang translation by reusing
+-  // the captured pot-bearing source URL — so a full translation is available for
+-  // download even when the live overlay is running in gtx (per-sentence) mode.
+-  // Orig+tlang are paired by EVENT ORDER here, before content.js sorts, so the
+-  // translation can never desync from the original. Posts an "exportdata" reply
+-  // correlated by exportId; never throws into the page.
+-  async function produceExport(targetLang, exportId) {
+-    if (!sourceUrl || sourceVid !== currentVideoId) {
+-      post("exportdata", { ok: false, exportId });
+-      return;
+-    }
+-    const vid = currentVideoId;
+-    let transStatus = 0;
+-    try {
+-      const origJson = await fetchJson3Retry(buildUrl(sourceUrl, null), vid, true);
+-      const cues = parseJson3(origJson);
+-      if (!cues.length) { post("exportdata", { ok: false, exportId }); return; }
+-
+-      let tcues = null;
+-      let aligned = null;
+-      if (targetLang) {
+-        try {
+-          // Unlike playback, an export has no sentence path to fall back on and
+-          // a person waiting for a file, so a rate limit is worth the retries.
+-          const transJson = await fetchJson3Retry(buildUrl(sourceUrl, mapTlang(targetLang)), vid, true);
+-          tcues = parseJson3(transJson);
+-          aligned = cues.length === tcues.length;
+-          if (aligned) {
+-            for (let i = 0; i < cues.length; i++) {
+-              cues[i].trans = tcues[i] ? tcues[i].text : "";
+-            }
+-          }
+-        } catch (err) {
+-          tcues = null; aligned = null;   // translation failed; orig still usable
+-          transStatus = (err && err.status) || 0;
+-        }
+-      }
+-
+-      // transStatus rides along so the popup can say "rate limited, try again in
+-      // a moment" instead of "try another language", which is not the problem.
+-      post("exportdata", { ok: true, cues, tcues, aligned, transStatus, exportId });
+-    } catch (_e) {
+-      post("exportdata", { ok: false, exportId });
+-    }
+-  }
+-
+   // ---- auto-dub caption mismatch (checked once per video) ------------------
+   // Some videos ship YouTube's auto-dubbing: N dubbed audio tracks, and the
+   // caption list holds the ASR of each DUB — sometimes with no track in the
+@@ -931,241 +899,11 @@
+   }
+ 
+   // ---- receive config from content.js --------------------------------------
+-  // ---- read-aloud ducking + speed sharing -----------------------------------
+-  // Lower the player's own audio while a spoken line plays, through the
+-  // player's API rather than video.volume — YouTube rewrites the element's
+-  // volume from its own state, so the element is the wrong place to argue.
+-  // Restore is POLITE: only when the value still sits where we put it. A user
+-  // who grabbed a control mid-speech has expressed a preference, and stomping
+-  // it to "restore" would be the louder bug. Both halves therefore remember
+-  // what they actually SET — never recompute at restore time: the duck depth
+-  // is a live setting, and the player may snap a rate to its own steps.
+-  let duckSavedVol = -1;
+-  let duckRestoreTo = -1;       // give-back ramp's destination (-1 = no ramp):
+-                                // the only honest "user volume" mid-restore        // the user's volume, to give back
+-  let duckSetVol = -1;          // the level we are holding (the ramp's target)
+-  // The 25%↔100% square wave was audible on every dense passage, so the two
+-  // transitions ramp over ~200ms instead of stepping. Ownership is no longer
+-  // "volume equals the target" — mid-ramp it never is — but "volume equals
+-  // the LAST VALUE WE WROTE": any other reading means the user grabbed the
+-  // slider, and the ramp stops where it stands rather than fighting them
+-  // (their later duck-off then simply drops the capture, as before).
+-  let duckLastWrote = -1;       // the polite-ownership comparand
+-  let duckRampTimer = 0;
+-  const DUCK_RAMP_MS = 200;
+-  const DUCK_RAMP_STEPS = 4;
+-  function duckRampClear() {
+-    if (duckRampTimer) { clearTimeout(duckRampTimer); duckRampTimer = 0; }
+-  }
+-  // A chain of setTimeouts, not setInterval — everything inject schedules runs
+-  // on setTimeout (the test clock's stated contract), and the chain form means
+-  // a cleared timer stops the whole ramp mid-flight.
+-  function duckRampTo(p, target, onDone) {
+-    duckRampClear();
+-    const from = p.getVolume();
+-    if (from === target) { duckLastWrote = target; if (onDone) onDone(); return; }
+-    let step = 0;
+-    const tick = () => {
+-      duckRampTimer = 0;
+-      let cur;
+-      try { cur = p.getVolume(); } catch (_e) { return; }
+-      if (cur !== duckLastWrote && cur !== from) return;   // user grabbed it
+-      step++;
+-      const v = step >= DUCK_RAMP_STEPS ? target
+-        : Math.round(from + (target - from) * step / DUCK_RAMP_STEPS);
+-      duckLastWrote = v;
+-      try { p.setVolume(v); } catch (_e) { return; }
+-      if (step >= DUCK_RAMP_STEPS) { if (onDone) onDone(); return; }
+-      duckRampTimer = setTimeout(tick, DUCK_RAMP_MS / DUCK_RAMP_STEPS);
+-    };
+-    duckRampTimer = setTimeout(tick, DUCK_RAMP_MS / DUCK_RAMP_STEPS);
+-  }
+-  function duckVolume(p, on, pct) {
+-    if (typeof p.getVolume !== "function" || typeof p.setVolume !== "function") return;
+-    if (on) {
+-      const share = Math.max(0, Math.min(100, typeof pct === "number" ? pct : 25));
+-      // A duck landing while the give-back ramp is still climbing must not
+-      // read the player: mid-ramp it holds a half-restored value, and saving
+-      // THAT as "the user's volume" walked the audio down a step per line —
+-      // 80→20→15→5→0 in four boundaries on a real 2x run (2026-09-01), and
+-      // the zero stuck until the page reloaded. The user's volume is the
+-      // ramp's TARGET; adopt it and let this duck start from there.
+-      // …but adopt POLITELY, like every other path here. The ramp stops itself
+-      // when the user grabs the slider, and it used to leave duckRestoreTo
+-      // standing — so the next line adopted a value the user had already
+-      // overruled and pushed the audio back down to a share of it. Their
+-      // reading is the preference the moment it stops being ours.
+-      if (duckSavedVol < 0 && duckRestoreTo >= 0) {
+-        duckRampClear();
+-        let cur = -1;
+-        try { cur = p.getVolume(); } catch (_e) { cur = -1; }
+-        if (duckLastWrote >= 0 && cur === duckLastWrote) {
+-          duckSavedVol = duckRestoreTo;
+-          duckRestoreTo = -1;
+-          duckSetVol = Math.round(duckSavedVol * share / 100);
+-          duckLastWrote = duckSetVol;
+-          p.setVolume(duckSetVol);
+-          return;
+-        }
+-        duckRestoreTo = -1;      // not ours any more: drop it and read them
+-      }
+-      if (duckSavedVol >= 0) {
+-        // Already ducked, and the depth moved under us: the popup's two volume
+-        // sliders sit together, so this one has to answer as promptly as the
+-        // other — a chasing ramp would lag the drag, so this branch still
+-        // steps. Recompute from the SAVED volume, never from the ducked one —
+-        // compounding would walk the audio down to nothing over a long line.
+-        const want = Math.round(duckSavedVol * share / 100);
+-        if (want !== duckSetVol && p.getVolume() === duckLastWrote) {
+-          duckRampClear();
+-          duckSetVol = want;
+-          duckLastWrote = want;
+-          p.setVolume(want);
+-        }
+-        return;
+-      }
+-      const v = p.getVolume();
+-      duckSavedVol = v;
+-      duckSetVol = Math.round(v * share / 100);
+-      duckLastWrote = v;                 // the ramp starts from their value
+-      duckRampTo(p, duckSetVol);
+-    } else {
+-      if (duckSavedVol < 0) return;
+-      const giveBack = duckSavedVol;
+-      if (p.getVolume() === duckLastWrote) {
+-        duckRestoreTo = giveBack;
+-        duckRampTo(p, giveBack, () => { duckLastWrote = -1; duckRestoreTo = -1; });
+-      }
+-      duckSavedVol = -1; duckSetVol = -1;
+-    }
+-  }
+-
+-  // Speed sharing, one line at a time: when even 1.4× speech cannot fit a cue,
+-  // content.js sends `fit` — the absolute video rate at which it just would —
+-  // and the video slows toward it, never below 76% of the user's own rate
+-  // (the clamp a 200k-user competitor shipped). The moment the rate turns up
+-  // anywhere we did not put it, the dial moved under us. That used to latch a
+-  // hands-off for the REST of the video — and the first muted completeness run
+-  // caught the latch tripping at second zero of a fresh video: YouTube's own
+-  // session-rate restore (the "remember my speed" write) landed while the
+-  // first line's fit was already held, read as "the user grabbed the dial",
+-  // and every rate ask for the whole video was ignored (applied:0, player
+-  // pinned). Anyone with a remembered non-1x speed and read-aloud on hit the
+-  // same latch every single video. So a move is an EVENT now, not a state:
+-  // let go, tell content the new base, and let the next line decide against
+-  // it. A viewer's explicit choice still wins every gap — we never overwrite
+-  // it while not holding — and a dense line slowing under them is exactly
+-  // what the sizing (and D114's completeness mode) is FOR.
+-  let rateSavedBase = -1;       // the user's own rate, to give back
+-  let rateSet = -1;             // what the player actually became after our set
+-  let rateMoved = false;        // the dial moved under a hold JUST NOW (edge,
+-                                // rides one report; never a lasting hands-off)
+-  // Who owns the rate right now, said out loud. This side is the only one that
+-  // knows: content used to work it out by watching the element and reading
+-  // back our own slowdown as the viewer's choice — three separate bugs from
+-  // one wrong signal (采样器根修-方案 §二). Quiet when nothing changed, so a
+-  // per-line duck does not turn into a message storm.
+-  let rateSaid = "";
+-  function rateReport(p) {
+-    let cur = 0;
+-    try {
+-      if (p && typeof p.getPlaybackRate === "function") cur = p.getPlaybackRate() || 0;
+-    } catch (_e) { /* a player mid-teardown answers nothing */ }
+-    const applied = rateSet >= 0 ? rateSet : 0;
+-    // The viewer's own rate: what we saved when we took the wheel, or simply
+-    // what the player is at when we are not holding it.
+-    const base = rateSavedBase >= 0 ? rateSavedBase : cur;
+-    const stamp = applied + "|" + base + "|" + (rateMoved ? 1 : 0);
+-    if (stamp === rateSaid) return;
+-    rateSaid = stamp;
+-    post("ttsrate", { applied: applied, base: base, touched: rateMoved });
+-    rateMoved = false;              // an edge: said once, then over
+-  }
+-  function rateRestore(p, cur) {
+-    if (rateSavedBase < 0) return;
+-    if (cur === rateSet) p.setPlaybackRate(rateSavedBase);
+-    else rateMoved = true;          // their new rate stays; content re-learns it
+-    rateSavedBase = -1; rateSet = -1;
+-    rateReport(p);
+-  }
+-  function shareRate(p, on, fit) {
+-    if (typeof p.getPlaybackRate !== "function" ||
+-        typeof p.setPlaybackRate !== "function") return;
+-    const cur = p.getPlaybackRate();
+-    if (!on || typeof fit !== "number" || !(fit > 0)) {
+-      rateRestore(p, cur);                      // line over, or this line fits
+-      return;
+-    }
+-    if (rateSet >= 0 && cur !== rateSet) {      // moved since we set it: let
+-      rateMoved = true;                         // go, re-learn, next line
+-      rateSavedBase = -1; rateSet = -1;         // decides against the new base
+-      // Redundant today — duck() reports after every message, so this state
+-      // reaches content either way, and a mutation removing this line stays
+-      // green. Kept because shareRate's own contract is "report what you
+-      // changed": the day anything else calls it, this is what makes it true.
+-      rateReport(p);
+-      return;
+-    }
+-    const base = rateSavedBase >= 0 ? rateSavedBase : cur;
+-    if (fit >= base) {                          // fits at the user's own rate
+-      rateRestore(p, cur);
+-      return;
+-    }
+-    if (rateSavedBase < 0) rateSavedBase = base;
+-    // Snap UP to the player's 0.05 steps ourselves: its own snapping rounds
+-    // DOWN (measured on the real player), which would cut under the floor.
+-    // The epsilon keeps float dust (0.9*20 = 18.000…004) from ceiling one
+-    // step too far.
+-    //
+-    // The floor here is DEFENSE, not policy: content's sizing already floors
+-    // its asks (0.76 of the user's rate normally, 0.25 in "read everything"
+-    // mode — D114). When this line still said 0.76 it silently clamped every
+-    // completeness ask back up, and the first muted 2x run read over=37/40
+-    // with the sizing believing fits it never got. A quarter of the user's
+-    // rate matches the deepest ask content can make; anything below that is
+-    // a malformed message and gets the old refusal.
+-    const want = Math.max(0.25 * base, fit);
+-    p.setPlaybackRate(Math.ceil(want * 20 - 1e-9) / 20);
+-    rateSet = p.getPlaybackRate();              // read back all the same: the
+-                                                // comparand is what it BECAME
+-    if (rateSet === rateSavedBase) { rateSavedBase = -1; rateSet = -1; }
+-    rateReport(p);
+-  }
+-
+-  function duck(on, pct, fit, nav) {
+-    try {
+-      const p = activePlayer();
+-      if (p) {
+-        duckVolume(p, on, pct);
+-        shareRate(p, on, fit);
+-      } else if (!on) {
+-        // Nothing to hand the capture back to — and this is the ordinary shape
+-        // of leaving a video, not an edge case: content stops read-aloud, and
+-        // by the time the message lands YouTube has already replaced the
+-        // player. Dropping the capture is not merely tidy. Carried forward, the
+-        // stale saved volume makes the next video's first duck decide it is
+-        // "already ducked to the right place" and set nothing at all, so the
+-        // line speaks over full-volume audio with no sign of why.
+-        duckRampClear();
+-        // duckRestoreTo with them: a ramp destination that outlives its player
+-        // is a volume from the previous video waiting to be adopted on this one.
+-        duckSavedVol = -1; duckSetVol = -1; duckLastWrote = -1; duckRestoreTo = -1;
+-        rateSavedBase = -1; rateSet = -1;
+-      }
+-      if (nav) { rateMoved = false; rateSaid = ""; }  // new video, fresh slate
+-      if (p) rateReport(p);
+-    } catch (_e) {
+-      duckRampClear();
+-      duckSavedVol = -1; duckSetVol = -1; duckLastWrote = -1; duckRestoreTo = -1;
+-      rateSavedBase = -1; rateSet = -1;
+-    }
+-  }
+-
+   window.addEventListener("message", (evt) => {
+     try {
+       if (evt.source !== window) return;
+       const d = evt.data;
+-      if (!d || d.source !== "ytds-content") return;
++      if (!d || d.source !== "localsubs-yt-content") return;
+ 
+       if (d.type === "bye") {
+         // The content script's extension was reloaded or removed. Without this
+@@ -1201,16 +939,6 @@
+           armNocuesTimer();             // wait for player's timedtext fetch
+           scheduleEarlyNudge(EARLY_TRIES);   // …but on a short, ask the player now
+         }
+-      } else if (d.type === "export-request") {
+-        // On-demand SRT export: build a COMPLETE bilingual cue set regardless of
+-        // the live backend mode (see produceExport). Correlated by exportId.
+-        // Sync video state first so a just-navigated tab can't export the
+-        // previous video's captured URL.
+-        checkVideoChange();
+-        currentVideoId = videoIdFromLocation();
+-        produceExport(d.targetLang, d.exportId);
+-      } else if (d.type === "ttsDuck") {
+-        duck(!!d.on, d.pct, d.fit, !!d.nav);
+       }
+     } catch (_e) { /* never throw */ }
+   }, false);

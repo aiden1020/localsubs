@@ -39,7 +39,8 @@ await build({
 const staticFiles = [
   "manifest.json",
   "options.html",
-  "options.css"
+  "options.css",
+  "THIRD_PARTY_NOTICES.md"
 ];
 if (includeExperiments) {
   staticFiles.push(
@@ -54,6 +55,9 @@ for (const file of staticFiles) {
 for (const lib of ["model-lib.wasm", "model-lib-quality.wasm"]) {
   await cp(path.join("extension/vendor", lib), path.join(outputDir, lib));
 }
+// Vendored yt-dual-subs capture script: shipped verbatim so it can be diffed
+// against extension/vendor/yt-dual-subs/inject.js.
+await cp("extension/vendor/yt-dual-subs/inject.js", path.join(outputDir, "youtube-capture.js"));
 if (includeExperiments) {
   await cp("mini_test_set.jsonl", path.join(outputDir, "wllama-mini-test-set.jsonl"));
   await cp("mini_test_set.jsonl", path.join(outputDir, "webllm-mini-test-set.jsonl"));

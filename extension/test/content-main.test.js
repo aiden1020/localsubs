@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-environment-options {"url": "https://play.max.com/"}
 
 import { readFileSync } from "node:fs";
 import path from "node:path";

@@ -16,7 +16,9 @@ const expected = [
   "model-lib.wasm",
   "options.css",
   "options.html",
-  "options.js"
+  "options.js",
+  "THIRD_PARTY_NOTICES.md",
+  "youtube-capture.js"
 ].sort();
 
 const actual = (await listFiles(extensionDir)).sort();
@@ -42,6 +44,14 @@ for (const relative of expected) {
 }
 if (manifest.host_permissions?.some((permission) => permission.includes("localhost") || permission.includes("127.0.0.1"))) {
   throw new Error("extension manifest still contains obsolete localhost permissions");
+}
+const captureScript = await readFile(path.join(extensionDir, "youtube-capture.js"), "utf8");
+const vendoredCapture = await readFile(path.resolve("extension/vendor/yt-dual-subs/inject.js"), "utf8");
+if (captureScript !== vendoredCapture) {
+  throw new Error("youtube-capture.js differs from the vendored yt-dual-subs inject.js");
+}
+if (/searchParams\.set\(\s*["']tlang["']/.test(captureScript)) {
+  throw new Error("youtube-capture.js requests YouTube machine translation");
 }
 if (manifest.sandbox || manifest.content_security_policy?.sandbox) {
   throw new Error("production extension manifest contains experiment-only sandbox configuration");
