@@ -11,13 +11,14 @@ import {
   detectSetupPlatform,
   getPlatformSetup
 } from "./core/platform-setup.js";
+import { SUPPORTED_SITES } from "./core/supported-sites.js";
 
 const LEGACY_WEBLLM_APPROX_MB = 272;
 
 const I18N = {
   "zh-Hant": {
     setupTitle: "設定",
-    intro: "免費為 HBO Max 加入英文＋台灣繁中雙字幕，支援 macOS 與 Windows。",
+    intro: "為串流影片加入英文＋台灣繁中雙字幕，支援 macOS 與 Windows。",
     modelEyebrow: "翻譯模型",
     modelTitle: "選擇翻譯取向",
     modelPrivacy: "模型只會儲存在這台裝置，字幕不會上傳。",
@@ -74,7 +75,7 @@ const I18N = {
     copy: "Copy",
     copied: "Copied",
     checkService: "檢查是否可用",
-    openSupportedSite: "開啟支援網站",
+    openSite: "開啟 {site}",
     preferencesEyebrow: "偏好設定",
     preferencesTitle: "字幕行為",
     enableTranslation: "啟用翻譯",
@@ -107,7 +108,7 @@ const I18N = {
   },
   en: {
     setupTitle: "Setup",
-    intro: "Free English and Traditional Chinese dual subtitles for HBO Max on macOS and Windows.",
+    intro: "English and Traditional Chinese dual subtitles for streaming video on macOS and Windows.",
     modelEyebrow: "Translation model",
     modelTitle: "Choose what matters most",
     modelPrivacy: "The model stays on this device and subtitles are never uploaded.",
@@ -164,7 +165,7 @@ const I18N = {
     copy: "Copy",
     copied: "Copied",
     checkService: "Check availability",
-    openSupportedSite: "Open supported site",
+    openSite: "Open {site}",
     preferencesEyebrow: "Preferences",
     preferencesTitle: "Subtitle behavior",
     enableTranslation: "Enable translation",
@@ -203,7 +204,7 @@ const statusPanel = document.getElementById("service-status");
 const statusTitle = document.getElementById("service-status-title");
 const statusDetail = document.getElementById("service-status-detail");
 const checkServiceButton = document.getElementById("check-service");
-const openSupportedSiteButton = document.getElementById("open-supported-site");
+const supportedSiteButtons = document.getElementById("supported-sites");
 const platformStatusText = document.getElementById("platform-status-text");
 const platformStatus = document.getElementById("platform-status");
 const setupGrid = document.getElementById("setup-grid");
@@ -492,6 +493,7 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-language]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.language === currentLanguage);
   });
+  renderSupportedSites();
   renderAll();
 }
 
@@ -872,9 +874,19 @@ checkServiceButton.addEventListener("click", () => {
   void checkService();
 });
 
-openSupportedSiteButton.addEventListener("click", () => {
-  window.open("https://www.hbomax.com/", "_blank", "noopener");
-});
+// One button per supported site, in the order of SUPPORTED_SITES.
+function renderSupportedSites() {
+  supportedSiteButtons.replaceChildren(...SUPPORTED_SITES.map((site) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary-button";
+    button.textContent = t("openSite").replace("{site}", site.name);
+    button.addEventListener("click", () => {
+      window.open(site.homeUrl, "_blank", "noopener");
+    });
+    return button;
+  }));
+}
 
 applyLanguage(DEFAULT_SETTINGS.optionsLanguage);
 

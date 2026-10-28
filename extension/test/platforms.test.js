@@ -43,6 +43,12 @@ describe("platform registry", () => {
     }
   });
 
+  it("has an adapter for every supported site", () => {
+    for (const platform of PLATFORMS) {
+      expect(typeof platform.create, platform.id).toBe("function");
+    }
+  });
+
   it("gives every platform host permission", () => {
     const permissionHosts = manifest.host_permissions.map(patternHost);
     for (const platform of PLATFORMS) {

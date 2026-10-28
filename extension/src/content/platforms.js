@@ -1,22 +1,21 @@
+import { SUPPORTED_SITES } from "../core/supported-sites.js";
 import { createMaxPlatform } from "./max-platform.js";
 import { createYouTubePlatform } from "./youtube-platform.js";
 
-// Every supported site. To add one: write an adapter that follows the contract
-// in platform.js, list it here with the domains it serves, and add the same
-// domains to manifest.json (host_permissions and a content_scripts entry).
-// A test checks that the two lists agree.
-export const PLATFORMS = Object.freeze([
-  Object.freeze({
-    id: "youtube",
-    domains: Object.freeze(["youtube.com"]),
-    create: createYouTubePlatform
-  }),
-  Object.freeze({
-    id: "max",
-    domains: Object.freeze(["max.com", "hbomax.com"]),
-    create: createMaxPlatform
-  })
-]);
+// Every supported site with its adapter. To add one: write an adapter that
+// follows the contract in platform.js, add the site to core/supported-sites.js
+// and its adapter here, and add its domains to manifest.json (host_permissions
+// and a content_scripts entry). Tests check that these lists agree.
+const ADAPTERS = Object.freeze({
+  youtube: createYouTubePlatform,
+  max: createMaxPlatform
+});
+
+export const PLATFORMS = Object.freeze(SUPPORTED_SITES.map((site) => Object.freeze({
+  id: site.id,
+  domains: site.domains,
+  create: ADAPTERS[site.id]
+})));
 
 export function hostMatchesDomain(hostname = "", domain = "") {
   return hostname === domain || hostname.endsWith(`.${domain}`);

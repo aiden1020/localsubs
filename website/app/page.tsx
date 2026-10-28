@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { PlayerDemo } from "./player-demo";
 import { SiteHeader } from "./site-header";
-import { siteDescription, siteUrl, storeUrl } from "./site";
+import { siteDescription, siteUrl, storeUrl, supportedSites, supportedSitesText } from "./site";
 
 const reportUrl = "https://arxiv.org/abs/2607.09957";
 const fastModelUrl = "https://huggingface.co/Aiden1020/Sotto-EN-ZH-TW-0.6B";
@@ -30,7 +30,7 @@ const structuredData = {
       applicationSubCategory: "Chrome Extension",
       operatingSystem: "macOS, Windows",
       inLanguage: "zh-Hant-TW",
-      image: `${siteUrl}/og-warm.png`,
+      image: `${siteUrl}/og-theater.png`,
       offers: {
         "@type": "Offer",
         price: "0",
@@ -112,7 +112,7 @@ export default function Home() {
       <section className="theater" id="top" data-nav-dark>
         <div className="hero shell">
           <div className="heroHead">
-            <p className="eyebrow"><span /> HBO Max 中英雙字幕・Chrome 擴充功能</p>
+            <p className="eyebrow"><span /> 串流影片中英雙字幕・Chrome 擴充功能</p>
             <h1><span>英文字幕上面，</span><em>多一行台灣中文。</em></h1>
           </div>
 
@@ -124,7 +124,7 @@ export default function Home() {
             <a className="button buttonAccent" href={storeUrl} target="_blank" rel="noreferrer">
               <ChromeIcon /> 免費加到 Chrome <Arrow />
             </a>
-            <p className="trustLine"><span>支援 macOS・Windows</span><span>Chrome・Edge</span></p>
+            <p className="trustLine"><span>{`支援 ${supportedSites.join("・")}`}</span><span>macOS・Windows</span><span>Chrome・Edge</span></p>
           </div>
         </div>
       </section>
@@ -132,7 +132,7 @@ export default function Home() {
       <section className="how shell" id="how">
         <div className="howIntro">
           <p className="kicker">不用另外裝程式</p>
-          <h2>裝好之後，<br />打開 HBO Max <span className="nowrap">就能用。</span></h2>
+          <h2>裝好之後，<br />打開影片<span className="nowrap">就能用。</span></h2>
           <p>支援 macOS 和 Windows 上的 Chrome、Edge。</p>
         </div>
         <ol className="stepList">
@@ -148,7 +148,7 @@ export default function Home() {
           </li>
           <li>
             <span>03</span>
-            <div><h3>打開 HBO Max</h3><p>開英文字幕，按下播放，中文就會出現在英文上面。</p></div>
+            <div><h3>打開影片</h3><p>{`在 ${supportedSitesText} 開英文字幕，按下播放，中文就會出現在英文上面。`}</p></div>
             <div className="stepVisual stepCue" aria-hidden="true"><span>饒了我吧</span><b>Cut me some slack.</b></div>
           </li>
         </ol>
@@ -290,8 +290,8 @@ export default function Home() {
         </div>
         <div className="faqList">
           <details>
-            <summary>HBO Max 可以同時開中英字幕嗎？<b>＋</b></summary>
-            <p>原本不行，一次只能選一種。裝了 LocalSubs 之後開英文字幕，中文會自動加在英文上面。</p>
+            <summary>串流平台不是只能開一種字幕嗎？<b>＋</b></summary>
+            <p>對，大多一次只能選一種。裝了 LocalSubs 之後開英文字幕，中文會自動加在英文上面。</p>
           </details>
           <details>
             <summary>真的免費嗎？<b>＋</b></summary>
@@ -321,8 +321,8 @@ export default function Home() {
             <p>macOS 和 Windows 上的 Chrome、Edge，以及其他 Chromium 瀏覽器。</p>
           </details>
           <details>
-            <summary>有支援 Netflix 或 Disney+ 嗎？<b>＋</b></summary>
-            <p>目前只支援 HBO Max。</p>
+            <summary>支援哪些影音平台？<b>＋</b></summary>
+            <p>{`目前支援 ${supportedSitesText}，其他平台會陸續加入。`}</p>
           </details>
           <details>
             <summary>字幕會被上傳嗎？<b>＋</b></summary>
@@ -343,7 +343,7 @@ export default function Home() {
 
       <footer className="footer shell">
         <a className="brand footerBrand" href="#top"><img src="/localsubs-logo.webp" alt="" width="34" height="34" /><span>LocalSubs</span></a>
-        <p>HBO Max 的中英雙字幕。</p>
+        <p>串流影片的中英雙字幕。</p>
         <div>
           <a href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
           <a href={`${repoUrl}/blob/main/PRIVACY.md`} target="_blank" rel="noreferrer">隱私權政策</a>

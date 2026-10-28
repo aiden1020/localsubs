@@ -276,3 +276,19 @@ it("links the Windows setup video in the desktop setup steps", async () => {
   expect(tutorial.href).toBe("https://youtu.be/GbVWTxgqePA");
   expect(tutorial.target).toBe("_blank");
 });
+
+it("offers one button per supported site, in the chosen language", async () => {
+  const sendMessage = vi.fn(async () => ({ ok: true, models: [] }));
+  await mountOptions({ sendMessage });
+  const buttons = () => Array.from(document.querySelectorAll("#supported-sites button"));
+  await vi.waitFor(() => {
+    expect(buttons().map((button) => button.textContent)).toEqual(["開啟 YouTube", "開啟 HBO Max"]);
+  });
+  buttons()[1].click();
+  expect(window.open).toHaveBeenCalledWith("https://www.hbomax.com/", "_blank", "noopener");
+
+  document.getElementById("language-en").click();
+  await vi.waitFor(() => {
+    expect(buttons().map((button) => button.textContent)).toEqual(["Open YouTube", "Open HBO Max"]);
+  });
+});
