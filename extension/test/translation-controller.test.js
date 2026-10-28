@@ -74,6 +74,40 @@ describe("TranslationController", () => {
     expect(sendMessage).toHaveBeenCalledTimes(2);
   });
 
+  it("translates upcoming lines with the context they will show with", async () => {
+    const sendMessage = vi.fn(async ({ payload }) => ({ ok: true, translation: `譯:${payload.currentText}` }));
+    const { controller, showStatus } = createController({ sendMessage });
+    controller.updateHistory("First.");
+    await controller.translateAhead(["Second.", "Third."]);
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage.mock.calls[1][0].payload).toEqual(expect.objectContaining({
+      sessionId: "page-1:ahead",
+      currentText: "Third.",
+      contextLines: ["Second."]
+    }));
+
+    // Played in order, both lines come straight from the cache.
+    controller.updateHistory("Second.");
+    expect(controller.cachedTranslation("Second.")).toBe("譯:Second.");
+    controller.updateHistory("Third.");
+    expect(controller.cachedTranslation("Third.")).toBe("譯:Third.");
+    await controller.translateAhead(["Third."]);
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(showStatus).not.toHaveBeenCalled();
+  });
+
+  it("stops looking ahead quietly when a request fails or is superseded", async () => {
+    const sendMessage = vi.fn()
+      .mockResolvedValueOnce({ ok: true, translation: "", superseded: true })
+      .mockResolvedValueOnce({ ok: false, error: { code: "model_loading", message: "loading" } });
+    const { controller, showStatus } = createController({ sendMessage });
+    await controller.translateAhead(["One.", "Two."]);
+    await controller.translateAhead(["Three.", "Four."]);
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(controller.cachedTranslation("One.")).toBe("");
+    expect(showStatus).not.toHaveBeenCalled();
+  });
+
   it("clears cache when translation context settings change", async () => {
     const state = createController();
     await state.controller.translate("Ready?", undefined, [], "1");

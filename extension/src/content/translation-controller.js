@@ -25,6 +25,7 @@ export class TranslationController {
     this.cache = new Map();
     this.captionHistory = [];
     this.lastWarningAt = 0;
+    this.aheadSequence = 0;
   }
 
   handleSettingsChange(previous, next) {
@@ -69,14 +70,16 @@ export class TranslationController {
     this.trimCache();
   }
 
-  async translateWithLocal(text, signal, contextLines = [], cueId = "") {
+  async translateWithLocal(text, signal, contextLines = [], cueId = "", { ahead = false } = {}) {
     try {
       if (signal?.aborted) return null;
       const settings = this.getSettings();
       const payload = await this.sendMessage({
         type: "TRANSLATE_SUBTITLE",
         payload: createTranslationRequest({
-          sessionId: this.sessionId,
+          // The helper drops a session's older cues once a newer one arrives,
+          // so look-ahead requests use their own session.
+          sessionId: ahead ? `${this.sessionId}:ahead` : this.sessionId,
           cueId,
           currentText: text,
           contextLines,
@@ -87,6 +90,7 @@ export class TranslationController {
       });
       if (signal?.aborted) return null;
       if (!payload?.ok) {
+        if (ahead) return null;
         const error = normalizeErrorPayload(payload?.error);
         const isLoading = error.code === "model_loading";
         if (this.now() - this.lastWarningAt > (isLoading ? 8000 : 30000)) {
@@ -102,7 +106,7 @@ export class TranslationController {
       }
       return normalizeTranslatedText(payload.translation);
     } catch (error) {
-      if (error?.name === "AbortError") return null;
+      if (error?.name === "AbortError" || ahead) return null;
       if (this.now() - this.lastWarningAt > 30000) {
         this.lastWarningAt = this.now();
         this.showStatus("LocalSubs translator is unavailable. Open settings to check the selected backend.");
@@ -111,52 +115,82 @@ export class TranslationController {
     }
   }
 
-  async translate(text, signal, contextLines = [], cueId = "") {
+  async translate(text, signal, contextLines = [], cueId = "", options = {}) {
     const settings = this.getSettings();
     if (!text || !settings.translationEnabled) return "";
     const key = this.cacheKey(text, contextLines);
     if (this.cache.has(key)) return this.cache.get(key) || "";
-    const translatedText = await this.translateWithLocal(text, signal, contextLines, cueId);
+    const translatedText = await this.translateWithLocal(text, signal, contextLines, cueId, options);
     if (translatedText === null || translatedText === "") return "";
     const finalText = translatedText === text ? "" : translatedText;
     this.remember(text, contextLines, finalText);
     return finalText;
   }
 
-  updateHistory(caption) {
-    if (!caption || isNonDialogueCaption(caption)) return;
-    const settings = this.getSettings();
-    const nextHistory = this.captionHistory.filter((entry) => entry !== caption);
+  historyWith(history, caption) {
+    if (!caption || isNonDialogueCaption(caption)) return history;
+    const nextHistory = history.filter((entry) => entry !== caption);
     nextHistory.push(caption);
-    this.captionHistory = nextHistory.slice(-settings.translationContextWindow);
+    return nextHistory.slice(-this.getSettings().translationContextWindow);
+  }
+
+  updateHistory(caption) {
+    this.captionHistory = this.historyWith(this.captionHistory, caption);
   }
 
   resetHistory() {
     this.captionHistory = [];
   }
 
-  async translateWithContext(caption, signal, cueId) {
-    if (isNonDialogueCaption(caption)) {
-      return this.translate(caption, signal, [], cueId);
-    }
+  // The text and context lines a caption is translated with, given the
+  // caption history at the time it shows.
+  requestFor(caption, history = this.captionHistory) {
+    if (isNonDialogueCaption(caption)) return { text: caption, contextLines: [] };
     const captionLines = caption.split("\n");
     if (captionLines.length > 1) {
-      return this.translate(normalizeText(captionLines.join(" ")), signal, [], cueId);
+      return { text: normalizeText(captionLines.join(" ")), contextLines: [] };
     }
     const settings = this.getSettings();
     const { fullText, prefixText } = buildTranslationWindow(
-      this.captionHistory,
+      history,
       caption,
       settings.translationContextWindow
     );
-    if (!fullText || fullText === caption) {
-      return this.translate(caption, signal, [], cueId);
-    }
+    if (!fullText || fullText === caption) return { text: caption, contextLines: [] };
     const contextLines = prefixText
       .split(/\n+/)
       .map((line) => normalizeText(line))
       .filter(Boolean)
       .slice(-settings.localTranslatorCtxSize);
-    return this.translate(caption, signal, contextLines, cueId);
+    return { text: caption, contextLines };
+  }
+
+  async translateWithContext(caption, signal, cueId) {
+    const { text, contextLines } = this.requestFor(caption);
+    return this.translate(text, signal, contextLines, cueId);
+  }
+
+  // A translation already in the cache for the caption on screen, or "".
+  cachedTranslation(caption) {
+    if (!caption || !this.getSettings().translationEnabled) return "";
+    const { text, contextLines } = this.requestFor(caption);
+    return this.cache.get(this.cacheKey(text, contextLines)) || "";
+  }
+
+  // Translates upcoming captions one at a time, as they will be asked for when
+  // they show, so each is in the cache by then. Stops when aborted or when a
+  // request fails.
+  async translateAhead(captions, signal) {
+    let history = this.captionHistory;
+    for (const caption of captions) {
+      if (signal?.aborted || !caption) return;
+      history = this.historyWith(history, caption);
+      const { text, contextLines } = this.requestFor(caption, history);
+      const key = this.cacheKey(text, contextLines);
+      if (this.cache.has(key)) continue;
+      this.aheadSequence += 1;
+      await this.translate(text, signal, contextLines, String(this.aheadSequence), { ahead: true });
+      if (!this.cache.has(key)) return;
+    }
   }
 }

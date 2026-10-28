@@ -21,6 +21,10 @@ semantic versioning.
 
 ### Fixed
 
+- YouTube subtitles no longer blink at each new line. LocalSubs translates
+  the next few lines while the current one shows, so a new line appears in
+  Chinese and English at once, and YouTube's own captions stay hidden in the
+  pauses between lines.
 - Changing subtitle size or background opacity during playback no longer
   re-translates the current line. Dragging those sliders could leave the
   browser model returning empty translations, so LocalSubs fell back to the

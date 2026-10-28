@@ -4,6 +4,7 @@ import {
   asrWordStream,
   createCueTimeline,
   findActiveCue,
+  findUpcomingCues,
   normalizeTrackCues,
   segmentAsrWords
 } from "../src/content/track-cues.js";
@@ -69,6 +70,13 @@ describe("timeline sync", () => {
     expect(findActiveCue(cues, 7000)).toBeNull();
     expect(findActiveCue(cues, 9500)).toBeNull();
     expect(findActiveCue([], 100)).toBeNull();
+  });
+
+  it("lists the cues that start after the current time", () => {
+    expect(findUpcomingCues(cues, 1500, 3).map((cue) => cue.text)).toEqual(["short", "later"]);
+    expect(findUpcomingCues(cues, 2000, 1).map((cue) => cue.text)).toEqual(["later"]);
+    expect(findUpcomingCues(cues, 9000, 3)).toEqual([]);
+    expect(findUpcomingCues(cues, Number.NaN, 3)).toEqual([]);
   });
 });
 

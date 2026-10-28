@@ -247,6 +247,19 @@ export function findActiveCue(cues, timeMs) {
   return null;
 }
 
+// The next count cues that start after timeMs.
+export function findUpcomingCues(cues, timeMs, count) {
+  if (!Array.isArray(cues) || !Number.isFinite(timeMs) || count <= 0) return [];
+  let lo = 0;
+  let hi = cues.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (cues[mid].start <= timeMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return cues.slice(lo, lo + count);
+}
+
 // Serves a track's cues by playback time and reports cue boundaries. Video
 // timeupdate fires only about four times a second, so the timeline polls the
 // clock itself while it has cues. getTimeMs returns null when no cue should
@@ -283,6 +296,10 @@ export function createCueTimeline({ getTimeMs, onCueChange, window: win = window
       lastCueId = "";
     },
     currentCue,
+    upcomingCues(count) {
+      const timeMs = getTimeMs();
+      return timeMs === null ? [] : findUpcomingCues(cues, timeMs, count);
+    },
     get size() {
       return cues.length;
     }

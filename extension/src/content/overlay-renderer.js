@@ -380,4 +380,10 @@ export class OverlayRenderer {
     this.clearLines();
     this.setVisible(false);
   }
+
+  // No line to show, but the native captions stay as they are.
+  enterIdle() {
+    this.clearLines();
+    this.setVisible(false);
+  }
 }

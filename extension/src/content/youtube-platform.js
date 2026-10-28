@@ -217,6 +217,17 @@ export function createYouTubePlatform({
       }
       return null;
     },
+    // With the whole track in hand, the next lines can be translated before
+    // they show.
+    getUpcomingCues(count) {
+      if (mode !== "track" || !videoId || !isVideoPage()) return [];
+      return timeline.upcomingCues(count);
+    },
+    // Between two cues of a captured track the native captions stay hidden:
+    // they run on their own timing and would flash up in every gap.
+    keepsNativeHiddenBetweenCues() {
+      return mode === "track";
+    },
     hasActiveContent() {
       return false;
     },
