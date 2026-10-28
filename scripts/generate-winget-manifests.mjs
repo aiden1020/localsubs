@@ -82,8 +82,8 @@ const manifests = new Map([
       "PackageUrl: https://github.com/aiden1020/localsubs\n" +
       "License: Apache-2.0\n" +
       `LicenseUrl: https://github.com/aiden1020/localsubs/blob/v${options.version}/LICENSE\n` +
-      "ShortDescription: Optional local translation helper for the LocalSubs HBO Max dual-subtitle extension.\n" +
-      "Description: Processes HBO Max English subtitles locally to add Taiwan Traditional Chinese alongside the original text.\n" +
+      "ShortDescription: Optional local translation helper for the LocalSubs dual-subtitle extension.\n" +
+      "Description: Translates English subtitles from streaming sites locally to add Taiwan Traditional Chinese alongside the original text.\n" +
       "Tags:\n" +
       "- ai\n" +
       "- cli\n" +

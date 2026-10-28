@@ -183,7 +183,7 @@ button, summary { font: inherit; }
 .ctrlCc { padding: 3px 6px; border-radius: 4px; background: white; color: var(--ink); }
 .heroActions { margin-top: 28px; display: flex; align-items: center; gap: 24px; }
 .textLink { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700; }
-.trustLine { display: flex; margin: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
+.trustLine { display: flex; flex-wrap: wrap; row-gap: 6px; margin: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
 .trustLine span { padding-right: 14px; margin-right: 14px; border-right: 1px solid var(--line); }
 .trustLine span:last-child { border: 0; margin: 0; padding: 0; }
 
@@ -476,7 +476,9 @@ button, summary { font: inherit; }
   .playerControls span:not(.ctrlPlay) { display: none; }
   .heroActions { width: 100%; margin-top: 28px; flex-direction: column; gap: 14px; }
   .heroActions .button { width: 100%; }
-  .trustLine { font-size: 12px; }
+  .trustLine { font-size: 12px; justify-content: center; }
+  /* The supported sites get their own row, so no divider ends a row. */
+  .trustLine span:first-child { flex-basis: 100%; text-align: center; border: 0; margin: 0; padding: 0; }
   .scoreBar > span { padding-inline: 8px; gap: 3px; font-size: 12px; }
   .scoreLabel { display: none; }
   .scoreLegend { display: flex; gap: 16px; margin: 4px 2px 0; color: rgba(255, 255, 255, .7); font-size: 12px; font-weight: 700; }

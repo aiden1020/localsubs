@@ -492,6 +492,11 @@ code {
   gap: 10px;
 }
 
+/* The site buttons sit in the row as if they were its own children. */
+.site-buttons {
+  display: contents;
+}
+
 .primary-button,
 .secondary-button,
 .copy-button {

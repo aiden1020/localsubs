@@ -41,7 +41,7 @@ brews:
       name: homebrew-localsubs
     directory: Formula
     homepage: https://github.com/aiden1020/localsubs
-    description: "Optional local translation helper for the LocalSubs HBO Max dual-subtitle extension"
+    description: "Optional local translation helper for the LocalSubs dual-subtitle extension"
     dependencies:
       - name: llama.cpp
     install: |

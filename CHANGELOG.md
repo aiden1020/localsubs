@@ -10,7 +10,7 @@ semantic versioning.
 - Link a Windows setup video from the desktop setup steps in extension
   settings.
 - Adjust translation, subtitle size, background opacity, and fast or quality
-  mode from a LocalSubs panel inside the HBO Max player, including in
+  mode from a LocalSubs panel inside the video player, including in
   fullscreen.
 - Show LocalSubs dual subtitles on YouTube videos and Shorts with English
   captions, translated locally like HBO Max. Caption capture comes from the
@@ -18,6 +18,12 @@ semantic versioning.
   machine translation. Auto-generated captions are re-cut at sentence ends
   and split at clause boundaries to at most two subtitle lines, timed for
   reading speed, before translation.
+
+### Changed
+
+- The extension is now named "LocalSubs：YouTube、HBO Max 英文＋台灣繁中雙字幕",
+  naming every supported site. Settings open each supported site from its own
+  button.
 
 ### Fixed
 

@@ -7,7 +7,7 @@
   <h3 align="center">LocalSubs</h3>
 
   <p align="center">
-Free English and Traditional Chinese dual subtitles for HBO Max on macOS and Windows.
+Free English and Traditional Chinese dual subtitles for streaming video on macOS and Windows.
 Keep the original dialogue on screen while Taiwan-optimized Traditional Chinese fills in what you miss. Translation runs locally on your device.
 
 <br />
@@ -31,6 +31,16 @@ Keep the original dialogue on screen while Taiwan-optimized Traditional Chinese 
 </div>
 
 https://github.com/user-attachments/assets/5bf883fb-ed50-43f2-a052-47e8f2c9c415
+
+## Supported sites
+
+| Site | Captions |
+| --- | --- |
+| YouTube | Videos and Shorts with English captions, including auto-generated ones |
+| HBO Max | English subtitles |
+
+Turn on English captions and play; the Chinese line appears above the English
+one. See [Adding a site](#adding-a-site) to support another platform.
 
 ## Requirements
 
@@ -71,7 +81,7 @@ conversion details, benchmark results, and the production parameter choices.
 
 ## Installation
 
-Install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/localsubs：hbo-max-即時、完全本地/dpacileladlkfgdjbdjdjhgnepicejjb).
+Install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/dpacileladlkfgdjbdjdjhgnepicejjb).
 New installations use WebLLM by default, so no helper is required. Open
 LocalSubs settings to download and prepare the browser model before playback.
 
@@ -165,6 +175,28 @@ then verifies model storage, engine initialization, and a translation request.
 Omit `--remote` to serve pre-converted artifacts from
 `dist/LocalSubs-EN-ZH-TW-0.6B-q4f16_1-current-MLC` instead. Add `--headed` to
 keep the browser UI visible while the test runs.
+
+### Adding a site
+
+Each streaming site has an adapter in `extension/src/content/` that finds the
+player and reports the caption on screen; translation, rendering and the
+in-player panel are shared. To add a site:
+
+1. Write an adapter that follows the contract in
+   `extension/src/content/platform.js`. A site that delivers whole caption
+   tracks can reuse `track-cues.js`, as the YouTube adapter does.
+2. Add the site's name, home page and domains to
+   `extension/src/core/supported-sites.js`, and its adapter to
+   `extension/src/content/platforms.js`.
+3. Add its domains to `host_permissions` and `content_scripts` in
+   `manifest.json`, and name it in the manifest `name` and `description`, which
+   are the store listing's title and summary.
+4. Add it to [Supported sites](#supported-sites) above and to `supportedSites`
+   in `website/app/site.ts`.
+
+`npm test` checks that the adapters, the site list and the manifest agree, and
+`npm run check` fails if the README, the website or the manifest name or
+description misses a site.
 
 Experiment bundles are built separately and never enter the production ZIP:
 
