@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { DemoVideo } from "./demo-video";
 import { PlayerDemo } from "./player-demo";
 import { SiteHeader } from "./site-header";
 import { siteDescription, siteUrl, storeUrl, supportedSites, supportedSitesText } from "./site";
@@ -146,10 +147,10 @@ export default function Home() {
             <div><h3>準備翻譯</h3><p>第一次使用時，會先把翻譯模型下載到電腦上，約 290 MB，大概幾分鐘。只需要做這一次。</p></div>
             <div className="stepVisual stepProgress" aria-hidden="true"><small>準備翻譯</small><div><i /></div></div>
           </li>
-          <li>
+          <li className="stepWithVideo">
             <span>03</span>
             <div><h3>打開影片</h3><p>{`在 ${supportedSitesText} 開英文字幕，按下播放，中文就會出現在英文上面。`}</p></div>
-            <div className="stepVisual stepCue" aria-hidden="true"><span>饒了我吧</span><b>Cut me some slack.</b></div>
+            <DemoVideo />
           </li>
         </ol>
       </section>

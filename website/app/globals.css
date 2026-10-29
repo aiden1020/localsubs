@@ -235,8 +235,17 @@ button, summary { font: inherit; }
 .stepProgress small { font-size: 12px; }
 .stepProgress > div { height: 8px; border-radius: 8px; background: var(--paper-deep); overflow: hidden; }
 .stepProgress i { display: block; height: 100%; border-radius: inherit; background: var(--acid); transform-origin: left; animation: download 3.6s ease-in-out infinite; }
-.stepCue { width: 170px; padding: 14px 10px 10px; border-radius: 10px; background: radial-gradient(circle at 70% 20%, #3a3020, #11120f 70%); color: white; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.stepCue span { color: #fff3cf; }
+/* Step 3 carries the demo recording on its own row under the text. The card
+   stays put on hover so the video does not move while it plays. */
+.stepWithVideo:hover { transform: none; }
+.stepVideo { grid-column: 2 / -1; position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #0b0b0c; }
+.stepVideo button { all: unset; position: relative; display: block; width: 100%; height: 100%; cursor: pointer; }
+.stepVideo button:focus-visible { outline: 3px solid var(--acid); outline-offset: -3px; border-radius: 12px; }
+.stepVideo img, .stepVideo iframe { display: block; width: 100%; height: 100%; border: 0; object-fit: cover; }
+.stepVideoPlay { position: absolute; left: 50%; top: 50%; width: 68px; height: 68px; margin: -34px 0 0 -34px; border-radius: 50%; background: var(--acid); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); transition: transform .2s ease; }
+.stepVideoPlay::before { content: ""; position: absolute; left: 27px; top: 22px; border-style: solid; border-width: 12px 0 12px 20px; border-color: transparent transparent transparent var(--ink); }
+.stepVideo button:hover .stepVideoPlay { transform: scale(1.07); }
+.stepVideoLabel { position: absolute; left: 14px; bottom: 12px; padding: 6px 11px; border-radius: 999px; background: rgba(17, 18, 15, .78); color: #fff; font-size: 12px; font-weight: 700; }
 
 /* Quality */
 .quality { position: relative; overflow: hidden; background: var(--ink); color: white; padding-block: 116px; }
@@ -495,6 +504,7 @@ button, summary { font: inherit; }
   .sectionHeading { margin-bottom: 40px; }
   .stepList li { grid-template-columns: 40px 1fr; padding: 22px 18px; gap: 14px; }
   .stepVisual { grid-column: 2; justify-self: start; }
+  .stepVideo { grid-column: 1 / -1; }
   .matchup { padding: 20px 16px; }
   .matchupHead { flex-direction: column; gap: 4px; }
   .matchupHead h3 { font-size: 18px; }
@@ -526,7 +536,7 @@ button, summary { font: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .button, .stepList li { transition: none; }
+  .button, .stepList li, .stepVideoPlay { transition: none; }
   .cueCard, .demoToggle::after, .playerControls > div i, .progressHead, .shot, .shotArt, .grain, .lightning, .beam, .fogDrift, .neonFlicker, .fireFlicker, .walkerBob, .rainFall, .flame, .ember, .smoke,
   .sceneSun, .sceneTwinkle, .sceneBokeh, .sunRays, .wave i, .ctaMarquee, .stepProgress i,
   .scoreBar > span, .sectionHeading, .qualityHead, .matchup, .phrasingGrid figure, .stepList li, .audienceGrid article {
