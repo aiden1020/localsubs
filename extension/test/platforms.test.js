@@ -57,4 +57,13 @@ describe("platform registry", () => {
       }
     }
   });
+
+  // The Chrome Web Store rejects permissions the extension does not use. Model
+  // downloads need only the CSP connect-src entry: Hugging Face sends CORS
+  // headers for the extension's origin.
+  it("requests host permission only for supported sites", () => {
+    for (const host of manifest.host_permissions.map(patternHost)) {
+      expect(findPlatform(host), host).not.toBeNull();
+    }
+  });
 });
