@@ -10,11 +10,15 @@ export const DEFAULT_SETTINGS = Object.freeze({
   targetLanguage: "zh-Hant",
   fontSize: 30,
   overlayBackgroundOpacity: 0.22,
-  translationContextWindow: 3,
-  localTranslatorCtxSize: 1,
+  // Earlier subtitle lines sent with each line as translation context.
+  translationContextLines: 1,
   translationCacheLimit: 120,
   optionsLanguage: "zh-Hant"
 });
+
+// Settings that translationContextLines replaced. They are still read so a
+// stored choice carries over.
+export const LEGACY_SETTING_KEYS = Object.freeze(["translationContextWindow", "localTranslatorCtxSize"]);
 
 export function clampNumber(value, min, max, fallback) {
   const nextValue = Number.isFinite(value) ? value : fallback;
@@ -50,17 +54,11 @@ export function sanitizeSettings(rawSettings = {}) {
       0.95,
       DEFAULT_SETTINGS.overlayBackgroundOpacity
     ),
-    translationContextWindow: clampNumber(
-      Number.parseInt(rawSettings.translationContextWindow, 10),
-      1,
-      5,
-      DEFAULT_SETTINGS.translationContextWindow
-    ),
-    localTranslatorCtxSize: clampNumber(
-      Number.parseInt(rawSettings.localTranslatorCtxSize, 10),
+    translationContextLines: clampNumber(
+      Number.parseInt(rawSettings.translationContextLines ?? legacyContextLines(rawSettings), 10),
       0,
-      5,
-      DEFAULT_SETTINGS.localTranslatorCtxSize
+      3,
+      DEFAULT_SETTINGS.translationContextLines
     ),
     translationCacheLimit: clampNumber(
       Number.parseInt(rawSettings.translationCacheLimit, 10),
@@ -70,6 +68,18 @@ export function sanitizeSettings(rawSettings = {}) {
     ),
     optionsLanguage: rawSettings.optionsLanguage === "en" ? "en" : DEFAULT_SETTINGS.optionsLanguage
   };
+}
+
+// The old "context window" counted the line being translated, and "local
+// context size" then capped the earlier lines, so the earlier lines sent were
+// the smaller of window - 1 and that cap.
+function legacyContextLines(rawSettings) {
+  const { translationContextWindow, localTranslatorCtxSize } = rawSettings;
+  if (translationContextWindow === undefined && localTranslatorCtxSize === undefined) return undefined;
+  const window = Number.parseInt(translationContextWindow ?? 3, 10);
+  const cap = Number.parseInt(localTranslatorCtxSize ?? 1, 10);
+  if (!Number.isFinite(window) || !Number.isFinite(cap)) return undefined;
+  return Math.min(window - 1, cap);
 }
 
 export function inferenceBackendForInstall(reason, storedBackend) {
@@ -83,6 +93,9 @@ export function migrateStoredSettings(stored = {}) {
   const migrated = { ...DEFAULT_SETTINGS, ...stored };
   if (!stored.modelTier && stored.helperModelChannel) {
     migrated.modelTier = tierForHelperChannel(stored.helperModelChannel);
+  }
+  if (stored.translationContextLines === undefined) {
+    migrated.translationContextLines = legacyContextLines(stored) ?? DEFAULT_SETTINGS.translationContextLines;
   }
   return sanitizeSettings(migrated);
 }
