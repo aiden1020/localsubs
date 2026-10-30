@@ -33,7 +33,7 @@ export class TranslationController {
       previous.targetLanguage !== next.targetLanguage ||
       previous.inferenceBackend !== next.inferenceBackend ||
       previous.hideNativeSubtitles !== next.hideNativeSubtitles ||
-      previous.localTranslatorCtxSize !== next.localTranslatorCtxSize ||
+      previous.translationContextLines !== next.translationContextLines ||
       previous.showPendingOriginalText !== next.showPendingOriginalText
     ) {
       this.cache.clear();
@@ -41,7 +41,7 @@ export class TranslationController {
     if (previous.translationCacheLimit !== next.translationCacheLimit) {
       this.trimCache();
     }
-    if (previous.translationContextWindow !== next.translationContextWindow) {
+    if (previous.translationContextLines !== next.translationContextLines) {
       this.resetHistory();
     }
   }
@@ -52,7 +52,7 @@ export class TranslationController {
       text,
       contextLines,
       targetLanguage: settings.targetLanguage,
-      contextSize: settings.localTranslatorCtxSize
+      contextSize: settings.translationContextLines
     });
   }
 
@@ -83,7 +83,7 @@ export class TranslationController {
           cueId,
           currentText: text,
           contextLines,
-          contextLimit: settings.localTranslatorCtxSize,
+          contextLimit: settings.translationContextLines,
           sourceLanguage: "en",
           targetLanguage: settings.targetLanguage
         })
@@ -131,7 +131,8 @@ export class TranslationController {
     if (!caption || isNonDialogueCaption(caption)) return history;
     const nextHistory = history.filter((entry) => entry !== caption);
     nextHistory.push(caption);
-    return nextHistory.slice(-this.getSettings().translationContextWindow);
+    // The history holds the line being translated plus its context lines.
+    return nextHistory.slice(-(this.getSettings().translationContextLines + 1));
   }
 
   updateHistory(caption) {
@@ -150,18 +151,15 @@ export class TranslationController {
     if (captionLines.length > 1) {
       return { text: normalizeText(captionLines.join(" ")), contextLines: [] };
     }
-    const settings = this.getSettings();
-    const { fullText, prefixText } = buildTranslationWindow(
-      history,
-      caption,
-      settings.translationContextWindow
-    );
+    const lines = this.getSettings().translationContextLines;
+    if (lines === 0) return { text: caption, contextLines: [] };
+    const { fullText, prefixText } = buildTranslationWindow(history, caption, lines + 1);
     if (!fullText || fullText === caption) return { text: caption, contextLines: [] };
     const contextLines = prefixText
       .split(/\n+/)
       .map((line) => normalizeText(line))
       .filter(Boolean)
-      .slice(-settings.localTranslatorCtxSize);
+      .slice(-lines);
     return { text: caption, contextLines };
   }
 

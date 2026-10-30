@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, migrateStoredSettings } from "./core/settings.js";
+import { DEFAULT_SETTINGS, LEGACY_SETTING_KEYS, migrateStoredSettings } from "./core/settings.js";
 import {
   MODEL_CATALOG,
   MODEL_TIERS,
@@ -84,8 +84,7 @@ const I18N = {
     overlayOpacity: "字幕背景透明度",
     advanced: "進階設定",
     showPendingOriginal: "翻譯時先顯示原文",
-    translationContextWindow: "字幕上下文視窗",
-    localContextSize: "本機上下文大小",
+    translationContextLines: "參考前文句數",
     translationCacheSize: "翻譯快取大小",
     saved: "已儲存",
     checkingLocalModel: "正在確認翻譯服務",
@@ -174,8 +173,7 @@ const I18N = {
     overlayOpacity: "Overlay background opacity",
     advanced: "Advanced",
     showPendingOriginal: "Show original while translating",
-    translationContextWindow: "Translation context window",
-    localContextSize: "Local context size",
+    translationContextLines: "Earlier lines for context",
     translationCacheSize: "Translation cache size",
     saved: "Saved",
     checkingLocalModel: "Checking translation service",
@@ -233,16 +231,14 @@ const fields = {
   showPendingOriginalText: document.getElementById("show-pending-original-text"),
   fontSize: document.getElementById("font-size"),
   overlayBackgroundOpacity: document.getElementById("overlay-background-opacity"),
-  translationContextWindow: document.getElementById("translation-context-window"),
-  localTranslatorCtxSize: document.getElementById("local-translator-ctx-size"),
+  translationContextLines: document.getElementById("translation-context-lines"),
   translationCacheLimit: document.getElementById("translation-cache-limit")
 };
 
 const outputs = {
   fontSize: document.getElementById("font-size-value"),
   overlayBackgroundOpacity: document.getElementById("overlay-background-opacity-value"),
-  translationContextWindow: document.getElementById("translation-context-window-value"),
-  localTranslatorCtxSize: document.getElementById("local-translator-ctx-size-value"),
+  translationContextLines: document.getElementById("translation-context-lines-value"),
   translationCacheLimit: document.getElementById("translation-cache-limit-value")
 };
 
@@ -674,8 +670,7 @@ async function selectEngine(engine) {
 function updateOutputs(settings) {
   outputs.fontSize.textContent = `${settings.fontSize}px`;
   outputs.overlayBackgroundOpacity.textContent = `${Math.round(settings.overlayBackgroundOpacity * 100)}%`;
-  outputs.translationContextWindow.textContent = `${settings.translationContextWindow}`;
-  outputs.localTranslatorCtxSize.textContent = `${settings.localTranslatorCtxSize}`;
+  outputs.translationContextLines.textContent = `${settings.translationContextLines}`;
   outputs.translationCacheLimit.textContent = `${settings.translationCacheLimit}`;
 }
 
@@ -687,8 +682,7 @@ function readFormSettings() {
     targetLanguage: DEFAULT_SETTINGS.targetLanguage,
     fontSize: Number.parseInt(fields.fontSize.value, 10),
     overlayBackgroundOpacity: Number.parseFloat(fields.overlayBackgroundOpacity.value),
-    translationContextWindow: Number.parseInt(fields.translationContextWindow.value, 10),
-    localTranslatorCtxSize: Number.parseInt(fields.localTranslatorCtxSize.value, 10),
+    translationContextLines: Number.parseInt(fields.translationContextLines.value, 10),
     translationCacheLimit: Number.parseInt(fields.translationCacheLimit.value, 10)
   };
 }
@@ -699,15 +693,15 @@ function applySettingsToForm(settings) {
   fields.showPendingOriginalText.checked = settings.showPendingOriginalText;
   fields.fontSize.value = `${settings.fontSize}`;
   fields.overlayBackgroundOpacity.value = `${settings.overlayBackgroundOpacity}`;
-  fields.translationContextWindow.value = `${settings.translationContextWindow}`;
-  fields.localTranslatorCtxSize.value = `${settings.localTranslatorCtxSize}`;
+  fields.translationContextLines.value = `${settings.translationContextLines}`;
   fields.translationCacheLimit.value = `${settings.translationCacheLimit}`;
   updateOutputs(settings);
   renderAll();
 }
 
 async function loadSettings() {
-  const syncKeys = Object.keys(DEFAULT_SETTINGS).filter((key) => key !== "helperModelChannel");
+  const syncKeys = [...Object.keys(DEFAULT_SETTINGS), ...LEGACY_SETTING_KEYS]
+    .filter((key) => key !== "helperModelChannel");
   const [stored, localSettings] = await Promise.all([
     chrome.storage.sync.get(syncKeys),
     chrome.storage.local.get({ helperModelChannel: "stable" })

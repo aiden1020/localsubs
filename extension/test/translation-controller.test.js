@@ -54,6 +54,20 @@ describe("TranslationController", () => {
     });
   });
 
+  it("sends as many earlier lines as the context setting, and none at 0", () => {
+    const state = createController();
+    for (const line of ["One.", "Two.", "Three.", "Four."]) state.controller.updateHistory(line);
+    expect(state.controller.requestFor("Four.").contextLines).toEqual(["Three."]);
+
+    state.setSettings({ translationContextLines: 3 });
+    for (const line of ["One.", "Two.", "Three.", "Four."]) state.controller.updateHistory(line);
+    expect(state.controller.requestFor("Four.").contextLines).toEqual(["One.", "Two.", "Three."]);
+
+    state.setSettings({ translationContextLines: 0 });
+    for (const line of ["One.", "Two.", "Three.", "Four."]) state.controller.updateHistory(line);
+    expect(state.controller.requestFor("Four.").contextLines).toEqual([]);
+  });
+
   it("does not cache an empty translation", async () => {
     const sendMessage = vi.fn()
       .mockResolvedValueOnce({ ok: true, translation: "", superseded: false })
@@ -111,7 +125,7 @@ describe("TranslationController", () => {
   it("clears cache when translation context settings change", async () => {
     const state = createController();
     await state.controller.translate("Ready?", undefined, [], "1");
-    state.setSettings({ localTranslatorCtxSize: 2 });
+    state.setSettings({ translationContextLines: 2 });
     await state.controller.translate("Ready?", undefined, [], "2");
     expect(state.sendMessage).toHaveBeenCalledTimes(2);
   });
