@@ -3,7 +3,12 @@
 All notable user-facing changes are documented in this file. LocalSubs uses
 semantic versioning.
 
-## [0.7.1] - 2026-10-29
+Starting after 0.7.0, the Chrome extension and the native helper are released
+separately with their own versions. Entries are headed "extension" or
+"helper"; a helper update is published only when the helper changes. Versions
+up to 0.7.0 covered both.
+
+## [extension 0.7.1] - 2026-10-29
 
 ### Changed
 
@@ -11,11 +16,7 @@ semantic versioning.
   downloads work without it, so the extension now asks only for access to the
   sites it adds subtitles to.
 
-### Native helper
-
-- No changes. The helper is republished as 0.7.1 only because every LocalSubs
-  component shares one version; updating it is optional. Helpers from 0.6.0
-  and 0.7.0 keep working with this extension because they use helper API 1.
+Works with helper 0.6.0 and 0.7.0 (helper API 1). The helper stays at 0.7.0.
 
 ## [0.7.0] - 2026-10-28
 
@@ -155,7 +156,7 @@ semantic versioning.
   Windows implementation.
 - Setup selects the best available Windows backend with `--backend auto`.
 
-[0.7.1]: https://github.com/aiden1020/localsubs/releases/tag/v0.7.1
+[extension 0.7.1]: https://github.com/aiden1020/localsubs/releases/tag/extension-v0.7.1
 [0.7.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.7.0
 [0.6.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.6.0
 [0.5.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.5.0
