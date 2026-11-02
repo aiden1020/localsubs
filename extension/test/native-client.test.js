@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { NativeClient } from "../src/background/native-client.js";
+import { NativeHostError } from "../src/core/errors.js";
 
 function event() {
   const listeners = [];
@@ -119,5 +120,15 @@ describe("NativeClient", () => {
     await expect(next).resolves.toEqual({ ok: true });
     expect(connectNative).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
+  });
+
+  it("keeps the error code when the connection cannot be opened", async () => {
+    const client = createClient(null, {
+      connectNative: vi.fn(() => {
+        throw new NativeHostError("native_permission_required", "Allow LocalSubs to communicate with the desktop component.");
+      })
+    });
+    await expect(client.send("health", {})).rejects.toMatchObject({ code: "native_permission_required" });
+    expect(client.pending.size).toBe(0);
   });
 });

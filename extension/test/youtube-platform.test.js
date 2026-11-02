@@ -137,6 +137,27 @@ describe("YouTube platform adapter", () => {
     expect(platform.getCurrentCue()).toMatchObject({ text: "rolling words", source: "dom" });
   });
 
+  it("says so when the player has no captions to turn on", () => {
+    document.querySelector(".ytp-subtitles-button").setAttribute("aria-disabled", "true");
+    platform.start(events);
+    vi.advanceTimersByTime(5000);
+    expect(events.showStatus).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(15000);
+    expect(events.showStatus).toHaveBeenCalledExactlyOnceWith("noCaptions");
+  });
+
+  it("does not report missing captions once the CC button becomes usable", () => {
+    const button = document.querySelector(".ytp-subtitles-button");
+    const click = vi.spyOn(button, "click");
+    button.setAttribute("aria-disabled", "true");
+    platform.start(events);
+    vi.advanceTimersByTime(2000);
+    button.removeAttribute("aria-disabled");
+    vi.advanceTimersByTime(15000);
+    expect(events.showStatus).not.toHaveBeenCalled();
+    expect(click).toHaveBeenCalled();
+  });
+
   it("leaves non-English tracks alone and says so once", () => {
     platform.start(events);
     const message = {
@@ -147,7 +168,7 @@ describe("YouTube platform adapter", () => {
     capture(message);
     capture(message);
     expect(platform.getCurrentCue()).toBeNull();
-    expect(events.showStatus).toHaveBeenCalledTimes(1);
+    expect(events.showStatus).toHaveBeenCalledExactlyOnceWith("notEnglish");
   });
 
   it("hides cues while an ad plays", () => {

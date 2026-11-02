@@ -42,11 +42,17 @@ export function createWebLLMManager({ createTranslator, getTier }) {
     })));
   }
 
+  async function removeModel(tier) {
+    const { key, translator } = translatorFor(tier);
+    if (loadedTier === key) loadedTier = null;
+    return translator.removeCache();
+  }
+
   async function unload() {
     const pending = [...translators.values()].map((translator) => translator.unload().catch(() => {}));
     loadedTier = null;
     await Promise.all(pending);
   }
 
-  return { checkTranslator, listModels, translateSubtitle, unload };
+  return { checkTranslator, listModels, removeModel, translateSubtitle, unload };
 }

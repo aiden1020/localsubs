@@ -1,15 +1,17 @@
+import { MODEL_CATALOG, normalizeModelTier } from "../core/model-catalog.js";
 import { DEFAULT_SETTINGS, LEGACY_SETTING_KEYS, sanitizeSettings } from "../core/settings.js";
 import { normalizeCaption } from "./captions.js";
 import { OverlayRenderer } from "./overlay-renderer.js";
 import { createPlatformForHost } from "./platforms.js";
 import { PlayerPanel } from "./player-panel.js";
+import { SetupCard } from "./setup-card.js";
 import { TranslationController } from "./translation-controller.js";
 import { shouldApplyTranslationResult } from "./translation-request.js";
 
 (() => {
   const BUILD = "0.7.2";
-  const STATUS_OVERLAY_ID = "localsubs-status";
-  const STATUS_HIDE_AFTER_MS = 6500;
+  const NOTICE_HIDE_AFTER_MS = 8000;
+  const DOWNLOAD_POLL_MS = 1000;
   const TRANSLATE_AHEAD_CUES = 3;
   // Settings that only change how the overlay looks. Changing them must not
   // re-translate: a slider dragged during playback would otherwise send a
@@ -36,13 +38,16 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   let needsReposition = false;
   let captionDetectedAt = 0;
   let lastTranslationLatencyMs = 0;
-  let statusOverlay = null;
-  let statusOverlayTimer = null;
   let captionHideTimer = null;
   let captionMissingSince = 0;
   let modelPollTimer = null;
   let modelPollGeneration = 0;
-  let modelReadyShown = false;
+  // A download or load card was shown, so "ready" is worth saying.
+  let modelSetupShown = false;
+  let warmupInFlight = false;
+  let checkInFlight = false;
+  // The model needs downloading and is waiting for a video to play.
+  let downloadPending = null;
   let settings = { ...DEFAULT_SETTINGS };
   const platform = createPlatformForHost(window.location.hostname, { getSettings: () => settings });
   if (!platform) {
@@ -62,70 +67,32 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   const translationController = new TranslationController({
     getSettings: () => settings,
     sendMessage: (message) => chrome.runtime.sendMessage(message),
-    showStatus: (message) => showStatusMessage(message)
+    showStatus: (error) => showTranslatorError(error)
   });
 
-  function ensureStatusOverlay() {
-    if (statusOverlay?.isConnected) {
-      return statusOverlay;
-    }
+  const setupCard = new SetupCard({
+    getSettings: () => settings,
+    getHost: () => overlayRenderer.getHost(),
+    openOptions: () => chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" })
+  });
 
-    statusOverlay = document.getElementById(STATUS_OVERLAY_ID);
-
-    if (!statusOverlay) {
-      statusOverlay = document.createElement("button");
-      statusOverlay.id = STATUS_OVERLAY_ID;
-      statusOverlay.type = "button";
-      statusOverlay.style.position = "fixed";
-      statusOverlay.style.right = "18px";
-      statusOverlay.style.bottom = "18px";
-      statusOverlay.style.zIndex = "2147483647";
-      statusOverlay.style.maxWidth = "min(360px, calc(100vw - 36px))";
-      statusOverlay.style.padding = "12px 14px";
-      statusOverlay.style.border = "1px solid rgba(255, 255, 255, 0.22)";
-      statusOverlay.style.borderRadius = "8px";
-      statusOverlay.style.background = "rgba(14, 18, 25, 0.94)";
-      statusOverlay.style.color = "#ffffff";
-      statusOverlay.style.font = "600 13px/1.35 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-      statusOverlay.style.textAlign = "left";
-      statusOverlay.style.boxShadow = "0 12px 34px rgba(0, 0, 0, 0.38)";
-      statusOverlay.style.cursor = "pointer";
-      statusOverlay.style.display = "none";
-      statusOverlay.addEventListener("click", () => {
-        chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" });
-      });
-    }
-
-    document.documentElement.appendChild(statusOverlay);
-    return statusOverlay;
-  }
-
-  function showStatusMessage(message, persistent = false) {
-    if (window !== window.top) {
-      return;
-    }
-
-    if (document.fullscreenElement) {
-      clearStatusMessage();
-      return;
-    }
-
-    const node = ensureStatusOverlay();
-    node.textContent = message;
-    node.style.display = "block";
-    window.clearTimeout(statusOverlayTimer);
-    if (!persistent) {
-      statusOverlayTimer = window.setTimeout(() => {
-        node.style.display = "none";
-      }, STATUS_HIDE_AFTER_MS);
+  // A failed check or translation, as the card that says what to do about it.
+  function showTranslatorError(error) {
+    const code = error?.code;
+    if (code === "model_loading") {
+      // The model poll shows download and load progress; start it if needed.
+      if (!warmupInFlight && !checkInFlight && modelPollTimer === null) startModelPolling();
+    } else if (code === "webgpu_unavailable" || code === "webgpu_feature_missing") {
+      setupCard.show("noGpu");
+    } else if (code === "native_permission_required") {
+      setupCard.show("nativePermission");
+    } else {
+      setupCard.show("unavailable", { detail: error?.message || "" });
     }
   }
 
   function clearStatusMessage() {
-    window.clearTimeout(statusOverlayTimer);
-    if (statusOverlay) {
-      statusOverlay.style.display = "none";
-    }
+    setupCard.hide();
   }
 
   function applySettings(nextSettings) {
@@ -137,12 +104,14 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
 
     overlayRenderer.applySettings();
     playerPanel.applySettings();
+    setupCard.applySettings();
 
     if (!settings.translationEnabled) {
       modelPollGeneration += 1;
       window.clearTimeout(modelPollTimer);
       modelPollTimer = null;
-      modelReadyShown = false;
+      modelSetupShown = false;
+      downloadPending = null;
       clearStatusMessage();
       activeCaptionRequestId += 1;
       activeTranslationAbortController?.abort();
@@ -407,6 +376,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
       video.addEventListener("timeupdate", scheduleDetect, { passive: true });
       video.addEventListener("seeked", scheduleDetect, { passive: true });
       video.addEventListener("playing", scheduleDetect, { passive: true });
+      video.addEventListener("playing", startPendingDownload, { passive: true });
       video.addEventListener("loadedmetadata", scheduleDetect, { passive: true });
     }
   }
@@ -419,7 +389,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
       },
       onReset: resetCaptionState,
       onSubtitleNode: (node) => overlayRenderer.setSubtitleNode(node),
-      showStatus: (message) => showStatusMessage(message)
+      showStatus: (notice) => setupCard.show(notice, { autoHideMs: NOTICE_HIDE_AFTER_MS })
     });
     bindVideoListeners();
     detectCaption();
@@ -440,7 +410,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
   });
 
   document.addEventListener("fullscreenchange", () => {
-    clearStatusMessage();
+    setupCard.updateHost();
     overlayRenderer.updateHost();
     playerPanel.updateHost();
     needsReposition = true;
@@ -451,60 +421,102 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     chrome.storage.onChanged.addListener(handleStorageChange);
   }
 
+  function modelSize() {
+    return MODEL_CATALOG[normalizeModelTier(settings.modelTier)].webllm.downloadMB;
+  }
+
+  function showModelProgress({ cached, progress, legacyCached }) {
+    const state = cached ? "preparing" : legacyCached ? "upgrading" : "downloading";
+    // WebLLM reports progress per finished shard, so it sits at 0 for a while:
+    // show the bar as busy until there's a real number.
+    setupCard.show(state, { progress: progress > 0 ? progress : null, size: modelSize() });
+    modelSetupShown = true;
+  }
+
+  function handleModelReady() {
+    if (modelSetupShown) {
+      modelSetupShown = false;
+      setupCard.show("ready", { autoHideMs: 4000 });
+    }
+    // Translate the subtitle that showed while the model was loading.
+    if (lastCaption && !lastTranslation && !activeTranslationAbortController) {
+      activeCaptionRequestId += 1;
+      captionDetectedAt = Date.now();
+      overlayRenderer.enterPending(lastCaption);
+      void renderTranslationForCaption(lastCaption, activeCaptionRequestId);
+    }
+  }
+
+  function isVideoPlaying() {
+    return Array.from(document.querySelectorAll("video")).some((video) => !video.paused && !video.ended);
+  }
+
+  // Downloads or loads the model in the background, then checks again. A
+  // failure is shown instead of retried, so a broken download doesn't loop.
+  function startWarmup(generation) {
+    if (warmupInFlight) return;
+    warmupInFlight = true;
+    void chrome.runtime.sendMessage({ type: "CHECK_TRANSLATOR", warmup: true })
+      .catch((error) => ({ ok: false, error: { message: error instanceof Error ? error.message : "" } }))
+      .then((result) => {
+        warmupInFlight = false;
+        if (!settings.translationEnabled || generation !== modelPollGeneration) return;
+        window.clearTimeout(modelPollTimer);
+        modelPollTimer = null;
+        if (result?.ok) {
+          handleModelReady();
+        } else if (result?.error) {
+          showTranslatorError(result.error);
+        } else {
+          void pollUntilModelReady(generation);
+        }
+      });
+  }
+
+  // A model that isn't downloaded starts downloading once a video plays.
+  function startPendingDownload() {
+    if (!downloadPending || downloadPending.generation !== modelPollGeneration) return;
+    const { generation, legacyCached } = downloadPending;
+    downloadPending = null;
+    showModelProgress({ cached: false, progress: 0, legacyCached });
+    startWarmup(generation);
+    modelPollTimer = window.setTimeout(() => pollUntilModelReady(generation), DOWNLOAD_POLL_MS);
+  }
+
   async function pollUntilModelReady(generation) {
-    if (!settings.translationEnabled || generation !== modelPollGeneration) {
+    modelPollTimer = null;
+    const stale = () => !settings.translationEnabled || generation !== modelPollGeneration;
+    if (stale()) {
       clearStatusMessage();
       return;
     }
+    let result;
+    checkInFlight = true;
     try {
-      let result = await chrome.runtime.sendMessage({
-        type: "CHECK_TRANSLATOR",
-        warmup: false
-      });
-      if (!settings.translationEnabled || generation !== modelPollGeneration) {
-        clearStatusMessage();
-        return;
-      }
-      if (result?.needsInitialization) {
-        showStatusMessage("LocalSubs: Loading cached WebLLM model...", true);
-        result = await chrome.runtime.sendMessage({
-          type: "CHECK_TRANSLATOR",
-          warmup: true
-        });
-        if (!settings.translationEnabled || generation !== modelPollGeneration) {
-          clearStatusMessage();
-          return;
-        }
-      }
-      if (result?.ok) {
-        if (!modelReadyShown) {
-          modelReadyShown = true;
-          showStatusMessage("LocalSubs: Model ready");
-        }
-        if (lastCaption && !lastTranslation && !activeTranslationAbortController) {
-          activeCaptionRequestId += 1;
-          captionDetectedAt = Date.now();
-          overlayRenderer.enterPending(lastCaption);
-          void renderTranslationForCaption(lastCaption, activeCaptionRequestId);
-        }
-      } else if (result?.loading) {
-        showStatusMessage("LocalSubs: Loading model...", true);
-        modelPollTimer = window.setTimeout(() => pollUntilModelReady(generation), 4000);
-      } else if (result?.needsDownload) {
-        showStatusMessage(
-          result.legacyCached
-            ? "LocalSubs: A new translation model is available. Click to upgrade in settings."
-            : "LocalSubs: WebLLM model will download with the first subtitle. Click for settings.",
-          true
-        );
-      } else if (result?.needsInitialization) {
-        showStatusMessage("LocalSubs: WebLLM model is cached and ready to load.");
-      } else if (result?.error?.code === "incompatible_api") {
-        showStatusMessage(`LocalSubs: ${result.error.message}`, true);
-      } else {
-        clearStatusMessage();
-      }
+      result = await chrome.runtime.sendMessage({ type: "CHECK_TRANSLATOR", warmup: false });
     } catch {
+      clearStatusMessage();
+      return;
+    } finally {
+      checkInFlight = false;
+    }
+    if (stale()) {
+      clearStatusMessage();
+      return;
+    }
+
+    if (result?.ok) {
+      handleModelReady();
+    } else if (result?.loading || result?.needsInitialization) {
+      if (result.needsInitialization) startWarmup(generation);
+      showModelProgress(result);
+      modelPollTimer = window.setTimeout(() => pollUntilModelReady(generation), DOWNLOAD_POLL_MS);
+    } else if (result?.needsDownload) {
+      downloadPending = { generation, legacyCached: Boolean(result.legacyCached) };
+      if (isVideoPlaying()) startPendingDownload();
+    } else if (result?.error) {
+      showTranslatorError(result.error);
+    } else {
       clearStatusMessage();
     }
   }
@@ -514,8 +526,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
     const generation = modelPollGeneration;
     window.clearTimeout(modelPollTimer);
     modelPollTimer = null;
-    modelReadyShown = false;
-    showStatusMessage("LocalSubs: Starting model...", true);
+    downloadPending = null;
     void pollUntilModelReady(generation);
   }
 

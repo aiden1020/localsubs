@@ -1,9 +1,10 @@
 # Privacy
 
-LocalSubs performs subtitle translation on the user's device. Subtitle text is
-sent from the browser extension to the LocalSubs native helper and local
-llama.cpp process; it is not sent to the LocalSubs developer or a hosted
-translation service.
+LocalSubs performs subtitle translation on the user's device. By default the
+extension translates subtitle text in the browser with WebGPU. If the user
+chooses the desktop component, subtitle text is sent to the LocalSubs native
+helper and local llama.cpp process instead. In both cases it is not sent to
+the LocalSubs developer or a hosted translation service.
 
 LocalSubs does not include telemetry, analytics, advertising, or crash-report
 uploading. Logs remain in the LocalSubs application data directory unless the

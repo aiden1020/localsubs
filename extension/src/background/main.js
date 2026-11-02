@@ -1,4 +1,4 @@
-import { errorPayload } from "../core/errors.js";
+import { NativeHostError, errorPayload } from "../core/errors.js";
 import { inferenceBackendForInstall } from "../core/settings.js";
 import { createInferenceRouter } from "./inference-router.js";
 import { NativeClient } from "./native-client.js";
@@ -13,7 +13,17 @@ const NATIVE_REQUEST_TIMEOUT_MS = 10000;
 const nativeClient = new NativeClient({
   hostName: NATIVE_HOST_NAME,
   timeoutMs: NATIVE_REQUEST_TIMEOUT_MS,
-  connectNative: (hostName) => chrome.runtime.connectNative(hostName),
+  // nativeMessaging is an optional permission, granted from settings when the
+  // user chooses the desktop component. Without it connectNative is undefined.
+  connectNative: (hostName) => {
+    if (typeof chrome.runtime.connectNative !== "function") {
+      throw new NativeHostError(
+        "native_permission_required",
+        "Allow LocalSubs to communicate with the desktop component in LocalSubs settings."
+      );
+    }
+    return chrome.runtime.connectNative(hostName);
+  },
   getLastError: () => chrome.runtime.lastError
 });
 const nativeTranslator = createTranslatorService(nativeClient);
@@ -89,11 +99,17 @@ chrome.runtime.onInstalled.addListener((details) => {
     // Installs from before model tiers stored the helper channel instead.
     const tier = stored.modelTier ? normalizeModelTier(stored.modelTier) : tierForHelperChannel(local.helperModelChannel);
     selectModelTier(tier);
-    return chrome.storage.sync.set({ inferenceBackend: backend, modelTier: tier });
-  }).finally(() => {
-    if (details.reason === "install") {
+    return chrome.storage.sync.set({ inferenceBackend: backend, modelTier: tier }).then(() => backend);
+  }).then(async (backend) => {
+    // Versions before 0.8.0 required nativeMessaging; it is now optional and
+    // not carried over on update. Desktop users grant it again in settings.
+    if (details.reason !== "update" || backend !== "native") return false;
+    return !(await chrome.permissions.contains({ permissions: ["nativeMessaging"] }));
+  }).catch(() => false).then((needsNativePermission) => {
+    if (details.reason === "install" || needsNativePermission) {
+      // "installed" lets settings start the model download right away.
       chrome.tabs.create({
-        url: chrome.runtime.getURL("options.html")
+        url: chrome.runtime.getURL(details.reason === "install" ? "options.html?installed" : "options.html")
       });
     }
   });
@@ -110,8 +126,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 // Only preheat an explicitly selected native helper here. The playback-page
-// content script preheats WebLLM only after confirming its weights are cached,
-// so opening a video never starts a large model download unexpectedly.
+// content script loads a cached WebLLM model right away, and downloads an
+// uncached one once a video plays, showing its progress in the player.
 backendReady.then(() => {
   if (inferenceBackend !== "native") return;
   chrome.storage.sync.get({ translationEnabled: true }, (settings) => {
@@ -155,6 +171,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === "LIST_WEBLLM_MODELS") {
     respondAsync(webllmTranslator.listModels().then((models) => ({ ok: true, models })), sendResponse, "model_list_failed");
+    return true;
+  }
+
+  if (message?.type === "REMOVE_WEBLLM_MODEL") {
+    respondAsync(webllmTranslator.removeModel(message.tier).then((removed) => ({ ok: true, removed })), sendResponse, "model_remove_failed");
     return true;
   }
 

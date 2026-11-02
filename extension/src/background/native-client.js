@@ -36,7 +36,7 @@ export class NativeClient {
       } catch (error) {
         this.takePending(id);
         this.reset("native_host_disconnected", "Native host connection reset after send failure");
-        reject(new NativeHostError(
+        reject(error instanceof NativeHostError ? error : new NativeHostError(
           "native_send_failed",
           error instanceof Error ? error.message : "Unable to send native message"
         ));
