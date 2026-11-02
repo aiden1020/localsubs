@@ -85,10 +85,17 @@ Install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detai
 New installations use WebLLM by default, so no helper is required. Open
 LocalSubs settings to download and prepare the browser model before playback.
 
-The native helper remains available as an optional backend. It offers the
-lowest latency with the NVIDIA CUDA runtime and provides a fallback when
-WebGPU is unavailable. Existing native-helper users remain on that backend
-after upgrading.
+The native helper remains available as an optional backend under
+**Use the desktop component (advanced)** at the bottom of settings. It offers
+the lowest latency with the NVIDIA CUDA runtime and provides a fallback when
+WebGPU is unavailable; when the browser has no usable WebGPU, settings show the
+desktop component setup at the top instead.
+
+The extension asks for Chrome's permission to communicate with native
+applications (`nativeMessaging`) only when you choose the desktop component.
+Existing native-helper users stay on that backend after upgrading to 0.8.0, but
+Chrome does not carry the permission over: settings open once after the update
+so you can allow it again.
 
 ### Optional native helper: macOS
 
@@ -103,7 +110,8 @@ localsubs setup            # install Chrome integration; choose models in Option
 > `brew trust` is required because LocalSubs is distributed via a third-party tap.
 > It authorizes Homebrew to install formulas from this tap on your machine.
 
-Select **Native helper** in the extension settings after setup.
+In extension settings, open **Use the desktop component (advanced)**, choose
+**Desktop component**, and allow the permission when Chrome asks.
 
 ### Optional native helper: Windows
 
@@ -135,7 +143,8 @@ Chrome/Edge Native Messaging registration points to its absolute path. Re-run
 `localsubs install` after moving or upgrading it. WinGet manages the executable
 location and command alias for WinGet installations.
 
-Select **Native helper** in the extension settings after setup.
+In extension settings, open **Use the desktop component (advanced)**, choose
+**Desktop component**, and allow the permission when Chrome asks.
 
 ## Extension development
 

@@ -95,9 +95,7 @@ export class TranslationController {
         const isLoading = error.code === "model_loading";
         if (this.now() - this.lastWarningAt > (isLoading ? 8000 : 30000)) {
           this.lastWarningAt = this.now();
-          this.showStatus(isLoading
-            ? "LocalSubs: loading model, please wait..."
-            : error.message);
+          this.showStatus(error);
         }
         return null;
       }
@@ -109,7 +107,10 @@ export class TranslationController {
       if (error?.name === "AbortError" || ahead) return null;
       if (this.now() - this.lastWarningAt > 30000) {
         this.lastWarningAt = this.now();
-        this.showStatus("LocalSubs translator is unavailable. Open settings to check the selected backend.");
+        this.showStatus({
+          code: "translator_unavailable",
+          message: error instanceof Error ? error.message : ""
+        });
       }
       return null;
     }

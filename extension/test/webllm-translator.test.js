@@ -44,6 +44,38 @@ describe("WebLLM translator", () => {
     expect(createEngine).not.toHaveBeenCalled();
   });
 
+  it("unloads the engine before deleting the cached model", async () => {
+    const order = [];
+    const unload = vi.fn(async () => order.push("unload"));
+    const deleteModelCache = vi.fn(async () => order.push("delete"));
+    const translator = createWebLLMTranslator({
+      createEngine: vi.fn().mockResolvedValue({ unload, completions: { create: vi.fn() } }),
+      // Only the current model is cached, so the retired-model cleanup after
+      // warm-up deletes nothing.
+      hasModelCached: vi.fn(async (id) => id === "Sotto-test"),
+      deleteModelCache,
+      gpu: testGPU(),
+      modelId: "Sotto-test",
+      modelLibURL: "chrome-extension://test/model-lib.wasm"
+    });
+    await translator.checkTranslator(true).catch(() => {});
+    await expect(translator.removeCache()).resolves.toBe(true);
+    expect(deleteModelCache).toHaveBeenCalledWith("Sotto-test", expect.objectContaining({ cacheBackend: "indexeddb" }));
+    expect(order).toEqual(["unload", "delete"]);
+  });
+
+  it("reports nothing removed when the model is not cached", async () => {
+    const deleteModelCache = vi.fn();
+    const translator = createWebLLMTranslator({
+      hasModelCached: vi.fn().mockResolvedValue(false),
+      deleteModelCache,
+      gpu: testGPU(),
+      modelLibURL: "chrome-extension://test/model-lib.wasm"
+    });
+    await expect(translator.removeCache()).resolves.toBe(false);
+    expect(deleteModelCache).not.toHaveBeenCalled();
+  });
+
   it("initializes once and translates through the completions API", async () => {
     const unload = vi.fn().mockResolvedValue(undefined);
     const interruptGenerate = vi.fn().mockResolvedValue(undefined);

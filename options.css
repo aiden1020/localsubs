@@ -223,12 +223,14 @@ h2 {
 .setup-tutorial[hidden],
 .setup-grid[hidden],
 .platform-status[hidden],
-.unsupported-platform[hidden] {
+.unsupported-platform[hidden],
+.engine-switch[hidden],
+.button-row[hidden],
+.panel[hidden] {
   display: none;
 }
 
-.model-panel,
-.engine-panel {
+.model-panel {
   margin-top: 16px;
 }
 
@@ -407,6 +409,55 @@ h2 {
   border-color: var(--accent);
 }
 
+.desktop-settings > summary {
+  cursor: pointer;
+}
+
+.desktop-settings > summary h2 {
+  display: inline;
+}
+
+/* Collapsed at the bottom, the panel stays quiet: it's for the few who need it. */
+.desktop-panel:not(.is-required) .desktop-settings:not([open]) h2 {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.desktop-panel.is-required {
+  border-color: var(--accent);
+}
+
+.desktop-settings > :not(summary) {
+  margin-top: 12px;
+}
+
+.desktop-settings .backend-description {
+  margin-bottom: 0;
+  margin-inline: 0;
+}
+
+.native-permission {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(245, 184, 75, 0.08);
+}
+
+.native-permission[hidden] {
+  display: none;
+}
+
+.native-permission p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .model-privacy {
   margin: 14px 0 0;
   padding-top: 11px;
@@ -415,8 +466,40 @@ h2 {
   font-size: 13px;
 }
 
-.backend-actions {
-  margin-top: 14px;
+.hero-sites {
+  margin-top: 16px;
+}
+
+.status-column {
+  display: grid;
+  gap: 10px;
+}
+
+.status-column #check-service {
+  justify-self: end;
+}
+
+.model-engine-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.engine-badge {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+}
+
+.engine-badge[hidden] {
+  display: none;
 }
 
 .install-guide-link {
@@ -677,7 +760,8 @@ output {
     grid-template-columns: 1fr;
   }
 
-  .upgrade-banner {
+  .upgrade-banner,
+  .native-permission {
     align-items: flex-start;
     flex-direction: column;
   }

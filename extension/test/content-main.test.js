@@ -123,9 +123,9 @@ it("stops an in-flight model poll when translation is disabled", async () => {
   await Promise.resolve();
   await Promise.resolve();
 
-  const status = document.getElementById("localsubs-status");
+  const card = document.getElementById("localsubs-setup-card")?.shadowRoot.querySelector(".card");
   const caption = document.querySelector("[class*='CaptionWindow']");
-  expect(status.style.display).toBe("none");
+  expect(!card || card.hidden).toBe(true);
   expect(caption.style.visibility).toBe("");
   expect(sendMessage.mock.calls.filter(([message]) =>
     message.type === "CHECK_TRANSLATOR"
@@ -231,14 +231,25 @@ it("retries the visible subtitle when cached model warmup completes", async () =
   });
 });
 
-it("does not automatically download an uncached WebLLM model", async () => {
+it("downloads an uncached model once a video plays and shows its progress", async () => {
   window.history.replaceState({}, "", "/video/watch/test");
-  document.body.innerHTML = "<video src='movie.m3u8'></video>";
+  document.body.innerHTML = "<div class='player'><video src='movie.m3u8'></video></div>";
 
-  const sendMessage = vi.fn().mockResolvedValue({
-    ok: false,
-    needsDownload: true,
-    cached: false
+  let downloadStarted = false;
+  let resolveWarmup;
+  const sendMessage = vi.fn((message) => {
+    if (message.type === "CHECK_TRANSLATOR" && message.warmup) {
+      downloadStarted = true;
+      return new Promise((resolve) => {
+        resolveWarmup = resolve;
+      });
+    }
+    if (message.type === "CHECK_TRANSLATOR") {
+      return Promise.resolve(downloadStarted
+        ? { ok: false, loading: true, progress: 0.42, cached: false, transport: "webllm" }
+        : { ok: false, needsDownload: true, cached: false, transport: "webllm" });
+    }
+    return Promise.resolve({ ok: false });
   });
   globalThis.chrome = {
     runtime: { sendMessage },
@@ -261,5 +272,63 @@ it("does not automatically download an uncached WebLLM model", async () => {
   await vi.waitFor(() => {
     expect(sendMessage).toHaveBeenCalledWith({ type: "CHECK_TRANSLATOR", warmup: false });
   });
+  // Nothing downloads while no video is playing.
   expect(sendMessage).not.toHaveBeenCalledWith({ type: "CHECK_TRANSLATOR", warmup: true });
+
+  const video = document.querySelector("video");
+  Object.defineProperty(video, "paused", { configurable: true, value: false });
+  video.dispatchEvent(new Event("playing"));
+  expect(sendMessage).toHaveBeenCalledWith({ type: "CHECK_TRANSLATOR", warmup: true });
+
+  const card = () => document.getElementById("localsubs-setup-card").shadowRoot;
+  expect(card().querySelector(".title").textContent).toBe("正在下載翻譯模型");
+  expect(card().querySelector(".detail").textContent).toContain("約 290 MB");
+  // No shard has finished yet: a busy bar, not a stuck "0%".
+  expect(card().querySelector(".percent").textContent).toBe("");
+  expect(card().querySelector(".bar").classList.contains("is-indeterminate")).toBe(true);
+  await vi.waitFor(() => {
+    expect(card().querySelector(".percent").textContent).toBe("42%");
+  }, { timeout: 3000 });
+
+  resolveWarmup({ ok: true, cached: true, transport: "webllm" });
+  await vi.waitFor(() => {
+    expect(card().querySelector(".title").textContent).toBe("雙語字幕準備好了");
+  });
+});
+
+it("tells people without WebGPU what to do, in the player", async () => {
+  window.history.replaceState({}, "", "/video/watch/test");
+  document.body.innerHTML = "<div class='player'><video src='movie.m3u8'></video></div>";
+
+  const sendMessage = vi.fn().mockResolvedValue({
+    ok: false,
+    transport: "webllm",
+    error: { code: "webgpu_unavailable", message: "WebGPU is not available in this browser" }
+  });
+  globalThis.chrome = {
+    runtime: { sendMessage },
+    storage: {
+      sync: { get: vi.fn().mockResolvedValue({ ...DEFAULT_SETTINGS, translationEnabled: true }) },
+      onChanged: { addListener: vi.fn() }
+    }
+  };
+  window.requestAnimationFrame = vi.fn((callback) => {
+    callback();
+    return 1;
+  });
+  vi.stubGlobal("MutationObserver", class {
+    observe() {}
+    disconnect() {}
+  });
+
+  vi.resetModules();
+  await import("../src/content/main.js");
+  const card = () => document.getElementById("localsubs-setup-card")?.shadowRoot;
+  await vi.waitFor(() => {
+    expect(card()?.querySelector(".title").textContent).toBe("這台電腦無法在瀏覽器中翻譯");
+  });
+  const action = card().querySelector(".action");
+  expect(action.hidden).toBe(false);
+  action.click();
+  expect(sendMessage).toHaveBeenCalledWith({ type: "OPEN_OPTIONS" });
 });

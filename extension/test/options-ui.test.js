@@ -2,16 +2,32 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/core/settings.js";
 
 afterEach(() => {
   delete globalThis.chrome;
+  delete navigator.gpu;
+  window.history.replaceState(null, "", "/");
   document.documentElement.innerHTML = "";
   vi.restoreAllMocks();
 });
 
-function mountOptions({ settings = {}, sendMessage, os = "mac" }) {
+function mountOptions({
+  settings = {},
+  sendMessage,
+  os = "mac",
+  webgpu = true,
+  nativePermission = true,
+  grantNativePermission = true
+}) {
+  // jsdom has no WebGPU; most people's browsers do.
+  if (webgpu) {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ features: new Set(["shader-f16"]) }) }
+    });
+  }
   document.documentElement.innerHTML = readFileSync(
     path.join(process.cwd(), "options.html"),
     "utf8"
@@ -21,6 +37,15 @@ function mountOptions({ settings = {}, sendMessage, os = "mac" }) {
     runtime: {
       getPlatformInfo: vi.fn().mockResolvedValue({ os }),
       sendMessage
+    },
+    permissions: {
+      contains: vi.fn(async () => nativePermission),
+      request: vi.fn(async () => {
+        nativePermission = grantNativePermission;
+        return grantNativePermission;
+      }),
+      onAdded: { addListener: vi.fn() },
+      onRemoved: { addListener: vi.fn() }
     },
     storage: {
       sync: {
@@ -38,6 +63,12 @@ function mountOptions({ settings = {}, sendMessage, os = "mac" }) {
   vi.resetModules();
   return import("../src/options.js");
 }
+
+// Whether the desktop panel sits above the model panel, or at the bottom.
+const desktopPanelOnTop = () => Boolean(
+  document.getElementById("desktop-panel").compareDocumentPosition(document.querySelector(".model-panel"))
+    & Node.DOCUMENT_POSITION_FOLLOWING
+);
 
 const tierCard = (tier) => document.querySelector(`.tier-card[data-tier='${tier}']`);
 const cardButton = (tier) => tierCard(tier)?.querySelector("button");
@@ -83,6 +114,118 @@ it("shows speed and quality tiers in browser mode and downloads the other tier",
     expect(chrome.storage.sync.set).toHaveBeenCalledWith({ modelTier: "quality" });
     expect(tierCard("quality").textContent).toContain("使用中");
     expect(tierCard("fast").textContent).toContain("切換使用");
+  });
+});
+
+it("uninstalls a browser model, including the one in use", async () => {
+  const cached = { fast: true, quality: true };
+  const sendMessage = vi.fn(async (message) => {
+    switch (message.type) {
+      case "LIST_WEBLLM_MODELS":
+        return {
+          ok: true,
+          models: [
+            { tier: "fast", cached: cached.fast, active: true },
+            { tier: "quality", cached: cached.quality, active: false }
+          ]
+        };
+      case "REMOVE_WEBLLM_MODEL":
+        cached[message.tier] = false;
+        return { ok: true, removed: true };
+      case "CHECK_TRANSLATOR":
+        return { ok: false, needsDownload: !cached.fast, transport: "webllm" };
+      default:
+        return { ok: true };
+    }
+  });
+  await mountOptions({ sendMessage });
+  const uninstall = (tier) => [...tierCard(tier).querySelectorAll("button")].find((button) => button.textContent === "解除安裝");
+
+  await vi.waitFor(() => {
+    expect(uninstall("quality")).toBeDefined();
+    expect(uninstall("fast")).toBeDefined();
+  });
+
+  uninstall("quality").click();
+  expect(window.confirm).toHaveBeenCalledWith("解除安裝「品質優先」模型？之後仍可重新下載。");
+  await vi.waitFor(() => {
+    expect(sendMessage).toHaveBeenCalledWith({ type: "REMOVE_WEBLLM_MODEL", tier: "quality" });
+    expect(cardButton("quality").textContent).toBe("下載並啟用");
+  });
+
+  uninstall("fast").click();
+  expect(window.confirm).toHaveBeenLastCalledWith("解除安裝目前使用中的「速度優先」模型？下次播放字幕時會重新下載。");
+  await vi.waitFor(() => {
+    expect(sendMessage).toHaveBeenCalledWith({ type: "REMOVE_WEBLLM_MODEL", tier: "fast" });
+    expect(tierCard("fast").textContent).toContain("尚未下載");
+  });
+});
+
+it("does not uninstall when the confirmation is declined", async () => {
+  const sendMessage = vi.fn(async (message) => message.type === "LIST_WEBLLM_MODELS"
+    ? { ok: true, models: [{ tier: "fast", cached: true, active: true }, { tier: "quality", cached: true, active: false }] }
+    : { ok: true });
+  await mountOptions({ sendMessage });
+  window.confirm.mockReturnValue(false);
+  await vi.waitFor(() => expect(tierCard("quality").textContent).toContain("解除安裝"));
+
+  [...tierCard("quality").querySelectorAll("button")].find((button) => button.textContent === "解除安裝").click();
+  expect(sendMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "REMOVE_WEBLLM_MODEL" }));
+});
+
+describe("right after install", () => {
+  function browserModels(cached) {
+    return vi.fn(async (message) => {
+      switch (message.type) {
+        case "LIST_WEBLLM_MODELS":
+          return { ok: true, models: [{ tier: "fast", cached, active: true }, { tier: "quality", cached: false, active: false }] };
+        case "CHECK_TRANSLATOR":
+          return message.warmup
+            ? { ok: true, transport: "webllm", latencyMs: 40, translation: "預備" }
+            : { ok: false, needsDownload: !cached, needsInitialization: cached, cached, transport: "webllm" };
+        default:
+          return { ok: true };
+      }
+    });
+  }
+  const warmups = (sendMessage) => sendMessage.mock.calls.filter(([message]) =>
+    message.type === "CHECK_TRANSLATOR" && message.warmup);
+
+  it("starts downloading the default model", async () => {
+    window.history.replaceState(null, "", "/options.html?installed");
+    const sendMessage = browserModels(false);
+    await mountOptions({ sendMessage });
+    await vi.waitFor(() => expect(warmups(sendMessage)).toHaveLength(1));
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({ modelTier: "fast" });
+    // A reload doesn't start it again.
+    expect(window.location.search).toBe("");
+  });
+
+  it("does nothing on later visits", async () => {
+    window.history.replaceState(null, "", "/options.html");
+    const sendMessage = browserModels(false);
+    await mountOptions({ sendMessage });
+    await vi.waitFor(() => expect(document.querySelectorAll(".tier-card")).toHaveLength(2));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(warmups(sendMessage)).toHaveLength(0);
+  });
+
+  it("does not download when the browser can't run the model", async () => {
+    window.history.replaceState(null, "", "/options.html?installed");
+    const sendMessage = browserModels(false);
+    await mountOptions({ sendMessage, webgpu: false });
+    await vi.waitFor(() => expect(window.location.search).toBe(""));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(warmups(sendMessage)).toHaveLength(0);
+  });
+
+  it("does not download a model that is already there", async () => {
+    window.history.replaceState(null, "", "/options.html?installed");
+    const sendMessage = browserModels(true);
+    await mountOptions({ sendMessage });
+    await vi.waitFor(() => expect(window.location.search).toBe(""));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(warmups(sendMessage)).toHaveLength(0);
   });
 });
 
@@ -275,6 +418,121 @@ it("links the Windows setup video in the desktop setup steps", async () => {
   expect(tutorial.hidden).toBe(false);
   expect(tutorial.href).toBe("https://youtu.be/GbVWTxgqePA");
   expect(tutorial.target).toBe("_blank");
+});
+
+it("keeps the desktop component in a collapsed section when WebGPU works", async () => {
+  {
+    const sendMessage = vi.fn(async () => ({ ok: true, models: [] }));
+    await mountOptions({ sendMessage });
+
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll(".tier-card")).toHaveLength(2);
+      expect(document.getElementById("desktop-title").textContent).toBe("使用桌面元件（進階）");
+    });
+    // Browser users never see the engine concept outside the collapsed panel.
+    expect(desktopPanelOnTop()).toBe(false);
+    expect(document.getElementById("desktop-settings").open).toBe(false);
+    expect(document.getElementById("model-engine-note").hidden).toBe(true);
+    expect(document.body.textContent).not.toContain("翻譯引擎");
+    expect(document.getElementById("engine-webllm").getAttribute("aria-checked")).toBe("true");
+    expect(document.getElementById("setup-grid").hidden).toBe(true);
+    expect(document.getElementById("native-permission").hidden).toBe(true);
+  }
+});
+
+it("opens the desktop section when this browser has no WebGPU", async () => {
+  const sendMessage = vi.fn(async () => ({ ok: true, models: [] }));
+  await mountOptions({ sendMessage, webgpu: false });
+
+  await vi.waitFor(() => {
+    expect(document.getElementById("desktop-title").textContent).toBe("這台電腦無法在瀏覽器中翻譯");
+    expect(document.getElementById("setup-grid").hidden).toBe(false);
+  });
+  expect(document.getElementById("desktop-hint").textContent).toContain("需要安裝 LocalSubs 桌面元件");
+  expect(document.getElementById("install-command").textContent).toContain("brew install localsubs");
+  expect(desktopPanelOnTop()).toBe(true);
+  expect(document.getElementById("desktop-settings").open).toBe(true);
+  expect(document.getElementById("desktop-panel").classList.contains("is-required")).toBe(true);
+  // Nothing suggests the browser model can work here.
+  expect(document.getElementById("model-panel").hidden).toBe(true);
+  expect(document.getElementById("engine-switch").hidden).toBe(true);
+  await vi.waitFor(() => {
+    expect(document.getElementById("service-status-title").textContent).toBe("這台電腦無法在瀏覽器中翻譯");
+  });
+
+  document.getElementById("use-desktop").click();
+  await vi.waitFor(() => {
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({ inferenceBackend: "native" });
+  });
+});
+
+it("asks for the native messaging permission before switching to the desktop component", async () => {
+  const sendMessage = vi.fn(async () => ({ ok: true, models: [] }));
+  await mountOptions({ sendMessage, nativePermission: false });
+  await vi.waitFor(() => expect(chrome.permissions.contains).toHaveBeenCalled());
+
+  document.getElementById("engine-native").click();
+  expect(chrome.permissions.request).toHaveBeenCalledWith({ permissions: ["nativeMessaging"] });
+  await vi.waitFor(() => {
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({ inferenceBackend: "native" });
+    expect(sendMessage).toHaveBeenCalledWith({ type: "SET_INFERENCE_BACKEND", backend: "native" });
+  });
+});
+
+it("stays on browser translation when the permission is declined", async () => {
+  const sendMessage = vi.fn(async () => ({ ok: true, models: [] }));
+  await mountOptions({ sendMessage, nativePermission: false, grantNativePermission: false });
+  await vi.waitFor(() => expect(chrome.permissions.contains).toHaveBeenCalled());
+
+  document.getElementById("engine-native").click();
+  await vi.waitFor(() => {
+    expect(document.getElementById("service-status-title").textContent).toBe("需要允許連接桌面元件");
+  });
+  expect(chrome.storage.sync.set).not.toHaveBeenCalledWith({ inferenceBackend: "native" });
+  expect(document.getElementById("engine-webllm").getAttribute("aria-checked")).toBe("true");
+});
+
+it("asks desktop users to allow the permission again instead of showing setup steps", async () => {
+  const sendMessage = vi.fn(async (message) => {
+    if (message.type === "LIST_HELPER_MODELS" || message.type === "CHECK_TRANSLATOR") {
+      return { ok: false, error: { code: "native_permission_required", message: "Allow LocalSubs" } };
+    }
+    return { ok: true };
+  });
+  await mountOptions({ settings: { inferenceBackend: "native" }, sendMessage, nativePermission: false });
+
+  await vi.waitFor(() => {
+    expect(document.getElementById("desktop-settings").open).toBe(true);
+    expect(document.getElementById("native-permission").hidden).toBe(false);
+    expect(document.getElementById("service-status-title").textContent).toBe("需要允許連接桌面元件");
+  });
+  // It never claims the desktop component is in use while it can't connect.
+  expect(desktopPanelOnTop()).toBe(true);
+  expect(document.getElementById("desktop-title").textContent).toBe("已選擇桌面元件，尚未連接");
+  expect(document.getElementById("desktop-hint").textContent).not.toContain("目前使用");
+  expect(document.getElementById("engine-native-badge").hidden).toBe(false);
+  expect(document.getElementById("model-engine-note").textContent).toContain("桌面元件");
+  expect(document.getElementById("setup-grid").hidden).toBe(true);
+
+  document.getElementById("native-permission-grant").click();
+  expect(chrome.permissions.request).toHaveBeenCalledWith({ permissions: ["nativeMessaging"] });
+  await vi.waitFor(() => {
+    expect(document.getElementById("native-permission").hidden).toBe(true);
+    expect(document.getElementById("desktop-title").textContent).toBe("目前使用桌面元件");
+    expect(document.getElementById("engine-native-badge").hidden).toBe(true);
+  });
+});
+
+it("fills in this platform's setup commands for desktop users even while they're hidden", async () => {
+  const sendMessage = vi.fn(async (message) => message.type === "LIST_HELPER_MODELS"
+    ? { ok: true, models: [] }
+    : { ok: true, transport: "native", latencyMs: 30 });
+  await mountOptions({ settings: { inferenceBackend: "native" }, sendMessage, os: "win" });
+
+  await vi.waitFor(() => {
+    expect(document.getElementById("setup-command").textContent).toBe("localsubs setup --backend auto");
+  });
+  expect(document.getElementById("setup-grid").hidden).toBe(true);
 });
 
 it("offers one button per supported site, in the chosen language", async () => {

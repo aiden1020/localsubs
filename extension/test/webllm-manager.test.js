@@ -7,7 +7,8 @@ function fakeTranslator(name, cached = false) {
     checkTranslator: vi.fn().mockResolvedValue({ ok: true, transport: "webllm", model: name }),
     translateSubtitle: vi.fn().mockResolvedValue({ ok: true, translation: name }),
     isCached: vi.fn().mockResolvedValue(cached),
-    unload: vi.fn().mockResolvedValue(undefined)
+    unload: vi.fn().mockResolvedValue(undefined),
+    removeCache: vi.fn().mockResolvedValue(cached)
   };
 }
 
@@ -37,5 +38,17 @@ describe("WebLLM manager", () => {
       { tier: "fast", cached: true, active: false, downloadMB: 290 },
       { tier: "quality", cached: false, active: true, downloadMB: 895 }
     ]);
+  });
+
+  it("removes one tier's model, including the loaded one", async () => {
+    const translators = { fast: fakeTranslator("fast", true), quality: fakeTranslator("quality", true) };
+    const manager = createWebLLMManager({
+      createTranslator: (entry) => translators[entry.tier],
+      getTier: async () => "fast"
+    });
+    await manager.checkTranslator();
+    await expect(manager.removeModel("fast")).resolves.toBe(true);
+    expect(translators.fast.removeCache).toHaveBeenCalledOnce();
+    expect(translators.quality.removeCache).not.toHaveBeenCalled();
   });
 });

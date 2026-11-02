@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -216,9 +216,19 @@ async function run() {
     if (!(await exists(requiredPath))) throw new Error(`required E2E input not found: ${requiredPath}`);
   }
   const manifest = JSON.parse(await readFile(path.join(options.extension, "manifest.json"), "utf8"));
-  if (manifest.key === undefined || manifest.permissions?.includes("nativeMessaging") !== true) {
-    throw new Error("built extension is missing its stable key or nativeMessaging permission");
+  if (manifest.key === undefined || manifest.optional_permissions?.includes("nativeMessaging") !== true) {
+    throw new Error("built extension is missing its stable key or optional nativeMessaging permission");
   }
+  // Users grant nativeMessaging from a browser dialog when they choose the
+  // desktop component, which automation cannot click. Test a copy that
+  // requires it instead.
+  const extensionDir = await mkdtemp(path.join(os.tmpdir(), "localsubs-e2e-extension-"));
+  await cp(options.extension, extensionDir, { recursive: true });
+  await writeFile(path.join(extensionDir, "manifest.json"), `${JSON.stringify({
+    ...manifest,
+    permissions: [...manifest.permissions, "nativeMessaging"],
+    optional_permissions: manifest.optional_permissions.filter((permission) => permission !== "nativeMessaging")
+  }, null, 2)}\n`);
 
   runHelperInstall(options.helper, options.browser);
   const baseline = {
@@ -257,7 +267,7 @@ async function run() {
     browser = await puppeteer.launch({
       browser: "chrome",
       executablePath,
-      enableExtensions: [options.extension],
+      enableExtensions: [extensionDir],
       env: browserEnvironment,
       headless: options.headless,
       pipe: true,
@@ -400,6 +410,7 @@ async function run() {
       report.forcedProcessCleanup = true;
     }
     await rm(profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }).catch(() => {});
+    await rm(extensionDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }).catch(() => {});
     await writeReport(options.output, report);
     if (report.passed && !report.cleanupPassed) {
       throw new Error(report.error);

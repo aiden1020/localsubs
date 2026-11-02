@@ -32,8 +32,10 @@ const I18N = {
     tierUse: "切換使用",
     tierRedownload: "重新下載",
     tierDownloading: "下載中…請保持此頁開啟",
-    tierRemove: "移除",
-    tierRemoveConfirm: "移除此模型檔案？之後仍可重新下載。",
+    tierRemove: "解除安裝",
+    tierRemoveConfirm: "解除安裝「{name}」模型？之後仍可重新下載。",
+    tierRemoveActiveConfirm: "解除安裝目前使用中的「{name}」模型？下次播放字幕時會重新下載。",
+    tierRemoved: "已解除安裝",
     tierStateChecking: "正在確認狀態…",
     tierStateReady: "已下載",
     tierStateMissing: "尚未下載",
@@ -41,15 +43,26 @@ const I18N = {
     tierStateDownloading: "下載並準備中",
     tierStateOutdated: "需要更新桌面元件才能使用此模型",
     tierStateUnavailable: "無法連接桌面元件",
-    engineEyebrow: "執行位置",
-    engineTitle: "在哪裡執行翻譯",
+    engineUsingDesktop: "目前使用桌面元件",
+    engineDesktopNotConnected: "已選擇桌面元件，尚未連接",
+    desktopAdvancedTitle: "使用桌面元件（進階）",
+    desktopRequiredTitle: "這台電腦無法在瀏覽器中翻譯",
+    desktopRequiredDetail: "這個瀏覽器沒有可用的 WebGPU，需要安裝 LocalSubs 桌面元件，改用 CPU 或顯示卡翻譯。照下面的步驟安裝後，選擇「桌面元件」並允許連接。",
+    needsPermission: "需要授權",
+    useDesktop: "安裝好了，改用桌面元件",
+    desktopRequiredStatus: "請照下方步驟安裝 LocalSubs 桌面元件。",
+    modelEngineDesktop: "以下模型由桌面元件執行，下載到這台電腦的 LocalSubs 資料夾。",
     engineBrowser: "瀏覽器",
     engineBrowserDetail: "免安裝，需要支援 WebGPU 的 GPU",
     engineDesktop: "桌面元件",
     engineDesktopDetail: "CPU 或 GPU 皆可，需另外安裝",
-    hintGpuOk: "偵測到可用的 GPU，建議使用瀏覽器模式。",
-    hintNoGpu: "這個瀏覽器沒有可用的 WebGPU，建議使用桌面元件。",
-    hintDesktop: "桌面元件透過另行安裝的 LocalSubs 執行，可使用 CPU 或相容的 GPU。",
+    hintDesktop: "翻譯在另外安裝的 LocalSubs 桌面元件中執行，可使用 CPU 或相容的 GPU。",
+    hintDesktopNoPermission: "還沒允許 LocalSubs 與桌面元件連接，所以目前無法翻譯。",
+    desktopIntro: "瀏覽器無法使用 WebGPU，或想用 NVIDIA 顯示卡加速時，可以改用桌面元件。需要另外安裝，並允許 LocalSubs 與它通訊。",
+    nativePermissionTitle: "需要允許連接桌面元件",
+    nativePermissionDetail: "LocalSubs 需要你允許它與桌面元件通訊，才能用桌面元件翻譯。",
+    nativePermissionGrant: "允許連接桌面元件",
+    nativePermissionDenied: "未允許連接桌面元件，繼續使用瀏覽器翻譯。",
     upgradeModelTitle: "新版翻譯模型 Sotto 已推出",
     upgradeModelDetail: "升級後會移除舊版模型，釋放約 {size}。下載期間請保持此頁開啟。",
     upgradeModelDetailNoSize: "升級後會移除舊版模型。下載期間請保持此頁開啟。",
@@ -70,11 +83,11 @@ const I18N = {
     installRuntimeTextWindows: "透過 WinGet 安裝。字幕文字不會送到雲端。",
     installRuntimeTextMacOS: "透過 Homebrew 安裝。字幕文字不會送到雲端。",
     oneTimeSetupTitle: "設定桌面模式",
-    oneTimeSetupTextWindows: "自動選擇可用的加速方式並連接目前的瀏覽器。模型可在上方選擇下載。",
-    oneTimeSetupTextMacOS: "連接目前的瀏覽器。模型可在上方選擇下載。",
+    oneTimeSetupTextWindows: "自動選擇可用的加速方式並連接目前的瀏覽器。模型可在下方選擇下載。",
+    oneTimeSetupTextMacOS: "連接目前的瀏覽器。模型可在下方選擇下載。",
     copy: "Copy",
     copied: "Copied",
-    checkService: "檢查是否可用",
+    checkService: "重新檢查",
     openSite: "開啟 {site}",
     preferencesEyebrow: "偏好設定",
     preferencesTitle: "字幕行為",
@@ -82,7 +95,7 @@ const I18N = {
     replaceNativeSubtitles: "以雙語字幕取代原生字幕",
     fontSize: "字幕大小",
     overlayOpacity: "字幕背景透明度",
-    advanced: "進階設定",
+    advanced: "字幕進階設定",
     showPendingOriginal: "翻譯時先顯示原文",
     translationContextLines: "參考前文句數",
     translationCacheSize: "翻譯快取大小",
@@ -95,7 +108,7 @@ const I18N = {
     nativeTransport: "使用桌面模式",
     webllmTransport: "使用瀏覽器模式",
     modelDownloadRequired: "翻譯模型尚未下載",
-    modelDownloadDetail: "在上方選擇模型並下載，或第一次播放字幕時自動下載。",
+    modelDownloadDetail: "在下方選擇模型並下載，或播放影片時自動下載。",
     modelCachedTitle: "翻譯模型已下載",
     modelCachedDetail: "播放影片時會自動準備。",
     modelDownloadingDetail: "正在下載模型，請保持此頁面開啟。",
@@ -121,8 +134,10 @@ const I18N = {
     tierUse: "Switch to this",
     tierRedownload: "Download again",
     tierDownloading: "Downloading… keep this page open",
-    tierRemove: "Remove",
-    tierRemoveConfirm: "Remove this model file? You can download it again later.",
+    tierRemove: "Uninstall",
+    tierRemoveConfirm: "Uninstall the \"{name}\" model? You can download it again later.",
+    tierRemoveActiveConfirm: "Uninstall the \"{name}\" model you're using? It downloads again the next time subtitles play.",
+    tierRemoved: "Uninstalled",
     tierStateChecking: "Checking status…",
     tierStateReady: "Downloaded",
     tierStateMissing: "Not downloaded",
@@ -130,15 +145,26 @@ const I18N = {
     tierStateDownloading: "Downloading and preparing",
     tierStateOutdated: "Update the desktop component to use this model",
     tierStateUnavailable: "Can't reach the desktop component",
-    engineEyebrow: "Where it runs",
-    engineTitle: "Where to run translation",
+    engineUsingDesktop: "Using the desktop component",
+    engineDesktopNotConnected: "Desktop component selected, not connected",
+    desktopAdvancedTitle: "Use the desktop component (advanced)",
+    desktopRequiredTitle: "This computer can't translate in the browser",
+    desktopRequiredDetail: "This browser has no usable WebGPU. Install the LocalSubs desktop component to translate on your CPU or graphics card. After the steps below, choose \"Desktop component\" and allow the connection.",
+    needsPermission: "Needs permission",
+    useDesktop: "Installed. Use the desktop component",
+    desktopRequiredStatus: "Install the LocalSubs desktop component with the steps below.",
+    modelEngineDesktop: "These models run in the desktop component and are stored in its LocalSubs folder on this computer.",
     engineBrowser: "Browser",
     engineBrowserDetail: "No install. Needs a WebGPU-capable GPU",
     engineDesktop: "Desktop component",
     engineDesktopDetail: "Works with a CPU or GPU. Install required",
-    hintGpuOk: "A compatible GPU was found. Browser mode is recommended.",
-    hintNoGpu: "This browser has no usable WebGPU. The desktop component is recommended.",
-    hintDesktop: "The separately installed LocalSubs component runs translation on a CPU or compatible GPU.",
+    hintDesktop: "Translation runs in the separately installed LocalSubs desktop component, on a CPU or compatible GPU.",
+    hintDesktopNoPermission: "LocalSubs isn't allowed to connect to the desktop component yet, so it can't translate.",
+    desktopIntro: "Use the desktop component when this browser can't use WebGPU, or to use an NVIDIA GPU. It needs a separate install and your permission for LocalSubs to communicate with it.",
+    nativePermissionTitle: "Allow the desktop component",
+    nativePermissionDetail: "LocalSubs needs your permission to communicate with the desktop component before it can translate with it.",
+    nativePermissionGrant: "Allow desktop component",
+    nativePermissionDenied: "Permission not granted. Browser translation stays on.",
     upgradeModelTitle: "New Sotto translation model available",
     upgradeModelDetail: "Upgrading removes the old model and frees about {size}. Keep this page open while it downloads.",
     upgradeModelDetailNoSize: "Upgrading removes the old model. Keep this page open while it downloads.",
@@ -159,11 +185,11 @@ const I18N = {
     installRuntimeTextWindows: "Install with WinGet. Subtitle text is never sent to the cloud.",
     installRuntimeTextMacOS: "Install with Homebrew. Subtitle text is never sent to the cloud.",
     oneTimeSetupTitle: "Set up desktop mode",
-    oneTimeSetupTextWindows: "Choose the best available acceleration and connect this browser. Choose models to download above.",
-    oneTimeSetupTextMacOS: "Connect this browser. Choose models to download above.",
+    oneTimeSetupTextWindows: "Choose the best available acceleration and connect this browser. Choose models to download below.",
+    oneTimeSetupTextMacOS: "Connect this browser. Choose models to download below.",
     copy: "Copy",
     copied: "Copied",
-    checkService: "Check availability",
+    checkService: "Check again",
     openSite: "Open {site}",
     preferencesEyebrow: "Preferences",
     preferencesTitle: "Subtitle behavior",
@@ -171,7 +197,7 @@ const I18N = {
     replaceNativeSubtitles: "Replace native subtitles with bilingual overlay",
     fontSize: "Font size",
     overlayOpacity: "Overlay background opacity",
-    advanced: "Advanced",
+    advanced: "Advanced subtitle settings",
     showPendingOriginal: "Show original while translating",
     translationContextLines: "Earlier lines for context",
     translationCacheSize: "Translation cache size",
@@ -184,7 +210,7 @@ const I18N = {
     nativeTransport: "using desktop mode",
     webllmTransport: "using browser mode",
     modelDownloadRequired: "Translation model is not downloaded",
-    modelDownloadDetail: "Choose and download a model above, or it downloads with the first subtitle.",
+    modelDownloadDetail: "Choose and download a model below, or it downloads when a video plays.",
     modelCachedTitle: "Translation model is downloaded",
     modelCachedDetail: "It prepares automatically when playback starts.",
     modelDownloadingDetail: "Downloading the model. Keep this page open.",
@@ -215,7 +241,19 @@ const setupShellLabel = document.getElementById("setup-shell-label");
 const installCommand = document.getElementById("install-command");
 const setupCommand = document.getElementById("setup-command");
 const tierList = document.getElementById("tier-list");
-const engineHint = document.getElementById("engine-hint");
+const desktopPanel = document.getElementById("desktop-panel");
+const desktopSlotTop = document.getElementById("desktop-slot-top");
+const desktopTitle = document.getElementById("desktop-title");
+const desktopHint = document.getElementById("desktop-hint");
+const modelPanel = document.getElementById("model-panel");
+const engineSwitch = document.getElementById("engine-switch");
+const useDesktopRow = document.getElementById("use-desktop-row");
+const useDesktopButton = document.getElementById("use-desktop");
+const engineNativeBadge = document.getElementById("engine-native-badge");
+const modelEngineNote = document.getElementById("model-engine-note");
+const desktopSettings = document.getElementById("desktop-settings");
+const nativePermissionBlock = document.getElementById("native-permission");
+const nativePermissionGrant = document.getElementById("native-permission-grant");
 const engineButtons = [...document.querySelectorAll("[data-engine]")];
 const upgradeBanner = document.getElementById("upgrade-banner");
 const upgradeTitle = document.getElementById("upgrade-title");
@@ -255,6 +293,8 @@ let currentLanguage = DEFAULT_SETTINGS.optionsLanguage;
 let currentSettings = { ...DEFAULT_SETTINGS };
 let setupEnvironment = null;
 let gpuSupport = null;
+// nativeMessaging is an optional permission: null until checked.
+let nativePermission = null;
 let helperInfo = { loaded: false, error: false, models: [], legacy: null };
 let webllmInfo = { loaded: false, models: [], legacyCached: false };
 let busy = null; // { tier, progress }
@@ -390,8 +430,12 @@ function renderTierCard(tier) {
     } else {
       actions.append(makeButton("secondary-button", t("tierUse"), () => void activateTier(tier), locked));
     }
-    if (nativeSelected() && status.entry?.canRemove && !status.active) {
-      actions.append(makeButton("tier-remove", t("tierRemove"), () => void removeNativeTier(tier), locked));
+    if (nativeSelected()) {
+      if (status.entry?.canRemove && !status.active) {
+        actions.append(makeButton("tier-remove", t("tierRemove"), () => void removeNativeTier(tier), locked));
+      }
+    } else {
+      actions.append(makeButton("tier-remove", t("tierRemove"), () => void removeWebllmTier(tier, status.active), locked));
     }
   } else if (status.kind === "missing" || status.kind === "corrupt") {
     const label = status.kind === "corrupt" ? t("tierRedownload") : t("tierDownloadActivate");
@@ -407,24 +451,49 @@ function renderTiers() {
   tierList.replaceChildren(...MODEL_TIERS.map(renderTierCard));
 }
 
+// Most people translate in the browser and never need the desktop component,
+// so its panel stays collapsed at the bottom of the page. It moves to the top
+// for people who use it, and for people whose browser can't translate.
 function renderEngine() {
   const native = nativeSelected();
   for (const button of engineButtons) {
     button.setAttribute("aria-checked", String(button.dataset.engine === (native ? "native" : "webllm")));
   }
-  if (native) {
-    engineHint.textContent = t("hintDesktop");
-  } else if (gpuSupport === false) {
-    engineHint.textContent = t("hintNoGpu");
-  } else if (gpuSupport === true) {
-    engineHint.textContent = t("hintGpuOk");
-  } else {
-    engineHint.textContent = "";
+  const permissionMissing = native && nativePermission === false;
+  const required = !native && gpuSupport === false;
+  const prominent = native || required;
+  if (prominent && desktopPanel.previousElementSibling !== desktopSlotTop) {
+    desktopSlotTop.after(desktopPanel);
+  } else if (!prominent && desktopPanel.nextElementSibling !== null) {
+    desktopPanel.parentElement.append(desktopPanel);
   }
-  // Setup commands are always filled in; they are only shown when the helper
-  // cannot be reached.
-  const needsSetup = native && helperInfo.loaded && helperInfo.error;
-  const supported = native && setupEnvironment ? applyPlatform(setupEnvironment) : false;
+  // Open it for people who use or need it; never close it on someone who
+  // opened it.
+  if (prominent) desktopSettings.open = true;
+  desktopPanel.classList.toggle("is-required", required || permissionMissing);
+
+  let titleKey = "desktopAdvancedTitle";
+  let hintKey = "desktopIntro";
+  if (permissionMissing) [titleKey, hintKey] = ["engineDesktopNotConnected", "hintDesktopNoPermission"];
+  else if (native) [titleKey, hintKey] = ["engineUsingDesktop", "hintDesktop"];
+  else if (required) [titleKey, hintKey] = ["desktopRequiredTitle", "desktopRequiredDetail"];
+  desktopTitle.textContent = t(titleKey);
+  desktopHint.textContent = t(hintKey);
+  engineNativeBadge.hidden = nativePermission !== false;
+  // Browser models can't run here, and the two-way switch would show the
+  // browser as selected: offer the one step that helps instead.
+  modelPanel.hidden = required;
+  engineSwitch.hidden = required;
+  useDesktopRow.hidden = !required;
+  modelEngineNote.textContent = native ? t("modelEngineDesktop") : "";
+  modelEngineNote.hidden = !native;
+  nativePermissionBlock.hidden = !permissionMissing;
+
+  // Setup commands are always filled in. They are shown when the helper can't
+  // be reached, and to people who need the desktop component to translate.
+  const helperUnreachable = native && !permissionMissing && helperInfo.loaded && helperInfo.error;
+  const needsSetup = helperUnreachable || required;
+  const supported = prominent && setupEnvironment ? applyPlatform(setupEnvironment) : false;
   platformStatus.hidden = !needsSetup;
   setupGrid.hidden = !(needsSetup && supported);
   unsupportedPlatform.hidden = !(needsSetup && setupEnvironment && !supported);
@@ -604,15 +673,32 @@ async function refreshModels() {
   if (token === refreshToken) renderAll();
 }
 
+function confirmRemove(tier, active = false) {
+  return window.confirm(t(active ? "tierRemoveActiveConfirm" : "tierRemoveConfirm").replace("{name}", tierText(tier, "Name")));
+}
+
+async function removeWebllmTier(tier, active) {
+  if (busy || !confirmRemove(tier, active)) return;
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "REMOVE_WEBLLM_MODEL", tier });
+    if (!result?.ok) throw new Error(result?.error?.message || t("modelOperationFailed"));
+    flashSavedStatus(t("tierRemoved"));
+  } catch (error) {
+    setServiceStatus("error", t("modelOperationFailed"), error instanceof Error ? error.message : t("modelOperationFailed"));
+  }
+  await refreshModels();
+  if (active) void checkService();
+}
+
 async function removeNativeTier(tier) {
-  if (busy || !window.confirm(t("tierRemoveConfirm"))) return;
+  if (busy || !confirmRemove(tier)) return;
   try {
     const result = await chrome.runtime.sendMessage({
       type: "REMOVE_HELPER_MODEL",
       channel: MODEL_CATALOG[tier].helperChannel
     });
     if (!result?.ok) throw new Error(result?.error?.message || t("modelOperationFailed"));
-    flashSavedStatus();
+    flashSavedStatus(t("tierRemoved"));
   } catch (error) {
     setServiceStatus("error", t("modelOperationFailed"), error instanceof Error ? error.message : t("modelOperationFailed"));
   }
@@ -738,6 +824,11 @@ function checkService({ warmup = false } = {}) {
   const abort = new AbortController();
   activeCheckAbort = abort;
 
+  if (!nativeSelected() && gpuSupport === false) {
+    setServiceStatus("error", t("desktopRequiredTitle"), t("desktopRequiredStatus"));
+    return Promise.resolve();
+  }
+
   checkServiceButton.disabled = true;
   checkServiceButton.textContent = t("checking");
   setServiceStatus(
@@ -769,10 +860,11 @@ function checkService({ warmup = false } = {}) {
             }).catch(() => null);
             if (!abort.signal.aborted && loading?.loading) {
               if (busy) {
-                busy.progress = Number.isFinite(loading.progress) ? loading.progress * 100 : null;
+                // Progress arrives per finished shard; until then the bar is busy.
+                busy.progress = loading.progress > 0 ? loading.progress * 100 : null;
                 renderTiers();
               }
-              const percent = Number.isFinite(loading.progress)
+              const percent = loading.progress > 0
                 ? ` ${Math.round(loading.progress * 100)}%`
                 : "";
               setServiceStatus(
@@ -816,7 +908,11 @@ function checkService({ warmup = false } = {}) {
         setServiceStatus("idle", t("modelCachedTitle"), t("modelCachedDetail"));
       } else {
         const errorMessage = typeof result?.error === "object" ? result.error.message : result?.error;
-        setServiceStatus("error", t("notRunningTitle"), errorMessage || t("startThenCheck"));
+        if (result?.error?.code === "native_permission_required") {
+          setServiceStatus("error", t("nativePermissionTitle"), t("nativePermissionDetail"));
+        } else {
+          setServiceStatus("error", t("notRunningTitle"), errorMessage || t("startThenCheck"));
+        }
       }
       renderUpgrade();
       finish();
@@ -844,11 +940,61 @@ form.addEventListener("input", () => {
   void saveSettings();
 });
 
-for (const button of engineButtons) {
-  button.addEventListener("click", () => {
-    void selectEngine(button.dataset.engine);
+const NATIVE_PERMISSION = { permissions: ["nativeMessaging"] };
+
+async function refreshNativePermission() {
+  try {
+    nativePermission = await chrome.permissions.contains(NATIVE_PERMISSION);
+  } catch {
+    nativePermission = false;
+  }
+}
+
+// The browser shows its permission dialog only during a click, so this runs
+// first in the click handler, before anything is awaited.
+async function requestNativePermission() {
+  try {
+    nativePermission = await chrome.permissions.request(NATIVE_PERMISSION);
+  } catch {
+    nativePermission = false;
+  }
+  renderEngine();
+  return nativePermission;
+}
+
+function chooseEngine(engine) {
+  if (engine !== "native" || nativePermission === true) {
+    void selectEngine(engine);
+    return;
+  }
+  void requestNativePermission().then((granted) => {
+    if (granted) {
+      void selectEngine("native");
+    } else {
+      setServiceStatus("idle", t("nativePermissionTitle"), t("nativePermissionDenied"));
+    }
   });
 }
+
+for (const button of engineButtons) {
+  button.addEventListener("click", () => chooseEngine(button.dataset.engine));
+}
+useDesktopButton.addEventListener("click", () => chooseEngine("native"));
+
+nativePermissionGrant.addEventListener("click", () => {
+  void requestNativePermission().then(async (granted) => {
+    if (!granted) return;
+    await refreshModels();
+    void checkService();
+  });
+});
+
+chrome.permissions?.onAdded?.addListener(() => {
+  void refreshNativePermission().then(renderEngine);
+});
+chrome.permissions?.onRemoved?.addListener(() => {
+  void refreshNativePermission().then(renderEngine);
+});
 
 document.querySelectorAll("[data-copy-target]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -889,12 +1035,30 @@ void resolveSetupEnvironment().then((environment) => {
   renderAll();
 });
 
-void detectWebGPU().then((supported) => {
+const webgpuDetection = detectWebGPU().then((supported) => {
   gpuSupport = supported;
   renderEngine();
+  if (!supported) void checkService();
+  return supported;
 });
+
+// Right after install, start downloading the default model so it's usually
+// ready by the time someone opens a video. Downloading with the first video
+// remains the fallback if this page is closed early.
+async function startDownloadAfterInstall() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("installed")) return;
+  url.searchParams.delete("installed");
+  window.history.replaceState(null, "", url);
+  if (nativeSelected() || !(await webgpuDetection)) return;
+  if (tierStatus(currentSettings.modelTier).kind !== "missing") return;
+  await activateTier(currentSettings.modelTier);
+}
+
+void refreshNativePermission().then(renderEngine);
 
 void loadSettings().then(async () => {
   await Promise.all([refreshModels(), checkService()]);
   await refreshModels();
+  await startDownloadAfterInstall();
 });

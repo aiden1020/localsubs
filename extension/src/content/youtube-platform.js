@@ -21,8 +21,6 @@ const NAV_POLL_MS = 500;
 const RESTORE_NATIVE_DELAY_MS = 300;
 const CC_RETRIES = 20;
 const CC_RETRY_MS = 600;
-const NON_ENGLISH_STATUS =
-  "LocalSubs: this video's captions are not in English, so LocalSubs leaves them as they are.";
 
 export function createYouTubePlatform({
   getSettings,
@@ -129,7 +127,12 @@ export function createYouTubePlatform({
     if (!getSettings().translationEnabled || !isVideoPage()) return;
     const button = getPlayer()?.querySelector(".ytp-subtitles-button");
     if (!button || button.getAttribute("aria-pressed") === null || button.getAttribute("aria-disabled") === "true") {
-      if (retries > 0) win.setTimeout(() => ensureCaptionsOn(retries - 1), CC_RETRY_MS);
+      if (retries > 0) {
+        win.setTimeout(() => ensureCaptionsOn(retries - 1), CC_RETRY_MS);
+      } else if (button?.getAttribute("aria-disabled") === "true") {
+        // The player disables the CC button on videos without captions.
+        events?.showStatus("noCaptions");
+      }
       return;
     }
     if (button.getAttribute("aria-pressed") !== "true") button.click();
@@ -159,7 +162,7 @@ export function createYouTubePlatform({
     if (message.videoId !== videoId || message.nonce !== configNonce) return;
     if (message.type === "cues") {
       if (!isEnglishTrack(message.trackId)) {
-        if (mode !== "unsupported") events?.showStatus(NON_ENGLISH_STATUS);
+        if (mode !== "unsupported") events?.showStatus("notEnglish");
         setMode("unsupported");
       } else {
         const nextCues = normalizeTrackCues(message.cues, { trackKind: message.trackKind, idPrefix: videoId });

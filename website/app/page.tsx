@@ -311,9 +311,9 @@ export default function Home() {
             <p>近幾年的 Mac 和大部分 Windows 筆電都可以。如果瀏覽器不支援，設定頁會提示你改裝桌面元件，用 CPU 也能跑。</p>
           </details>
           <details>
-            <summary>Windows 電腦沒有獨立顯示卡，要怎麼裝桌面元件？<b>＋</b></summary>
+            <summary>Windows 電腦沒有獨立顯示卡可以用嗎？<b>＋</b></summary>
             <p>
-              沒有獨立顯示卡也能用，桌面元件會改用 CPU 翻譯。安裝步驟比較多，我們錄了一支專門給這種情況的 Windows 安裝教學，照著做就好。
+              可以。大部分 Windows 筆電內建的顯示晶片就能直接在瀏覽器裡翻譯，不用另外安裝。如果瀏覽器不支援，設定頁會建議改用桌面元件，用 CPU 翻譯。桌面元件的安裝步驟比較多，我們錄了一支 Windows 安裝教學，照著做就好。
               <a className="faqLink" href={windowsSetupVideoUrl} target="_blank" rel="noreferrer">看安裝教學影片 <Arrow /></a>
             </p>
           </details>

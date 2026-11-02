@@ -356,5 +356,13 @@ export function createWebLLMTranslator({
     }
   }
 
-  return { checkTranslator, isCached, translateSubtitle, unload };
+  // Unloads the model first so its weights aren't in use while they're deleted.
+  async function removeCache() {
+    await unload();
+    if (!await hasModelCached(modelId, appConfig).catch(() => false)) return false;
+    await deleteModelCache(modelId, appConfig);
+    return true;
+  }
+
+  return { checkTranslator, isCached, removeCache, translateSubtitle, unload };
 }
