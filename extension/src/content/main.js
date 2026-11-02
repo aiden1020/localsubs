@@ -7,7 +7,7 @@ import { TranslationController } from "./translation-controller.js";
 import { shouldApplyTranslationResult } from "./translation-request.js";
 
 (() => {
-  const BUILD = "0.7.1";
+  const BUILD = "0.7.2";
   const STATUS_OVERLAY_ID = "localsubs-status";
   const STATUS_HIDE_AFTER_MS = 6500;
   const TRANSLATE_AHEAD_CUES = 3;

@@ -54,9 +54,9 @@ A release tag may be pushed only when all of these gates pass:
 3. Run the commands in `CONTRIBUTING.md`, then merge to `main` and tag:
 
    ```bash
-   LOCALSUBS_RELEASE_TAG=extension-v0.7.1 npm run check
-   git tag -a extension-v0.7.1 -m "LocalSubs extension v0.7.1"
-   git push origin extension-v0.7.1
+   LOCALSUBS_RELEASE_TAG=extension-v0.7.2 npm run check
+   git tag -a extension-v0.7.2 -m "LocalSubs extension v0.7.2"
+   git push origin extension-v0.7.2
    ```
 
 4. The tag workflow waits for both verification jobs, then publishes
