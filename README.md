@@ -117,7 +117,7 @@ localsubs setup --backend auto
 ```
 
 Until that listing is approved, download `localsubs_windows_amd64.zip` from the
-[GitHub release](https://github.com/aiden1020/localsubs/releases), extract it to
+[latest GitHub release](https://github.com/aiden1020/localsubs/releases/latest), extract it to
 a stable directory such as `%LOCALAPPDATA%\Programs\LocalSubs`, and run:
 
 ```powershell

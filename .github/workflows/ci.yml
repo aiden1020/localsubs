@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ["v*", "extension-v*"]
   pull_request:
 
 permissions:
@@ -52,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
@@ -66,7 +68,7 @@ jobs:
       - name: Install extension dependencies
         run: npm ci
 
-      - name: Check product versions, store listing limits and JavaScript syntax
+      - name: Check extension and helper versions, store listing limits and JavaScript syntax
         run: npm run check
         env:
           LOCALSUBS_RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
@@ -88,6 +90,9 @@ jobs:
 
       - name: Test release version injection
         run: npm run test:version-injection
+
+      - name: Pin GoReleaser to helper release tags
+        run: node scripts/goreleaser-tags.mjs
 
       # v2.16 fully deprecated binary-only Homebrew formulas in favor of casks.
       # LocalSubs pins v2.15 while preserving the existing Formula upgrade path.
@@ -128,7 +133,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Publish release
+    name: Publish helper release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [verify, windows]
     runs-on: ubuntu-latest
@@ -155,6 +160,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Pin GoReleaser to helper release tags
+        run: node scripts/goreleaser-tags.mjs
+
       - name: Publish with GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -178,17 +186,6 @@ jobs:
           path: dist/winget/*.yaml
           if-no-files-found: error
 
-      - name: Download verified extension package
-        uses: actions/download-artifact@v4
-        with:
-          name: localsubs-chrome-extension
-          path: dist/extension
-
-      - name: Add extension package to the GitHub release
-        run: gh release upload "$GITHUB_REF_NAME" dist/extension/*.zip --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
       - name: Attest release artifacts
         uses: actions/attest@v4
         with:
@@ -196,4 +193,38 @@ jobs:
             dist/localsubs_*.tar.gz
             dist/localsubs_*.zip
             dist/checksums.txt
-            dist/extension/*.zip
+
+  release-extension:
+    name: Publish extension release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/extension-v')
+    needs: [verify, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Download verified extension package
+        uses: actions/download-artifact@v4
+        with:
+          name: localsubs-chrome-extension
+          path: dist/extension
+
+      - name: Attest extension package
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/extension/*.zip
+
+      # Helper releases stay "Latest" so install instructions that link to the
+      # latest release keep pointing at the helper archives.
+      - name: Publish the extension package as its own GitHub release
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/extension/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --latest=false \
+            --title "LocalSubs extension ${GITHUB_REF_NAME#extension-v}" \
+            --notes "Chrome Web Store package for LocalSubs extension ${GITHUB_REF_NAME#extension-v}. See CHANGELOG.md for the changes."
+        env:
+          GH_TOKEN: ${{ github.token }}
