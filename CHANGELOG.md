@@ -8,6 +8,42 @@ separately with their own versions. Entries are headed "extension" or
 "helper"; a helper update is published only when the helper changes. Versions
 up to 0.7.0 covered both.
 
+## [extension 0.8.0] - 2026-11-02
+
+### Added
+
+- Show what LocalSubs is doing inside the video player, also in fullscreen
+  and in the settings language: model download and loading progress, when
+  dual subtitles are ready, and what to do when this computer can't
+  translate in the browser, when the desktop component needs permission, or
+  when a video has no English captions. This replaces the English message in
+  the corner of the page.
+- Start downloading the translation model as soon as the extension is
+  installed, so it's usually ready by the first video. If the settings page
+  is closed first, the download continues once a video plays.
+- Uninstall a downloaded browser model from its card in settings, including
+  the one in use.
+
+### Changed
+
+- The extension no longer asks for permission to communicate with native
+  applications when it's installed. It asks only when you choose the
+  desktop component. Desktop component users: Chrome doesn't keep this
+  permission across the update, so settings open once after updating to let
+  you allow it again.
+- Settings show the desktop component only when it matters: collapsed at
+  the bottom when the browser can translate, as setup steps at the top when
+  it can't, and with its connection status when you use it.
+- The model starts downloading when a video plays rather than with the first
+  subtitle, so it no longer depends on captions being on.
+
+### Fixed
+
+- Download progress no longer sits at 0% for the first half minute; it shows
+  as in progress until the first part of the model arrives.
+
+Works with helper 0.6.0 and 0.7.0 (helper API 1).
+
 ## [extension 0.7.2] - 2026-11-02
 
 ### Changed
@@ -173,6 +209,7 @@ Works with helper 0.6.0 and 0.7.0 (helper API 1). The helper stays at 0.7.0.
   Windows implementation.
 - Setup selects the best available Windows backend with `--backend auto`.
 
+[extension 0.8.0]: https://github.com/aiden1020/localsubs/releases/tag/extension-v0.8.0
 [extension 0.7.2]: https://github.com/aiden1020/localsubs/releases/tag/extension-v0.7.2
 [extension 0.7.1]: https://github.com/aiden1020/localsubs/releases/tag/extension-v0.7.1
 [0.7.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.7.0
