@@ -493,7 +493,7 @@ function renderEngine() {
   // be reached, and to people who need the desktop component to translate.
   const helperUnreachable = native && !permissionMissing && helperInfo.loaded && helperInfo.error;
   const needsSetup = helperUnreachable || required;
-  const supported = needsSetup && setupEnvironment ? applyPlatform(setupEnvironment) : false;
+  const supported = prominent && setupEnvironment ? applyPlatform(setupEnvironment) : false;
   platformStatus.hidden = !needsSetup;
   setupGrid.hidden = !(needsSetup && supported);
   unsupportedPlatform.hidden = !(needsSetup && setupEnvironment && !supported);

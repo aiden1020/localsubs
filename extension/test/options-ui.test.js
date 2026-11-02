@@ -523,6 +523,18 @@ it("asks desktop users to allow the permission again instead of showing setup st
   });
 });
 
+it("fills in this platform's setup commands for desktop users even while they're hidden", async () => {
+  const sendMessage = vi.fn(async (message) => message.type === "LIST_HELPER_MODELS"
+    ? { ok: true, models: [] }
+    : { ok: true, transport: "native", latencyMs: 30 });
+  await mountOptions({ settings: { inferenceBackend: "native" }, sendMessage, os: "win" });
+
+  await vi.waitFor(() => {
+    expect(document.getElementById("setup-command").textContent).toBe("localsubs setup --backend auto");
+  });
+  expect(document.getElementById("setup-grid").hidden).toBe(true);
+});
+
 it("offers one button per supported site, in the chosen language", async () => {
   const sendMessage = vi.fn(async () => ({ ok: true, models: [] }));
   await mountOptions({ sendMessage });
