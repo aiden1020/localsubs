@@ -8,6 +8,23 @@ separately with their own versions. Entries are headed "extension" or
 "helper"; a helper update is published only when the helper changes. Versions
 up to 0.7.0 covered both.
 
+## [extension 0.7.2] - 2026-11-02
+
+### Changed
+
+- Replace the two translation context sliders in advanced settings with one,
+  "Earlier lines for context". It sets how many earlier subtitle lines are
+  sent with each line, from 0 to 3; the default stays at 1, so translations
+  don't change. A previously saved choice carries over as the number of lines
+  it actually sent.
+
+### Fixed
+
+- Setting the context size to 0 now sends no earlier lines. Before, it still
+  sent them.
+
+Works with helper 0.6.0 and 0.7.0 (helper API 1).
+
 ## [extension 0.7.1] - 2026-10-29
 
 ### Changed
@@ -156,6 +173,7 @@ Works with helper 0.6.0 and 0.7.0 (helper API 1). The helper stays at 0.7.0.
   Windows implementation.
 - Setup selects the best available Windows backend with `--backend auto`.
 
+[extension 0.7.2]: https://github.com/aiden1020/localsubs/releases/tag/extension-v0.7.2
 [extension 0.7.1]: https://github.com/aiden1020/localsubs/releases/tag/extension-v0.7.1
 [0.7.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.7.0
 [0.6.0]: https://github.com/aiden1020/localsubs/releases/tag/v0.6.0
