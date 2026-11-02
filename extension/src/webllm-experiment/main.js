@@ -33,7 +33,7 @@ const STREAM = experimentParams.get("stream") === "1";
 const MAX_CONTEXT_LINES = Math.max(
   0,
   Math.min(5, Number.parseInt(
-    experimentParams.get("contextLines") || String(DEFAULT_SETTINGS.localTranslatorCtxSize),
+    experimentParams.get("contextLines") || String(DEFAULT_SETTINGS.translationContextLines),
     10
   ))
 );

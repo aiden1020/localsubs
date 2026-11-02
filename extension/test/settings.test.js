@@ -15,17 +15,30 @@ describe("settings", () => {
     const settings = sanitizeSettings({
       fontSize: 100,
       overlayBackgroundOpacity: -1,
-      translationContextWindow: 0,
-      localTranslatorCtxSize: 20,
+      translationContextLines: 20,
       translationCacheLimit: 1
     });
     expect(settings).toMatchObject({
       fontSize: 42,
       overlayBackgroundOpacity: 0,
-      translationContextWindow: 1,
-      localTranslatorCtxSize: 5,
+      translationContextLines: 3,
       translationCacheLimit: 20
     });
+  });
+
+  it("carries the old context window and context size over to context lines", () => {
+    // The old window counted the current line; the size capped earlier lines.
+    expect(migrateStoredSettings({ translationContextWindow: 3, localTranslatorCtxSize: 1 }).translationContextLines).toBe(1);
+    expect(migrateStoredSettings({ translationContextWindow: 5, localTranslatorCtxSize: 3 }).translationContextLines).toBe(3);
+    expect(migrateStoredSettings({ translationContextWindow: 3, localTranslatorCtxSize: 5 }).translationContextLines).toBe(2);
+    expect(migrateStoredSettings({ translationContextWindow: 1 }).translationContextLines).toBe(0);
+    expect(migrateStoredSettings({ localTranslatorCtxSize: 0 }).translationContextLines).toBe(0);
+    expect(sanitizeSettings({ translationContextWindow: 4, localTranslatorCtxSize: 2 }).translationContextLines).toBe(2);
+    expect(migrateStoredSettings({ translationContextWindow: 5, localTranslatorCtxSize: 5 }).translationContextLines).toBe(3);
+    expect(migrateStoredSettings({ translationContextLines: 2, translationContextWindow: 1 }).translationContextLines).toBe(2);
+    const settings = migrateStoredSettings({ translationContextWindow: 3 });
+    expect(settings).not.toHaveProperty("translationContextWindow");
+    expect(settings).not.toHaveProperty("localTranslatorCtxSize");
   });
 
   it("migrates stored values without retaining removed fallback settings", () => {

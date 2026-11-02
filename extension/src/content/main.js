@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, sanitizeSettings } from "../core/settings.js";
+import { DEFAULT_SETTINGS, LEGACY_SETTING_KEYS, sanitizeSettings } from "../core/settings.js";
 import { normalizeCaption } from "./captions.js";
 import { OverlayRenderer } from "./overlay-renderer.js";
 import { createPlatformForHost } from "./platforms.js";
@@ -174,7 +174,7 @@ import { shouldApplyTranslationResult } from "./translation-request.js";
       return;
     }
 
-    const storedSettings = await chrome.storage.sync.get(Object.keys(DEFAULT_SETTINGS));
+    const storedSettings = await chrome.storage.sync.get([...Object.keys(DEFAULT_SETTINGS), ...LEGACY_SETTING_KEYS]);
     applySettings(storedSettings);
   }
 
