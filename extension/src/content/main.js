@@ -9,7 +9,7 @@ import { TranslationController } from "./translation-controller.js";
 import { shouldApplyTranslationResult } from "./translation-request.js";
 
 (() => {
-  const BUILD = "0.7.2";
+  const BUILD = "0.8.0";
   const NOTICE_HIDE_AFTER_MS = 8000;
   const DOWNLOAD_POLL_MS = 1000;
   const TRANSLATE_AHEAD_CUES = 3;
