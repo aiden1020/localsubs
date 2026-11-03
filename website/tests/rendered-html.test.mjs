@@ -56,4 +56,5 @@ test("publishes robots and sitemap metadata routes", async () => {
   assert.equal(sitemapResponse.status, 200);
   const sitemap = await sitemapResponse.text();
   assert.match(sitemap, /<loc>https:\/\/localsubs\.aidenw\.me<\/loc>/);
+  assert.match(sitemap, /<lastmod>2026-11-02T00:00:00\.000Z<\/lastmod>/);
 });
