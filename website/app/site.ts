@@ -1,5 +1,12 @@
 export const siteUrl = "https://localsubs.aidenw.me";
 
+// When the page's content last changed, for the sitemap's lastmod. Update it
+// with the content: search engines use it to decide when to crawl again, and
+// stop trusting it if it changes without the page changing.
+// scripts/check-website-lastmod.mjs fails when a branch changes the page
+// without changing this date.
+export const siteUpdated = "2026-11-02";
+
 // The store redirects the bare id to the listing, so the link survives a
 // rename of the extension.
 export const storeUrl = "https://chromewebstore.google.com/detail/dpacileladlkfgdjbdjdjhgnepicejjb";
