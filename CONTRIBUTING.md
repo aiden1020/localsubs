@@ -29,6 +29,13 @@ npm run generate:winget -- --version 0.7.0 --installer dist/localsubs_windows_am
 git diff --check
 ```
 
+`npm run check` also keeps the docs in step with the repo. Relative links and
+`#anchors` in the markdown files must resolve, including the README anchors the
+settings page and the website link to. `CHANGELOG.md` needs an entry and a
+release link for the current extension and helper versions. The `npm run`
+scripts and `localsubs` commands the docs mention must exist. Each failure names
+the file and line to fix.
+
 Windows-specific changes must also be verified from an x64 PowerShell session:
 
 ```powershell
