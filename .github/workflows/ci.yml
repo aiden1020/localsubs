@@ -68,7 +68,7 @@ jobs:
       - name: Install extension dependencies
         run: npm ci
 
-      - name: Check extension and helper versions, store listing limits and JavaScript syntax
+      - name: Check versions, store listing limits, docs and JavaScript syntax
         run: npm run check
         env:
           LOCALSUBS_RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
