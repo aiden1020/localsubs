@@ -189,8 +189,9 @@ at `webllm-64k-q4f16_1-v1/`; only the test build can inject a localhost URL.
 The 3080 experiment separated steady-state inference from startup latency. The
 stock-vocabulary build completes a warm request in roughly 48 ms, but loading a
 cached engine and compiling the first WebGPU kernels takes roughly 1.8–2.2 s.
-The playback content script now detects a cached model and preheats it before
-the first subtitle. It never starts an uncached model download automatically.
+The playback content script detects a cached model and preheats it before the
+first subtitle. An uncached model downloads automatically: from the settings
+page right after install, and otherwise once a video plays.
 
 The safe request limits are now a 256-token context window and 16 generated
 tokens. Across the 100-case set, input length was 12–55 tokens and no output was
