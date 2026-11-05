@@ -39,13 +39,17 @@ https://github.com/user-attachments/assets/5bf883fb-ed50-43f2-a052-47e8f2c9c415
 | YouTube | Videos and Shorts with English captions, including auto-generated ones |
 | HBO Max | English subtitles |
 
-Turn on English captions and play; the Chinese line appears above the English
-one. See [Adding a site](#adding-a-site) to support another platform.
+Play a video with English captions and the Chinese line appears above the
+English one. On YouTube, LocalSubs turns the captions on for you; on HBO Max,
+turn English subtitles on in the player. See [Adding a site](#adding-a-site)
+to support another platform.
 
 ## Requirements
 
 - macOS (Apple Silicon or Intel), or Windows 10/11 x64
 - Chrome / Chromium / Microsoft Edge
+- To translate in the browser: WebGPU with the `shader-f16` feature. Without
+  it, use the optional desktop component (see [Installation](#installation))
 
 ## Inference architecture
 
@@ -64,17 +68,21 @@ can use the native helper instead. Changing the backend in extension settings
 unloads the inactive WebLLM engine or resets the native connection without a
 browser restart.
 
-Production uses WebLLM 0.2.84 with model ID
-`Sotto-EN-ZH-TW-0.6B-q4f16_1-MLC`, a 256-token context window, and a
-16-token output limit. The approximately 290 MB `q4f16_1` weights are loaded
-from `mlc-q4f16_1/` in the Hugging Face model repository. The matching WebGPU
-model library is bundled as `model-lib.wasm`.
+Production uses WebLLM 0.2.84, a 256-token context window, and a 16-token
+output limit. The speed-first model is `Sotto-EN-ZH-TW-0.6B-q4f16_1-MLC`
+(about 290 MB) and the quality-first model is
+`Sotto-EN-ZH-TW-1.7B-q4f16_1-MLC` (about 895 MB). Each one's `q4f16_1`
+weights are loaded from `mlc-q4f16_1/` in its Hugging Face model repository,
+and its WebGPU model library is bundled as `model-lib.wasm` and
+`model-lib-quality.wasm`.
 
 WebLLM artifacts use IndexedDB rather than CacheStorage. The latter cannot
-reliably cache the bundled `chrome-extension://` WASM resource. The content
-script may preheat an already cached model, but it deliberately does not start
-an uncached model download; that download must be initiated from the extension
-settings page.
+reliably cache the bundled `chrome-extension://` WASM resource. The model
+downloads automatically: the settings page that opens at install starts
+downloading the default model, and otherwise the content script downloads it
+once a video plays, showing progress in a card inside the player. An already
+cached model is loaded before the first subtitle. A failed download is
+reported rather than retried in a loop.
 
 See [WEBLLM_EXPERIMENT.md](./WEBLLM_EXPERIMENT.md) for framework comparisons,
 conversion details, benchmark results, and the production parameter choices.
@@ -82,8 +90,10 @@ conversion details, benchmark results, and the production parameter choices.
 ## Installation
 
 Install the [LocalSubs Chrome extension](https://chromewebstore.google.com/detail/dpacileladlkfgdjbdjdjhgnepicejjb).
-New installations use WebLLM by default, so no helper is required. Open
-LocalSubs settings to download and prepare the browser model before playback.
+New installations use WebLLM by default, so no helper is required. The
+settings page that opens after installing starts downloading the browser model
+(about 290 MB); if you close it, the download continues when a video plays, with
+its progress shown in the player.
 
 The native helper remains available as an optional backend under
 **Use the desktop component (advanced)** at the bottom of settings. It offers
@@ -115,18 +125,18 @@ In extension settings, open **Use the desktop component (advanced)**, choose
 
 ### Optional native helper: Windows
 
-After the package is listed in the WinGet Community repository, install the
-same portable release ZIP without an independent installer or paid code-signing
-certificate:
+Install the portable release ZIP from the WinGet Community repository, without
+an independent installer or paid code-signing certificate:
 
 ```powershell
 winget install --id Aiden1020.LocalSubs --exact
 localsubs setup --backend auto
 ```
 
-Until that listing is approved, download `localsubs_windows_amd64.zip` from the
-[latest GitHub release](https://github.com/aiden1020/localsubs/releases/latest), extract it to
-a stable directory such as `%LOCALAPPDATA%\Programs\LocalSubs`, and run:
+Without WinGet, download `localsubs_windows_amd64.zip` from the
+[latest GitHub release](https://github.com/aiden1020/localsubs/releases/latest),
+extract it to a stable directory such as `%LOCALAPPDATA%\Programs\LocalSubs`,
+and run:
 
 ```powershell
 .\localsubs.exe setup --backend auto
@@ -201,12 +211,14 @@ in-player panel are shared. To add a site:
    `manifest.json`, and name it in the manifest `name` and `description`, which
    are the store listing's title and summary.
 4. Add it to [Supported sites](#supported-sites) above and to `supportedSites`
-   in `website/app/site.ts`.
+   in `website/app/site.ts`, and set `siteUpdated` in that file to today's
+   date; it's the sitemap's `lastmod`.
 
 `npm test` checks that the adapters, the site list and the manifest agree, and
 `npm run check` fails if the README, the website or the manifest name or
 description misses a site, or if the name or description is longer than the
-store accepts (75 and 132 characters).
+store accepts (75 and 132 characters). It also fails when a branch changes the
+website's landing page without updating `siteUpdated`.
 
 Experiment bundles are built separately and never enter the production ZIP:
 
@@ -215,6 +227,17 @@ npm run build:extension:experiments
 npm run test:webllm:benchmark -- --headed
 npm run test:wllama:standalone -- --headed
 ```
+
+### Releases
+
+The extension and the native helper are released separately, each with its own
+version. Extension releases are tagged `extension-vX.Y.Z` and publish the Chrome
+Web Store ZIP as a GitHub release; helper releases are tagged `vX.Y.Z` and
+publish the archives, the Homebrew formula and the WinGet manifests. The
+**Latest** GitHub release is therefore always a helper release. The two stay
+compatible through the helper API version, not through matching version
+numbers. See [RELEASING.md](./RELEASING.md), [CONTRIBUTING.md](./CONTRIBUTING.md)
+and [CHANGELOG.md](./CHANGELOG.md).
 
 ## Commands
 
@@ -266,8 +289,9 @@ LocalSubs uses [Sotto-EN-ZH-TW-0.6B](https://huggingface.co/Aiden1020/Sotto-EN-Z
 Either model runs in the browser through WebGPU or in the optional desktop
 component.
 
-WebLLM uses the browser-optimized `q4f16_1` MLC artifacts. The optional native
-helper offers official GGUF models that can be downloaded, selected, and
+WebLLM uses the browser-optimized `q4f16_1` MLC artifacts, which can be
+downloaded and uninstalled from each model's card in Options. The optional
+native helper offers official GGUF models that can be downloaded, selected, and
 removed from Options:
 
 ```text
